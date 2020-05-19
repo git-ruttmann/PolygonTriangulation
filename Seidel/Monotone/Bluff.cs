@@ -479,7 +479,7 @@
 
 			foreach (var chain in this.chainStarts)
 			{
-				this.triangulate_monotone_polygone(0, chain, result);
+				this.TriangulateMonotonePolygon(chain, result);
 			}
 
 			return result.ToArray();
@@ -490,66 +490,53 @@
 		/* two y-monotone chains) and pass on this monotone polygon for greedy */
 		/* triangulation. */
 		/* Take care not to triangulate duplicate monotone polygons */
-		public void triangulate_monotone_polygone(int nvert, MonotoneChain monotoneChain, IList<int> result)
+		public void TriangulateMonotonePolygon(MonotoneChain chainStart, IList<int> result)
 		{
 			Vector2 ymax, ymin;
-			MonotoneChain p;
 			MonotoneChain posmax;
-			MonotoneChain posmin;
-			VertexChain vfirst, v;
-			int vcount;
+			
+			var firstVertex = chainStart.vnum;
+			ymax = ymin = firstVertex.pt;
+			posmax = chainStart;
+			var chain = chainStart.next;
+			var vcount = 1;
 
-			MonotoneChain activeMon = monotoneChain;
-			vcount = 1;
-
-			vfirst = activeMon.vnum;
-			ymax = ymin = vfirst.pt;
-			posmax = posmin = activeMon;
-			posmin.marked = true;
-			p = posmin.next;
-			while ((v = p.vnum) != vfirst)
+			VertexChain vertex;
+			while ((vertex = chain.vnum) != firstVertex)
 			{
-				if (p.marked)
+				if (VertexComparer.Instance.Compare(vertex.pt, ymax) > 0)
 				{
-					return;
-				}
-				else
-				{
-					p.marked = true;
+					ymax = vertex.pt;
+					posmax = chain;
 				}
 
-				if (VertexComparer.Instance.Compare(v.pt, ymax) > 0)
+				if (VertexComparer.Instance.Compare(vertex.pt, ymin) < 0)
 				{
-					ymax = v.pt;
-					posmax = p;
+					ymin = vertex.pt;
 				}
-				if (VertexComparer.Instance.Compare(v.pt, ymin) < 0)
-				{
-					ymin = v.pt;
-					posmin = p;
-				}
-				p = p.next;
+
+				chain = chain.next;
 				vcount++;
 			}
 
-			/* already a triangle */
 			if (vcount == 3)
 			{
-				result.Add(p.vnum.id);
-				result.Add(p.next.vnum.id);
-				result.Add(p.prev.vnum.id);
+				/* already a triangle */
+				result.Add(chain.vnum.id);
+				result.Add(chain.next.vnum.id);
+				result.Add(chain.prev.vnum.id);
 			}
 			else
 			{
-				v = posmax.next.vnum;
-				if (VertexComparer.Instance.Equal(v.pt, ymin))
+				vertex = posmax.next.vnum;
+				if (VertexComparer.Instance.Equal(vertex.pt, ymin))
 				{
 					/* LHS is a single line */
-					triangulate_single_polygon(nvert, posmax, TriangulationSide.TRI_LHS, result);
+					TriangulateSinglePolygon(posmax, TriangulationSide.TRI_LHS, result);
 				}
 				else
 				{
-					triangulate_single_polygon(nvert, posmax, TriangulationSide.TRI_RHS, result);
+					TriangulateSinglePolygon(posmax, TriangulationSide.TRI_RHS, result);
 				}
 			}
 		}
@@ -564,82 +551,71 @@
 		 * polygon in O(n) time.
 		 * Joseph O-Rourke, Computational Geometry in C.
 		 */
-		int triangulate_single_polygon(int nvert, MonotoneChain posmax, TriangulationSide side, IList<int> result)
+		private static int TriangulateSinglePolygon(MonotoneChain posmax, TriangulationSide side, IList<int> result)
 		{
-			VertexChain v;
-			VertexChain[] rc = new VertexChain[200];
-			int ri = 0; /* reflex chain */
-			MonotoneChain tmp, vpos;
-			VertexChain endv;
+			var vertexStack = new Stack<VertexChain>();
+			VertexChain vertex;
+			MonotoneChain chain;
 
-			if (side == TriangulationSide.TRI_RHS)        /* RHS segment is a single segment */
+			/* RHS segment is a single segment, start there */
+			if (side == TriangulationSide.TRI_RHS)
 			{
-				rc[0] = posmax.vnum;
-				tmp = posmax.next;
-				rc[1] = tmp.vnum;
-				ri = 1;
-
-				vpos = tmp.next;
-				v = vpos.vnum;
-
-				endv = posmax.prev.vnum;
-				if (endv == null)
-				{
-					throw new InvalidOperationException("HOBO: chain is not cyclic");
-					// endv = &vertexChain[nvert];
-				}
+				chain = posmax;
 			}
-			else                /* LHS is a single segment */
+			else
 			{
-				tmp = posmax.next;
-				rc[0] = tmp.vnum;
-				tmp = tmp.next;
-				rc[1] = tmp.vnum;
-				ri = 1;
-
-				vpos = tmp.next;
-				v = vpos.vnum;
-
-				endv = posmax.vnum;
+				/* LHS is a single segment and it's next in the chain */
+				chain = posmax.next;
 			}
 
-			while ((v != endv) || (ri > 1))
-			{
-				if (ri > 0)     /* reflex chain is non-empty */
-				{
-					var v0 = v.pt;
-					var v1 = rc[ri - 1].pt;
-					var v2 = rc[ri].pt;
-					var cross = (v1.X - v0.X) * (v2.Y - v0.Y) - ((v1.Y - v0.Y) * (v2.X - v0.X));
+			var endVertex = chain.prev.vnum;
+			vertexStack.Push(chain.vnum);
 
+			chain = chain.next;
+			vertexStack.Push(chain.vnum);
+
+			chain = chain.next;
+			vertex = chain.vnum;
+
+			while ((vertex != endVertex) || vertexStack.Count > 2)
+			{
+				// start after 2 points are on the stack
+				if (vertexStack.Count > 1)
+				{
+					var lastOnStack = vertexStack.Pop();
+					var v0 = vertex.pt;
+					var v1 = lastOnStack.pt;
+					var v2 = vertexStack.Peek().pt;
+					var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
+
+					// convex corner: cut if off
 					if (cross > 0)
-					{           /* convex corner: cut if off */
-						result.Add(rc[ri - 1].id);
-						result.Add(rc[ri].id);
-						result.Add(v.id);
-						ri--;
+					{
+						result.Add(vertexStack.Peek().id);
+						result.Add(lastOnStack.id);
+						result.Add(vertex.id);
 					}
-					else        /* non-convex */
-					{       /* add v to the chain */
-						ri++;
-						rc[ri] = v;
-						vpos = vpos.next;
-						v = vpos.vnum;
+					else
+					{
+						// concave: push the last and the current and advance
+						vertexStack.Push(lastOnStack);
+						vertexStack.Push(vertex);
+						chain = chain.next;
+						vertex = chain.vnum;
 					}
 				}
-				else            /* reflex-chain empty: add v to the */
-				{           /* reflex chain and advance it  */
-					rc[++ri] = v;
-					vpos = vpos.next;
-					v = vpos.vnum;
+				else
+				{
+					vertexStack.Push(vertex);
+					chain = chain.next;
+					vertex = chain.vnum;
 				}
-			} /* end-while */
+			}
 
-			/* reached the bottom vertex. Add in the triangle formed */
-			result.Add(rc[ri - 1].id);
-			result.Add(rc[ri].id);
-			result.Add(v.id);
-			ri--;
+			var secondLast = vertexStack.Pop();
+			result.Add(vertexStack.Pop().id);
+			result.Add(secondLast.id);
+			result.Add(vertex.id);
 
 			return 0;
 		}

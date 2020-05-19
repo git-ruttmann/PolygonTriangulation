@@ -11,6 +11,5 @@
         public VertexChain vnum;
         public MonotoneChain next;
         public MonotoneChain prev;
-        public bool marked;			/* polygon */
     }
 }
