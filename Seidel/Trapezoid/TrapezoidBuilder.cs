@@ -73,12 +73,12 @@
                 {
                     if (left.Third != null)
                     {
-                        Console.WriteLine("upperHandleTriple");
+                        // Console.WriteLine("upperHandleTriple");
                         upperHandleTriple(left, right);
                     }
                     else
                     {
-                        Console.WriteLine("upperHandleDual");
+                        // Console.WriteLine("upperHandleDual");
                         upperHandleDual(left, right);
                     }
                 }
@@ -86,12 +86,12 @@
                 {
                     if (nodeCount(left.u[0].d) == 2)
                     {
-                        Console.WriteLine("upperHandleUpwardCusp");
+                        // Console.WriteLine("upperHandleUpwardCusp");
                         upperHandleUpwardCusp(left, right, low);
                     }
                     else
                     {
-                        Console.WriteLine("upperHandleFreshSegment");
+                        // Console.WriteLine("upperHandleFreshSegment");
                         upperHandleFreshSegment(left, right);
                     }
                 }
@@ -110,13 +110,13 @@
                 {
                     if (downlinkNodeCount == 2)
                     {
-                        Console.WriteLine("lowerHandleBottomTriangletWithDualDownlink");
+                        // Console.WriteLine("lowerHandleBottomTriangletWithDualDownlink");
                         tnext = lowerHandleBottomTriangletWithDualDownlink(left, right);
                     }
                     else
                     {
                         int dx = downlinkNodeCount == 1 ? 0 : 1;
-                        Console.WriteLine("lowerHandleBottomTriangleWithSingleDownlink");
+                        // Console.WriteLine("lowerHandleBottomTriangleWithSingleDownlink");
                         tnext = lowerHandleBottomTriangleWithSingleDownlink(dx, is_swapped, left, right, segment, high);
                     }
                 }
@@ -126,18 +126,18 @@
                     /* two resulting trapezoids t and tn as the upper neighbours of */
                     /* the sole lower trapezoid */
                     int dx = downlinkNodeCount == 1 ? 0 : 1;
-                    Console.WriteLine("lowerHandleTrapezoidWithSingleDownlink");
+                    // Console.WriteLine("lowerHandleTrapezoidWithSingleDownlink");
                     tnext = lowerHandleTrapezoidWithSingleDownlink(dx, left, right);
                 }
                 /* two trapezoids below, intersecting the one at d[0]. proceed down that one */
                 else if (lowerIntersectsAtIndex0(left, low, high))
                 {
-                    Console.WriteLine("lowerHandleDonwlink0Intersect");
+                    // Console.WriteLine("lowerHandleDonwlink0Intersect");
                     tnext = lowerHandleDonwlink0Intersect(left, right);
                 }
                 else
                 {
-                    Console.WriteLine("lowerHandleDonwlink1Intersect");
+                    // Console.WriteLine("lowerHandleDonwlink1Intersect");
                     tnext = lowerHandleDonwlink1Intersect(left, right);
                 }
 
