@@ -57,6 +57,9 @@
             var buff = new Bluff();
             buff.monotonate_trapezoids(firstInsideTriangle, segments);
             var result = buff.MonotonateAll();
+            Assert.IsTrue(VerifyTriangle(result, 1, 2, 4));
+            Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
+            Assert.AreEqual(2 * 3, result.Length);
         }
 
         [TestMethod]
@@ -97,12 +100,23 @@
             bluff.monotonate_trapezoids(firstInsideTriangle, segments);
             var result = bluff.MonotonateAll();
 
-            for (int i = 0; i < result.Length; i += 3)
-            {
-                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
-            }
-
-            Assert.AreEqual(23, firstInsideTriangle.Id);
+            Assert.IsTrue(VerifyTriangle(result, 12, 13, 11));
+            Assert.IsTrue(VerifyTriangle(result, 13, 10, 11));
+            Assert.IsTrue(VerifyTriangle(result, 14, 16, 17));
+            Assert.IsTrue(VerifyTriangle(result, 17, 2, 8));
+            Assert.IsTrue(VerifyTriangle(result, 17, 8, 10));
+            Assert.IsTrue(VerifyTriangle(result, 14, 17, 10));
+            Assert.IsTrue(VerifyTriangle(result, 14, 10, 13));
+            Assert.IsTrue(VerifyTriangle(result, 8, 9, 10));
+            Assert.IsTrue(VerifyTriangle(result, 5, 7, 8));
+            Assert.IsTrue(VerifyTriangle(result, 5, 8, 2));
+            Assert.IsTrue(VerifyTriangle(result, 5, 2, 4));
+            Assert.IsTrue(VerifyTriangle(result, 17, 1, 2));
+            Assert.IsTrue(VerifyTriangle(result, 14, 15, 16));
+            Assert.IsTrue(VerifyTriangle(result, 17, 18, 1));
+            Assert.IsTrue(VerifyTriangle(result, 5, 6, 7));
+            Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
+            Assert.AreEqual(16 * 3, result.Length);
         }
 
         [TestMethod]
@@ -148,6 +162,52 @@
             Assert.AreEqual(18, first.Count());
         }
 
+        /// <summary>
+        /// Verify a Triangle is part of the result list. The order is not important
+        /// </summary>
+        /// <param name="triangles">All triangles</param>
+        /// <param name="p1">vertex index 1</param>
+        /// <param name="p2">vertex index 2</param>
+        /// <param name="p3">vertex index 3</param>
+        /// <returns>true if the triangle is found</returns>
+        private static bool VerifyTriangle(IList<int> triangles, int p1, int p2, int p3)
+        {
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                if (triangles[i] == p1)
+                {
+                    switch (i % 3)
+                    {
+                        case 0:
+                            if (triangles[i + 1] == p2 && triangles[i + 2] == p3)
+                            {
+                                return true;
+                            }
+
+                            break;
+
+                        case 1:
+                            if (triangles[i + 1] == p2 && triangles[i - 1] == p3)
+                            {
+                                return true;
+                            }
+
+                            break;
+
+                        case 2:
+                            if (triangles[i - 2] == p2 && triangles[i - 1] == p3)
+                            {
+                                return true;
+                            }
+
+                            break;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         private Segment PolygonOne()
         {
             var builder = new PolygonBuilder();
@@ -172,6 +232,10 @@
             return builder.Close();
         }
 
+        /// <summary>
+        /// Return a simple polygon with two triangles and one concave vertex
+        /// </summary>
+        /// <returns></returns>
         private Segment PolygonDoubleTriangleWithConcave()
         {
             var builder = new PolygonBuilder();
