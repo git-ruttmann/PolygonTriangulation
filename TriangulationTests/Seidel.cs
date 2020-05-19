@@ -149,6 +149,11 @@
             bluff.monotonate_trapezoids(firstInsideTriangle, segments);
             var result = bluff.MonotonateAll();
 
+            for (int i = 0; i < result.Length; i += 3)
+            {
+                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
+            }
+
             Assert.IsTrue(VerifyTriangle(result, 12, 13, 11));
             Assert.IsTrue(VerifyTriangle(result, 13, 10, 11));
             Assert.IsTrue(VerifyTriangle(result, 14, 16, 17));
@@ -166,11 +171,6 @@
             Assert.IsTrue(VerifyTriangle(result, 5, 6, 7));
             Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
             Assert.AreEqual(16 * 3, result.Length);
-
-            for (int i = 0; i < result.Length; i += 3)
-            {
-                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
-            }
         }
 
         [TestMethod]

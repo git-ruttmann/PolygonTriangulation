@@ -13,7 +13,7 @@
 	public class Bluff
 	{
 		private ISet<Trapezoid> visitedTrapezoids = new HashSet<Trapezoid>();
-		private Dictionary<Segment, VertexChain> vertexChain = new Dictionary<Segment, VertexChain>();
+		private List<Tuple<Segment, Segment>> segmentSplits = new List<Tuple<Segment, Segment>>();
 		private IList<MonotoneChain> chainStarts = new List<MonotoneChain>();
 
 		static double get_angle(Vector2 vp0, Vector2 vpnext, Vector2 vp1)
@@ -36,49 +36,49 @@
 
 		/* (v0, v1) is the new diagonal to be added to the polygon. Find which */
 		/* chain to use and return the positions of v0 and v1 in p and q */
-		static int get_vertex_positions(VertexChain v0, VertexChain v1, ref int ip, ref int iq)
+		static int GetVertexPosition(VertexChain vertexChain, Vector2 neighborVertex)
 		{
-			VertexChain vp0, vp1;
-			int i;
 			double angle, temp;
-			ip = iq = 0;
-			vp0 = v0;
-			vp1 = v1;
+			var bestIndex = 0;
 
 			/* p is identified as follows. Scan from (v0, v1) rightwards till */
 			/* you hit the first segment starting from v0. That chain is the */
 			/* chain of our interest */
 			angle = -4.0;
-			for (i = 0; i < 4; i++)
+			for (var i = 0; i < 4; i++)
 			{
-				if (vp0.vnext[i] == null)
-					continue;
-				if ((temp = get_angle(vp0.pt, vp0.vnext[i].pt, vp1.pt)) > angle)
+				if (vertexChain.vnext[i] == null)
+				{
+					break;
+				}
+
+				if ((temp = get_angle(vertexChain.pt, vertexChain.vnext[i].pt, neighborVertex)) > angle)
 				{
 					angle = temp;
-					ip = i;
+					bestIndex = i;
 				}
 			}
 
-			/* Do similar actions for q */
-			angle = -4.0;
-			for (i = 0; i < 4; i++)
-			{
-				if (vp1.vnext[i] == null)
-					continue;
-				if ((temp = get_angle(vp1.pt, vp1.vnext[i].pt, vp0.pt)) > angle)
-				{
-					angle = temp;
-					iq = i;
-				}
-			}
-
-			return 0;
+			return bestIndex;
 		}
 
 		public int monotonate_trapezoids(Trapezoid tr_start, IEnumerable<Segment> segments)
 		{
+			if (tr_start.u[0] != null)
+				traverse_polygon(tr_start, tr_start.u[0], Traverse.Up);
+			else if (tr_start.d[0] != null)
+				traverse_polygon(tr_start, tr_start.d[0], Traverse.Down);
+
+			this.SplitPolygon(tr_start, segments);
+
+			/* return the number of polygons created */
+			return 0;
+		}
+
+		private void SplitPolygon(Trapezoid tr_start, IEnumerable<Segment> segments)
+		{
 			var allSegments = segments.ToArray();
+			var vertexChain = new Dictionary<Segment, VertexChain>();
 
 			// create one montone entry and one vertex entry for each segment
 			foreach (var segment in allSegments)
@@ -93,15 +93,15 @@
 
 				chain.vnum = vertex;
 				vertex.vpos[0] = chain;
-				this.vertexChain.Add(segment, vertex);
+				vertexChain.Add(segment, vertex);
 			}
 
 			foreach (var segment in allSegments)
 			{
 				// cyclic chain for the overall monotone chain
-				var vertex = this.vertexChain[segment];
-				var prevVertex = this.vertexChain[segment.Prev];
-				var nextVertex = this.vertexChain[segment.Next];
+				var vertex = vertexChain[segment];
+				var prevVertex = vertexChain[segment.Prev];
+				var nextVertex = vertexChain[segment.Next];
 				vertex.vpos[0].next = nextVertex.vpos[0];
 				vertex.vpos[0].prev = prevVertex.vpos[0];
 				// single linkes vertex list
@@ -109,25 +109,25 @@
 			}
 
 			/* traverse the polygon */
-			var firstMonotone = this.segmentToVertex(tr_start.lseg).vpos[0];
+			var firstMonotone = vertexChain[tr_start.lseg].vpos[0];
 			this.chainStarts.Add(firstMonotone);
-			if (tr_start.u[0] != null)
-				traverse_polygon(tr_start, tr_start.u[0], Traverse.Up);
-			else if (tr_start.d[0] != null)
-				traverse_polygon(tr_start, tr_start.d[0], Traverse.Down);
 
-			/* return the number of polygons created */
-			return 0;
+			foreach (var split in this.segmentSplits)
+			{
+				var v0 = vertexChain[split.Item1];
+				var v1 = vertexChain[split.Item2];
+				this.SplitAtVertex2(v0, v1);
+			}
 		}
 
 		/* v0 and v1 are specified in anti-clockwise order with respect to
 		 * the current monotone polygon mcur. Split the current polygon into
 		 * two polygons using the diagonal (v0, v1)
 		 */
-		private void make_new_monotone_poly(VertexChain v0, VertexChain v1)
+		private void SplitAtVertex2(VertexChain v0, VertexChain v1)
 		{
-			MonotoneChain p, q;
-			int ip = 0, iq = 0;
+			MonotoneChain chain0, chain1;
+			int i0 = 0, i1 = 0;
 			MonotoneChain i, j;
 			int nf0, nf1;
 			VertexChain vp0, vp1;
@@ -135,10 +135,11 @@
 			vp0 = v0;
 			vp1 = v1;
 
-			get_vertex_positions(v0, v1, ref ip, ref iq);
+			i0 = GetVertexPosition(v0, v1.pt);
+			i1 = GetVertexPosition(v1, v0.pt);
 
-			p = vp0.vpos[ip];
-			q = vp1.vpos[iq];
+			chain0 = vp0.vpos[i0];
+			chain1 = vp1.vpos[i1];
 
 			/* At this stage, we have got the positions of v0 and v1 in the */
 			/* desired chain. Now modify the linked lists */
@@ -152,20 +153,20 @@
 			i.vnum = v0;
 			j.vnum = v1;
 
-			i.next = p.next;
-			p.next.prev = i;
+			i.next = chain0.next;
+			chain0.next.prev = i;
 			i.prev = j;
 			j.next = i;
-			j.prev = q.prev;
-			q.prev.next = j;
+			j.prev = chain1.prev;
+			chain1.prev.next = j;
 
-			p.next = q;
-			q.prev = p;
+			chain0.next = chain1;
+			chain1.prev = chain0;
 
 			nf0 = vp0.nextfree;
 			nf1 = vp1.nextfree;
 
-			vp0.vnext[ip] = v1;
+			vp0.vnext[i0] = v1;
 
 			vp0.vpos[nf0] = i;
 			vp0.vnext[nf0] = i.next.vnum;
@@ -176,23 +177,6 @@
 			vp1.nextfree++;
 		}
 
-		private VertexChain segmentToVertex(Segment segment)
-		{
-			return this.vertexChain[segment];
-		}
-
-		private enum SplitType
-		{
-			NoSplit,
-			SP_SIMPLE_LRUP,
-			SP_2UP_2DN,
-			SP_SIMPLE_LRDN,
-			SP_2UP_RIGHT,
-			SP_2UP_LEFT,
-			SP_2DN_LEFT,
-			SP_2DN_RIGHT,
-		}
-
 		private enum Traverse
 		{
 			Up,
@@ -200,14 +184,14 @@
 		}
 
 		/* recursively visit all the trapezoids */
-		private SplitType traverse_polygon(Trapezoid trapezoid, Trapezoid from, Traverse dir)
+		private void traverse_polygon(Trapezoid trapezoid, Trapezoid from, Traverse dir)
 		{
-			VertexChain v0, v1;
-			SplitType retval = SplitType.NoSplit;
-			bool do_switch = false;
+			Segment s0 = null, s1 = null;
 
-			if ((trapezoid == null) || !this.visitedTrapezoids.Add(trapezoid))
-				return retval;
+			if (trapezoid == null)
+			{
+				return;
+			}
 
 			/* We have much more information available here. */
 			/* rseg: goes upwards   */
@@ -219,253 +203,125 @@
 			int uplinkCount = (trapezoid.u[0] == null ? 0 : 1) + (trapezoid.u[1] == null ? 0 : 1);
 			int downlinkCount = (trapezoid.d[0] == null ? 0 : 1) + (trapezoid.d[1] == null ? 0 : 1);
 
-			/* special cases for triangles with cusps at the opposite ends. */
-			/* take care of this first */
-			if (uplinkCount == 0 && downlinkCount == 2)
+			bool invertSplitDirection = false;
+			if (!this.visitedTrapezoids.Add(trapezoid))
 			{
-				/* downward opening triangle */
-				v0 = segmentToVertex(trapezoid.d[1].lseg);
-				v1 = segmentToVertex(trapezoid.lseg);
-				if (from == trapezoid.d[1])
-				{
-					do_switch = true;
-					make_new_monotone_poly(v1, v0);
-					traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-					traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-				}
-				else
-				{
-					make_new_monotone_poly(v0, v1);
-					traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-				}
+				return;
 			}
-			else if (uplinkCount == 0 && downlinkCount != 2)
-			{
-				retval = SplitType.NoSplit; /* Just traverse all neighbours */
-				traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-				traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-			}
-			else if (downlinkCount == 0 && uplinkCount == 2)
-			{
-				/* upward opening triangle */
-				v0 = segmentToVertex(trapezoid.rseg);
-				v1 = segmentToVertex(trapezoid.u[0].rseg);
-				if (from == trapezoid.u[1])
-				{
-					do_switch = true;
-					make_new_monotone_poly(v1, v0);
-					traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-				}
-				else
-				{
-					make_new_monotone_poly(v0, v1);
-					traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-				}
-			}
-			else if (downlinkCount == 0 && uplinkCount != 2)
-			{
-				retval = SplitType.NoSplit;    /* Just traverse all neighbours */
-				traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-				traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-			}
-			else if (uplinkCount == 2 && downlinkCount == 2)
-			{
-				/* downward + upward cusps */
-				v0 = segmentToVertex(trapezoid.d[1].lseg);
-				v1 = segmentToVertex(trapezoid.u[0].rseg);
-				retval = SplitType.SP_2UP_2DN;
-				if (((dir == Traverse.Down) && (trapezoid.d[1] == from)) ||
-					((dir == Traverse.Up) && (trapezoid.u[1] == from)))
-				{
-					do_switch = true;
-					make_new_monotone_poly(v1, v0);
-					traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-					traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-				}
-				else
-				{
-					make_new_monotone_poly(v0, v1);
-					traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-				}
-			}
-			else if (uplinkCount == 2 && downlinkCount != 2)
-			{
-				/* only downward cusp */
-				if (VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
-				{
-					v0 = segmentToVertex(trapezoid.u[0].rseg);
-					v1 = segmentToVertex(trapezoid.lseg.Next);
 
-					retval = SplitType.SP_2UP_LEFT;
-					if ((dir == Traverse.Up) && (trapezoid.u[0] == from))
+			switch(uplinkCount * 4 + downlinkCount)
+			{
+				// downward opening triangle
+				case 0 * 4 + 2:
+					s0 = trapezoid.d[1].lseg;
+					s1 = trapezoid.lseg;
+					invertSplitDirection = from == trapezoid.d[1];
+					break;
+
+				// upward opening triangle
+				case 2 * 4 + 0:
+					s0 = trapezoid.rseg;
+					s1 = trapezoid.u[0].rseg;
+					invertSplitDirection = from == trapezoid.u[1];
+					break;
+
+				// downward + upward cusps
+				case 2 * 4 + 2:
+					s0 = trapezoid.d[1].lseg;
+					s1 = trapezoid.u[0].rseg;
+					if (((dir == Traverse.Down) && (trapezoid.d[1] == from)) ||
+						((dir == Traverse.Up) && (trapezoid.u[1] == from)))
 					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
+						invertSplitDirection = true;
+					}
+					break;
+
+				// only downward cusp
+				case 2 * 4 + 1:
+					if (VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
+					{
+						s0 = trapezoid.u[0].rseg;
+						s1 = trapezoid.lseg.Next;
+						invertSplitDirection = (dir == Traverse.Up) && (trapezoid.u[0] == from);
 					}
 					else
 					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
+						s0 = trapezoid.rseg;
+						s1 = trapezoid.u[0].rseg;
+						invertSplitDirection = (dir == Traverse.Up) && (trapezoid.u[1] == from);
 					}
+					break;
+
+				// only upward cusp
+				case 1 * 4 + 2:
+					if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0))
+					{
+						s0 = trapezoid.d[1].lseg;
+						s1 = trapezoid.lseg;
+						invertSplitDirection = !((dir == Traverse.Down) && (trapezoid.d[0] == from));
+					}
+					else
+					{
+						s0 = trapezoid.d[1].lseg;
+						s1 = trapezoid.rseg.Next;
+						invertSplitDirection = (dir == Traverse.Down) && (trapezoid.d[1] == from);
+					}
+					break;
+
+				// no cusp
+				case 1 * 4 + 1:
+					if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0) &&
+						VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.rseg.v0))
+					{
+						s0 = trapezoid.rseg;
+						s1 = trapezoid.lseg;
+						invertSplitDirection = dir == Traverse.Up;
+					}
+					else if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.rseg.v1) &&
+						VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
+					{
+						s0 = trapezoid.rseg.Next;
+						s1 = trapezoid.lseg.Next;
+						invertSplitDirection = dir == Traverse.Up;
+					}
+					else
+					{
+						// no split possible
+					}
+					break;
+
+				case 1 * 4 + 0:
+					break;
+
+				case 0 * 4 + 1:
+					break;
+
+				default:
+					throw new InvalidOperationException("Bad UL/DL count combination");
+			}
+
+			if (s0 != null && s1 != null)
+			{
+				if (invertSplitDirection)
+				{
+					this.segmentSplits.Add(Tuple.Create(s1, s0));
 				}
 				else
 				{
-					v0 = segmentToVertex(trapezoid.rseg);
-					v1 = segmentToVertex(trapezoid.u[0].rseg);
-					retval = SplitType.SP_2UP_RIGHT;
-					if ((dir == Traverse.Up) && (trapezoid.u[1] == from))
-					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-					}
-					else
-					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					}
-				}
-			}
-			else if (uplinkCount == 1 && downlinkCount == 2) /* no downward cusp */
-			{
-				/* only upward cusp */
-				if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0))
-				{
-					v0 = segmentToVertex(trapezoid.d[1].lseg);
-					v1 = segmentToVertex(trapezoid.lseg);
-					retval = SplitType.SP_2DN_LEFT;
-					if (!((dir == Traverse.Down) && (trapezoid.d[0] == from)))
-					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					}
-					else
-					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-					}
-				}
-				else
-				{
-					v0 = segmentToVertex(trapezoid.d[1].lseg);
-					v1 = segmentToVertex(trapezoid.rseg.Next);
-
-					retval = SplitType.SP_2DN_RIGHT;
-					if ((dir == Traverse.Down) && (trapezoid.d[1] == from))
-					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					}
-					else
-					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-					}
-				}
-			}
-			else if (uplinkCount == 1 && downlinkCount != 2)
-			{
-				/* no cusp */
-				if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0) &&
-					VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.rseg.v0))
-				{
-					v0 = segmentToVertex(trapezoid.rseg);
-					v1 = segmentToVertex(trapezoid.lseg);
-					retval = SplitType.SP_SIMPLE_LRDN;
-					if (dir == Traverse.Up)
-					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					}
-					else
-					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					}
-				}
-				else if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.rseg.v1) &&
-					VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
-				{
-					v0 = segmentToVertex(trapezoid.rseg.Next);
-					v1 = segmentToVertex(trapezoid.lseg.Next);
-
-					retval = SplitType.SP_SIMPLE_LRUP;
-					if (dir == Traverse.Up)
-					{
-						do_switch = true;
-						make_new_monotone_poly(v1, v0);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					}
-					else
-					{
-						make_new_monotone_poly(v0, v1);
-						traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-						traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-						traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					}
-				}
-				else            /* no split possible */
-				{
-					retval = SplitType.NoSplit;
-					traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
-					traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
-					traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
+					this.segmentSplits.Add(Tuple.Create(s0, s1));
 				}
 			}
 
-			return retval;
+			traverse_polygon(trapezoid.d[1], trapezoid, Traverse.Up);
+			traverse_polygon(trapezoid.d[0], trapezoid, Traverse.Up);
+			traverse_polygon(trapezoid.u[1], trapezoid, Traverse.Down);
+			traverse_polygon(trapezoid.u[0], trapezoid, Traverse.Down);
 		}
 
 		public int[] MonotonateAll()
 		{
 			var result = new List<int>();
+#if false
 			foreach (var chain in this.chainStarts)
 			{
 				Console.Write($"Polygon {chain.vnum.id} ");
@@ -476,6 +332,7 @@
 
 				Console.WriteLine();
 			}
+#endif
 
 			foreach (var chain in this.chainStarts)
 			{
