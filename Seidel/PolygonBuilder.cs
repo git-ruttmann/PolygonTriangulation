@@ -11,12 +11,14 @@
         private bool firstAvailable;
         private Vector2 lastPoint;
         private PolygonSegment firstSegment;
+        private int segmentIdCounter;
         private PolygonSegment lastSegment;
 
         public PolygonBuilder()
         {
             this.firstAvailable = false;
             this.firstSegment = null;
+            this.segmentIdCounter = 0;
         }
 
         public void Add(Vector2 point)
@@ -29,7 +31,7 @@
             else if (this.firstSegment == null)
             {
                 this.firstSegment = new PolygonSegment(this.lastPoint, point);
-                this.firstSegment.SetFirst();
+                this.firstSegment.SetFirst(this.segmentIdCounter);
                 this.lastSegment = this.firstSegment;
             }
             else
@@ -39,6 +41,7 @@
                 this.lastSegment = segment;
             }
 
+            this.segmentIdCounter++;
             this.lastPoint = point;
         }
 
@@ -69,9 +72,9 @@
                 }
             }
 
-            public void SetFirst()
+            public void SetFirst(int id)
             {
-                this.Id = 1;
+                this.Id = id;
                 this.First = true;
             }
         }
