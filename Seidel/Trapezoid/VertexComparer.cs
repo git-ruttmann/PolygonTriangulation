@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Http.Headers;
-using System.Numerics;
-
-namespace Ruttmann.PolygonTriangulation.Seidel
+﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+
     public class VertexComparer : IComparer<Vector2>
     {
         const float epsilon = 0.1E-5f;

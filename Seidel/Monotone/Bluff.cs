@@ -1,20 +1,17 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
-    using System;
-    using System.Collections.Generic;
-	using System.Diagnostics;
+	using System;
+	using System.Collections;
+	using System.Collections.Generic;
 	using System.Linq;
 	using System.Numerics;
-	using System.Runtime.CompilerServices;
-	using System.Security.Cryptography;
-	using System.Text;
-    using System.Threading.Tasks;
 
-	public class Bluff
+	public partial class Bluff
 	{
 		private ISet<Trapezoid> visitedTrapezoids = new HashSet<Trapezoid>();
 		private List<Tuple<Segment, Segment>> segmentSplits = new List<Tuple<Segment, Segment>>();
 		private IList<MonotoneChain> chainStarts = new List<MonotoneChain>();
+		private Polygon[] splitPolgones;
 
 		static double get_angle(Vector2 vp0, Vector2 vpnext, Vector2 vp1)
 		{
@@ -38,8 +35,13 @@
 		/* chain to use and return the positions of v0 and v1 in p and q */
 		static int GetVertexPosition(VertexChain vertexChain, Vector2 neighborVertex)
 		{
-			double angle, temp;
+			double angle;
 			var bestIndex = 0;
+
+			if (vertexChain.nextfree == 1)
+			{
+				return 0;
+			}
 
 			/* p is identified as follows. Scan from (v0, v1) rightwards till */
 			/* you hit the first segment starting from v0. That chain is the */
@@ -52,7 +54,12 @@
 					break;
 				}
 
-				if ((temp = get_angle(vertexChain.pt, vertexChain.vnext[i].pt, neighborVertex)) > angle)
+				var temp = get_angle(vertexChain.pt, vertexChain.vnext[i].pt, neighborVertex);
+				if (i == 0)
+				{
+					angle = temp;
+				}
+				else if (temp > angle)
 				{
 					angle = temp;
 					bestIndex = i;
@@ -77,13 +84,23 @@
 
 		private void SplitPolygon(Trapezoid tr_start, IEnumerable<Segment> segments)
 		{
+			var polygon = Polygon.FromSegments(segments);
+			var splits = this.segmentSplits
+				.Select(x => Tuple.Create(x.Item1.Id, x.Item2.Id))
+				.ToArray();
+
+			var (triangles, result) = Polygon.Split(polygon, splits);
+			this.splitPolgones = triangles.Concat(result).ToArray();
+		}
+
+		private void SplitPolygon2(Trapezoid tr_start, IEnumerable<Segment> segments)
+		{
 			var allSegments = segments.ToArray();
 			var vertexChain = new Dictionary<Segment, VertexChain>();
 
 			// create one montone entry and one vertex entry for each segment
 			foreach (var segment in allSegments)
 			{
-				var chain = new MonotoneChain();
 				var vertex = new VertexChain()
 				{
 					id = segment.Id,
@@ -91,7 +108,7 @@
 					nextfree = 1,
 				};
 
-				chain.vnum = vertex;
+				var chain = new MonotoneChain(vertex);
 				vertex.vpos[0] = chain;
 				vertexChain.Add(segment, vertex);
 			}
@@ -100,10 +117,10 @@
 			{
 				// cyclic chain for the overall monotone chain
 				var vertex = vertexChain[segment];
-				var prevVertex = vertexChain[segment.Prev];
 				var nextVertex = vertexChain[segment.Next];
-				vertex.vpos[0].next = nextVertex.vpos[0];
-				vertex.vpos[0].prev = prevVertex.vpos[0];
+				vertex.vpos[0].Next = nextVertex.vpos[0];
+				// var prevVertex = vertexChain[segment.Prev];
+				// vertex.vpos[0].Prev = prevVertex.vpos[0];
 				// single linkes vertex list
 				vertex.vnext[0] = nextVertex;
 			}
@@ -144,24 +161,21 @@
 			/* At this stage, we have got the positions of v0 and v1 in the */
 			/* desired chain. Now modify the linked lists */
 
-			i = new MonotoneChain();    /* for the new list */
-			j = new MonotoneChain();
+			i = new MonotoneChain(v0);    /* for the new list */
+			j = new MonotoneChain(v1);
 
 			this.chainStarts.Add(i);
 			// this.chainStarts.Add(j);
 
-			i.vnum = v0;
-			j.vnum = v1;
+			i.Next = chain0.Next;
+			// chain0.Next.Prev = i;
+			j.Next = i;
+			// i.Prev = j;
+			// j.Prev = chain1.Prev;
+			chain1.Prev.Next = j;
 
-			i.next = chain0.next;
-			chain0.next.prev = i;
-			i.prev = j;
-			j.next = i;
-			j.prev = chain1.prev;
-			chain1.prev.next = j;
-
-			chain0.next = chain1;
-			chain1.prev = chain0;
+			chain0.Next = chain1;
+			// chain1.Prev = chain0;
 
 			nf0 = vp0.nextfree;
 			nf1 = vp1.nextfree;
@@ -169,7 +183,7 @@
 			vp0.vnext[i0] = v1;
 
 			vp0.vpos[nf0] = i;
-			vp0.vnext[nf0] = i.next.vnum;
+			vp0.vnext[nf0] = i.Next.Vnum;
 			vp1.vpos[nf1] = j;
 			vp1.vnext[nf1] = v0;
 
@@ -334,32 +348,93 @@
 			}
 #endif
 
+			foreach (var polygon in this.splitPolgones)
+			{
+				this.TriangulateMonotonePolygon2(polygon, result);
+			}
+
 			foreach (var chain in this.chainStarts)
 			{
-				this.TriangulateMonotonePolygon(chain, result);
+				// this.TriangulateMonotonePolygon(chain, result);
+				this.TriangulateMonotonePolygon2(Polygon.FromMonotone(chain), result);
 			}
 
 			return result.ToArray();
 		}
 
-
 		/* For each monotone polygon, find the ymax and ymin (to determine the */
 		/* two y-monotone chains) and pass on this monotone polygon for greedy */
 		/* triangulation. */
 		/* Take care not to triangulate duplicate monotone polygons */
-		public void TriangulateMonotonePolygon(MonotoneChain chainStart, IList<int> result)
+		public void TriangulateMonotonePolygon2(Polygon polygon, IList<int> result)
 		{
+			var all = String.Join(" ", polygon.Indices);
+
+			var iterator = polygon.Indices.GetEnumerator();
+			var movedNext = iterator.MoveNext();
+			var posmax = iterator.Current;
+			var posmin = posmax;
+			var ymax = polygon.Vertices[posmax];
+			var ymin = ymax;
+
+			movedNext = iterator.MoveNext();
+			var posmaxNext = iterator.Current;
+			var count = 1;
+
+			while (movedNext)
+			{
+				var index = iterator.Current;
+				var vertex = polygon.Vertices[index];
+				movedNext = iterator.MoveNext();
+
+				if (VertexComparer.Instance.Compare(vertex, ymax) > 0)
+				{
+					ymax = vertex;
+					posmax = index;
+					posmaxNext = iterator.Current;
+				}
+
+				if (VertexComparer.Instance.Compare(vertex, ymin) < 0)
+				{
+					ymin = vertex;
+					posmin = index;
+				}
+
+				count++;
+			}
+
+			if (count == 3)
+			{
+				foreach (var index in polygon.Indices)
+				{
+					result.Add(index);
+				}
+
+				return;
+			}
+			
+			if (posmin == posmaxNext)
+			{
+				/* LHS is a single segment and it's next in the chain */
+				TriangulateSinglePolygon2(polygon, posmaxNext, result);
+			}
+			else
+			{
+				TriangulateSinglePolygon2(polygon, posmax, result);
+			}
+
+#if false
 			Vector2 ymax, ymin;
 			MonotoneChain posmax;
-			
-			var firstVertex = chainStart.vnum;
+
+			var firstVertex = chainStart.Vnum;
 			ymax = ymin = firstVertex.pt;
 			posmax = chainStart;
-			var chain = chainStart.next;
+			var chain = chainStart.Next;
 			var vcount = 1;
 
 			VertexChain vertex;
-			while ((vertex = chain.vnum) != firstVertex)
+			while ((vertex = chain.Vnum) != firstVertex)
 			{
 				if (VertexComparer.Instance.Compare(vertex.pt, ymax) > 0)
 				{
@@ -372,67 +447,153 @@
 					ymin = vertex.pt;
 				}
 
-				chain = chain.next;
+				chain = chain.Next;
 				vcount++;
 			}
 
 			if (vcount == 3)
 			{
 				/* already a triangle */
-				result.Add(chain.vnum.id);
-				result.Add(chain.next.vnum.id);
-				result.Add(chain.prev.vnum.id);
+				result.Add(chain.Vnum.id);
+				result.Add(chain.Next.Vnum.id);
+				result.Add(chain.Prev.Vnum.id);
 			}
 			else
 			{
-				vertex = posmax.next.vnum;
+				vertex = posmax.Next.Vnum;
 				if (VertexComparer.Instance.Equal(vertex.pt, ymin))
 				{
-					/* LHS is a single line */
-					TriangulateSinglePolygon(posmax, TriangulationSide.TRI_LHS, result);
+					/* LHS is a single segment and it's next in the chain */
+					TriangulateSinglePolygon(posmax.Next, result);
 				}
 				else
 				{
-					TriangulateSinglePolygon(posmax, TriangulationSide.TRI_RHS, result);
+					/* RHS segment is a single segment, start there */
+					TriangulateSinglePolygon(posmax, result);
+				}
+			}
+#endif
+		}
+
+		private void TriangulateSinglePolygon2(Polygon polygon, int posmax, IList<int> result)
+		{
+			var vertexStack = new Stack<int>();
+
+			// push the first two points
+			var iterator = polygon.IndicesStartingAt(posmax).GetEnumerator();
+			iterator.MoveNext();
+			vertexStack.Push(iterator.Current);
+			iterator.MoveNext();
+			vertexStack.Push(iterator.Current);
+
+			bool movedNext = iterator.MoveNext();
+			while (movedNext || vertexStack.Count > 2)
+			{
+				if (vertexStack.Count > 1)
+				{
+					var lastOnStack = vertexStack.Pop();
+					var v0 = polygon.Vertices[iterator.Current];
+					var v1 = polygon.Vertices[lastOnStack];
+					var v2 = polygon.Vertices[vertexStack.Peek()];
+					var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
+					var isConvexCorner = cross > 0;
+
+					if (isConvexCorner)
+					{
+						result.Add(vertexStack.Peek());
+						result.Add(lastOnStack);
+						result.Add(iterator.Current);
+					}
+					else
+					{
+						vertexStack.Push(lastOnStack);
+						vertexStack.Push(iterator.Current);
+						movedNext = movedNext && iterator.MoveNext();
+					}
+				}
+				else
+				{
+					vertexStack.Push(iterator.Current);
+					movedNext = movedNext && iterator.MoveNext();
 				}
 			}
 		}
 
-		enum TriangulationSide
+
+		/* For each monotone polygon, find the ymax and ymin (to determine the */
+		/* two y-monotone chains) and pass on this monotone polygon for greedy */
+		/* triangulation. */
+		/* Take care not to triangulate duplicate monotone polygons */
+		public void TriangulateMonotonePolygon(MonotoneChain chainStart, IList<int> result)
 		{
-			TRI_RHS,
-			TRI_LHS
+			Vector2 ymax, ymin;
+			MonotoneChain posmax;
+			
+			var firstVertex = chainStart.Vnum;
+			ymax = ymin = firstVertex.pt;
+			posmax = chainStart;
+			var chain = chainStart.Next;
+			var vcount = 1;
+
+			VertexChain vertex;
+			while ((vertex = chain.Vnum) != firstVertex)
+			{
+				if (VertexComparer.Instance.Compare(vertex.pt, ymax) > 0)
+				{
+					ymax = vertex.pt;
+					posmax = chain;
+				}
+
+				if (VertexComparer.Instance.Compare(vertex.pt, ymin) < 0)
+				{
+					ymin = vertex.pt;
+				}
+
+				chain = chain.Next;
+				vcount++;
+			}
+
+			if (vcount == 3)
+			{
+				/* already a triangle */
+				result.Add(chain.Vnum.id);
+				result.Add(chain.Next.Vnum.id);
+				result.Add(chain.Prev.Vnum.id);
+			}
+			else
+			{
+				vertex = posmax.Next.Vnum;
+				if (VertexComparer.Instance.Equal(vertex.pt, ymin))
+				{
+					/* LHS is a single segment and it's next in the chain */
+					TriangulateSinglePolygon(posmax.Next, result);
+				}
+				else
+				{
+					/* RHS segment is a single segment, start there */
+					TriangulateSinglePolygon(posmax, result);
+				}
+			}
 		}
 
 		/* A greedy corner-cutting algorithm to triangulate a y-monotone
 		 * polygon in O(n) time.
 		 * Joseph O-Rourke, Computational Geometry in C.
 		 */
-		private static int TriangulateSinglePolygon(MonotoneChain posmax, TriangulationSide side, IList<int> result)
+		private static int TriangulateSinglePolygon(MonotoneChain posmax, IList<int> result)
 		{
 			var vertexStack = new Stack<VertexChain>();
 			VertexChain vertex;
-			MonotoneChain chain;
+			var chain = posmax;
 
-			/* RHS segment is a single segment, start there */
-			if (side == TriangulationSide.TRI_RHS)
-			{
-				chain = posmax;
-			}
-			else
-			{
-				/* LHS is a single segment and it's next in the chain */
-				chain = posmax.next;
-			}
+			var endVertex = chain.Prev.Vnum;
+			vertexStack.Push(chain.Vnum);
 
-			var endVertex = chain.prev.vnum;
-			vertexStack.Push(chain.vnum);
+			chain = chain.Next;
+			vertexStack.Push(chain.Vnum);
 
-			chain = chain.next;
-			vertexStack.Push(chain.vnum);
-
-			chain = chain.next;
-			vertex = chain.vnum;
+			chain = chain.Next;
+			vertex = chain.Vnum;
 
 			while ((vertex != endVertex) || vertexStack.Count > 2)
 			{
@@ -457,15 +618,15 @@
 						// concave: push the last and the current and advance
 						vertexStack.Push(lastOnStack);
 						vertexStack.Push(vertex);
-						chain = chain.next;
-						vertex = chain.vnum;
+						chain = chain.Next;
+						vertex = chain.Vnum;
 					}
 				}
 				else
 				{
 					vertexStack.Push(vertex);
-					chain = chain.next;
-					vertex = chain.vnum;
+					chain = chain.Next;
+					vertex = chain.Vnum;
 				}
 			}
 
