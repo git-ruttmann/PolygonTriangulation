@@ -13,6 +13,37 @@
     public class Seidel
     {
         [TestMethod]
+        public void SplitSimpleConcave()
+        {
+            var polygon = Polygon.FromSegments(this.PolygonDoubleTriangleWithConcave());
+
+            Assert.AreEqual("1 2 3 4", String.Join(" ", polygon.Indices));
+
+            var (triangles, result) = Polygon.Split(polygon, new[] { Tuple.Create(2, 4) });
+
+            Assert.AreEqual(2, result.Length);
+            Assert.AreEqual(0, triangles.Length);
+        }
+
+        [TestMethod]
+        public void SplitSquareWithHoles()
+        {
+            var segments = this.PolygonSquareWithThreeNonOverlappingHoles().SelectMany(x => x).ToArray();
+            var polygon = Polygon.FromSegments(segments);
+            var splits = new[]
+            {
+                Tuple.Create(9, 4),
+                Tuple.Create(8, 12),
+                Tuple.Create(6, 13),
+                Tuple.Create(5, 2),
+            };
+            var (triangles, result) = Polygon.Split(polygon, splits);
+
+            Assert.AreEqual(2, result.Length);
+            Assert.AreEqual(0, triangles.Length);
+        }
+
+        [TestMethod]
         public void PointIsLeftOfSegmentComparer()
         {
             var segments = this.PolygonTripleStart().ToArray();
