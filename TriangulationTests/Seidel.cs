@@ -75,14 +75,7 @@
 
             trapezoidBuilder.Tree.DumpTree();
 
-            var firstInsideTriangle = trapezoidBuilder.Tree.Trapezoids
-                .GroupBy(x => x.Id, (key, group) => group.First())
-                .Where(x => x.rseg != null && x.lseg != null)
-                .Where(x => (x.u[0] == null && x.u[1] == null) || (x.d[0] == null && x.d[1] == null))
-                .Where(x => VertexComparer.Instance.Compare(x.rseg.End, x.rseg.Start) > 0)
-                .OrderBy(x => x.Id)
-                .First();
-
+            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
             Assert.AreEqual(2, firstInsideTriangle.Id);
 
             var buff = new Bluff();
@@ -104,13 +97,7 @@
                 trapezoidBuilder.AddSegment(segment);
             }
 
-            var firstInsideTriangle = trapezoidBuilder.Tree.Trapezoids
-                .GroupBy(x => x.Id, (key, group) => group.First())
-                .Where(x => x.rseg != null && x.lseg != null)
-                .Where(x => (x.u[0] == null && x.u[1] == null) || (x.d[0] == null && x.d[1] == null))
-                .Where(x => VertexComparer.Instance.Compare(x.rseg.End, x.rseg.Start) > 0)
-                .OrderBy(x => x.Id)
-                .First();
+            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
 
             var buff = new Bluff();
             buff.monotonate_trapezoids(firstInsideTriangle, segments);
@@ -168,13 +155,7 @@
 
             // trapezoidBuilder.Tree.DumpTree();
 
-            var firstInsideTriangle = trapezoidBuilder.Tree.Trapezoids
-                .GroupBy(x => x.Id, (key, group) => group.First())
-                .Where(x => x.rseg != null && x.lseg != null)
-                .Where(x => (x.u[0] == null && x.u[1] == null) || (x.d[0] == null && x.d[1] == null))
-                .Where(x => VertexComparer.Instance.Compare(x.rseg.End, x.rseg.Start) > 0)
-                .OrderBy(x => x.Id)
-                .First();
+            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
 
             var bluff = new Bluff();
             bluff.monotonate_trapezoids(firstInsideTriangle, segments);

@@ -1,6 +1,7 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
     using System;
+    using System.Linq;
     using System.Numerics;
 
     public class TrapezoidBuilder
@@ -32,6 +33,27 @@
         /// Get's the storage tree
         /// </summary>
         public LocationNode Tree { get; }
+
+        /// <summary>
+        /// Find the first trapezoid that is a triangle and it's inside the polygon
+        /// </summary>
+        /// <returns>The first triangle</returns>
+        public Trapezoid GetTopmostTrapezoid()
+        {
+            // find a trapezoid that
+            // - is unique (the tree includes several copies of the same)
+            // - has a left and a right segment (no side border)
+            // - has either no uplinks or no downlinks => it's a triangle
+            // - the right segment goes up => the content of the counter-clock wise => it's inside.
+            var firstInsideTriangle = this.Tree.Trapezoids
+                .GroupBy(x => x.Id, (key, group) => group.First())
+                .Where(x => x.rseg != null && x.lseg != null)
+                .Where(x => (x.u[0] == null && x.u[1] == null) || (x.d[0] == null && x.d[1] == null))
+                .Where(x => VertexComparer.Instance.Compare(x.rseg.End, x.rseg.Start) > 0)
+                .OrderBy(x => x.Id)
+                .First();
+            return firstInsideTriangle;
+        }
 
         public void AddSegment(Segment segment)
         {

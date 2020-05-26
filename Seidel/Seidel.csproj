@@ -39,6 +39,7 @@
     <Compile Include="Monotone\Bluff.cs" />
     <Compile Include="Monotone\DumbPriorityQueue.cs" />
     <Compile Include="Monotone\MonotoneChain.cs" />
+    <Compile Include="Monotone\NewEditorScript1.cs" />
     <Compile Include="Polygon.cs" />
     <Compile Include="Monotone\VertexChain.cs" />
     <Compile Include="Trapezoid\LocationNode.cs" />
