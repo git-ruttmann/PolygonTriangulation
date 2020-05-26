@@ -20,7 +20,7 @@
         private LocationNode left;
         private LocationNode right;
         private Vector2 yval;
-        private Segment segnum;
+        private Segment segment;
 
         // HOBO
         static int count = 0;
@@ -36,7 +36,7 @@
         private LocationNode(Segment segment)
         {
             this.nodeType = NodeType.X;
-            this.segnum = segment;
+            this.segment = segment;
         }
 
         private LocationNode(Vector2 yValue)
@@ -77,9 +77,9 @@
 
         private LocationNode Parent { get; set; }
 
-        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vector2 low, Vector2 high, Segment segnum)
+        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vector2 low, Vector2 high, Segment segment)
         {
-            var segmentNode = new LocationNode(segnum);
+            var segmentNode = new LocationNode(segment);
             segmentNode.Left = new LocationNode(left);
             segmentNode.Right = new LocationNode(right);
 
@@ -129,7 +129,7 @@
                         break;
 
                     case NodeType.X:
-                        if (VertexComparer.Instance.Equal(vertex, node.segnum.Start) || VertexComparer.Instance.Equal(vertex, node.segnum.End))
+                        if (VertexComparer.Instance.Equal(vertex, node.segment.Start) || VertexComparer.Instance.Equal(vertex, node.segment.End))
                         {
                             if (VertexComparer.Instance.EqualY(vertex, vo)) /* horizontal segment */
                             {
@@ -137,12 +137,12 @@
                             }
                             else
                             {
-                                node = VertexComparer.Instance.PointIsLeftOfSegment(vo, node.segnum) ? node.Left : node.Right;
+                                node = VertexComparer.Instance.PointIsLeftOfSegment(vo, node.segment) ? node.Left : node.Right;
                             }
                         }
                         else
                         {
-                            node = VertexComparer.Instance.PointIsLeftOfSegment(vertex, node.segnum) ? node.Left : node.Right;
+                            node = VertexComparer.Instance.PointIsLeftOfSegment(vertex, node.segment) ? node.Left : node.Right;
                         }
                         break;
 
@@ -180,7 +180,7 @@
             }
             else if (this.nodeType == NodeType.X)
             {
-                return $"{this.id} Seg {this.segnum.Id}";
+                return $"{this.id} Seg {this.segment.Id}";
             }
 
             return "Unkown node type";
@@ -208,7 +208,7 @@
 
             this.nodeType = NodeType.X;
             this.Trapezoid = null;
-            this.segnum = segment;
+            this.segment = segment;
 
             // TODO: correct order?
             this.Left = i1;

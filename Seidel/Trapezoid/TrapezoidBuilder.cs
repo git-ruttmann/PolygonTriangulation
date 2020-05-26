@@ -5,9 +5,9 @@
 
     public class TrapezoidBuilder
     {
-        public TrapezoidBuilder(Segment segnum)
+        public TrapezoidBuilder(Segment segment)
         {
-            var (low, high, _) = SortSegment(segnum);
+            var (low, high, _) = SortSegment(segment);
             var left = CreateTrapezoid();     /* middle left */
             var right = CreateTrapezoid();     /* middle right */
             var bottomMost = CreateTrapezoid();
@@ -17,15 +17,15 @@
 
             left.hi = right.hi = topMost.lo = high;
             left.lo = right.lo = bottomMost.hi = low;
-            left.rseg = right.lseg = segnum;
+            left.rseg = right.lseg = segment;
             left.u[0] = right.u[0] = topMost;
             left.d[0] = right.d[0] = bottomMost;
             topMost.d[0] = bottomMost.u[0] = left;
             topMost.d[1] = bottomMost.u[1] = right;
 
-            segnum.is_inserted = true;
+            segment.is_inserted = true;
 
-            this.Tree = LocationNode.CreateRoot(left, right, topMost, bottomMost, low, high, segnum);
+            this.Tree = LocationNode.CreateRoot(left, right, topMost, bottomMost, low, high, segment);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@
             var lowWasInsertedByNeighbor = is_swapped ? segment.Prev.is_inserted : segment.Next.is_inserted;
             var (bottomLeft, _) = this.FindOrInsertVertex(low, high, lowWasInsertedByNeighbor);
 
-            // Console.WriteLine($"### seg {segnum.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
+            // Console.WriteLine($"### seg {segment.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
             // this.Tree.DumpTree();
 
             /* Thread the segment into the query tree creating a new X-node */
@@ -188,7 +188,7 @@
             return (t, newLower);
         }
 
-        private void MergeTrapezoids(Segment segnum, Trapezoid tfirst, Trapezoid tlast, bool leftSide)
+        private void MergeTrapezoids(Segment segment, Trapezoid tfirst, Trapezoid tlast, bool leftSide)
         {
             /* Thread in the segment into the existing trapezoidation. The
              * limiting trapezoids are given by tfirst and tlast (which are the
@@ -201,7 +201,7 @@
             t = tfirst;
             while ((t != null) && VertexComparer.Instance.Compare(t.lo, tlast.lo) >= 0)
             {
-                tnext = t.GetDownlinkWithSameSegment(segnum, leftSide);
+                tnext = t.GetDownlinkWithSameSegment(segment, leftSide);
 
                 if ((tnext != null)
                 && (t.lseg == tnext.lseg)
@@ -282,9 +282,9 @@
             return t.d[dx];
         }
 
-        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, Segment segnum, Vector2 vertex)
+        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, Segment segments, Vector2 vertex)
         {
-            var tmptriseg = is_swapped ? segnum.Prev : segnum.Next;
+            var tmptriseg = is_swapped ? segments.Prev : segments.Next;
             if (VertexComparer.Instance.PointIsLeftOfSegment(vertex, tmptriseg))
             {
                 /* L-R downward cusp */

@@ -41,12 +41,12 @@
         {
         }
 
-        public Trapezoid GetDownlinkWithSameSegment(Segment segnum, bool leftSide)
+        public Trapezoid GetDownlinkWithSameSegment(Segment segment, bool leftSide)
         {
             for (int i = 0; i < 2; i++)
             {
                 var activeSegment = leftSide ? this.d[i]?.rseg : this.d[i]?.lseg;
-                if (activeSegment == segnum)
+                if (activeSegment == segment)
                 {
                     return d[i];
                 }

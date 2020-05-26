@@ -52,26 +52,24 @@ namespace Ruttmann.PolygonTriangulation.Seidel
             return 0;
         }
 
-        public bool PointIsLeftOfSegment(Vector2 vertex, Segment segnum)
+        public bool PointIsLeftOfSegment(Vector2 vertex, Segment segment)
         {
-            if (this.EqualY(vertex, segnum.Start))
+            if (this.EqualY(vertex, segment.Start))
             {
-                return vertex.X < segnum.Start.X;
+                return vertex.X < segment.Start.X;
             }
-            else if (this.EqualY(vertex, segnum.End))
+            else if (this.EqualY(vertex, segment.End))
             {
-                return vertex.X < segnum.End.X;
+                return vertex.X < segment.End.X;
             }
-            else if (this.EqualY(segnum.End, segnum.Start))
+            else if (this.EqualY(segment.End, segment.Start))
             {
-                // Hmmm, is it ever called like that?
-                throw new InvalidOperationException("Unexpected call variant - handling unclear");
-                //// return vertex.X < segnum.End.X;
+                return vertex.X < segment.End.X;
             }
 
-            var segmentVector = segnum.End - segnum.Start;
-            var relation = (vertex.Y - segnum.Start.Y) / segmentVector.Y;
-            var xAtVertex = segnum.Start.X + relation * segmentVector.X;
+            var segmentVector = segment.End - segment.Start;
+            var relation = (vertex.Y - segment.Start.Y) / segmentVector.Y;
+            var xAtVertex = segment.Start.X + relation * segmentVector.X;
 
             return vertex.X < xAtVertex;
         }
