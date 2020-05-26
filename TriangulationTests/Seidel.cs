@@ -278,7 +278,7 @@
             return false;
         }
 
-        private Segment PolygonTripleStart()
+        private ISegment PolygonTripleStart()
         {
             var builder = new PolygonBuilder();
             builder.Add(new Vector2(4.0f, 1.0f));
@@ -306,7 +306,7 @@
         /// Return a simple polygon with two triangles and one concave vertex
         /// </summary>
         /// <returns></returns>
-        private Segment PolygonDoubleTriangleWithConcave()
+        private ISegment PolygonDoubleTriangleWithConcave()
         {
             var builder = new PolygonBuilder();
             builder.Add(new Vector2(0.5f, 0.0f));
@@ -320,9 +320,9 @@
         /// Return a simple polygon with two triangles and one concave vertex
         /// </summary>
         /// <returns></returns>
-        private IEnumerable<Segment> PolygonSquareWithThreeNonOverlappingHoles()
+        private IEnumerable<ISegment> PolygonSquareWithThreeNonOverlappingHoles()
         {
-            var segments = new List<Segment>();
+            var segments = new List<ISegment>();
             var builder = new PolygonBuilder();
             builder.Add(new Vector2(0.0f, 0.0f));
             builder.Add(new Vector2(6.0f, 0.0f));

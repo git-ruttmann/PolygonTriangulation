@@ -51,7 +51,7 @@
         /// </remarks>
         private void Traverse(Trapezoid trapezoid, Trapezoid from, Direction direction)
         {
-            Segment s0 = null, s1 = null;
+            ISegment s0 = null, s1 = null;
 
             if (trapezoid == null)
             {

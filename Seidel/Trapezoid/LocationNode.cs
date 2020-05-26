@@ -20,7 +20,7 @@
         private LocationNode left;
         private LocationNode right;
         private Vector2 yval;
-        private Segment segment;
+        private ISegment segment;
 
         // HOBO
         static int count = 0;
@@ -33,7 +33,7 @@
             trapezoid.TreeNode = this;
         }
 
-        private LocationNode(Segment segment)
+        private LocationNode(ISegment segment)
         {
             this.nodeType = NodeType.X;
             this.segment = segment;
@@ -77,7 +77,7 @@
 
         private LocationNode Parent { get; set; }
 
-        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vector2 low, Vector2 high, Segment segment)
+        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vector2 low, Vector2 high, ISegment segment)
         {
             var segmentNode = new LocationNode(segment);
             segmentNode.Left = new LocationNode(left);
@@ -201,7 +201,7 @@
             this.Right = upperSink;
         }
 
-        public void SplitX(Trapezoid lowerTrapezoid, Segment segment)
+        public void SplitX(Trapezoid lowerTrapezoid, ISegment segment)
         {
             var i1 = new LocationNode(this.Trapezoid);      /* Upper trapezoid sink */
             var i2 = new LocationNode(lowerTrapezoid);      /* Lower trapezoid sink */

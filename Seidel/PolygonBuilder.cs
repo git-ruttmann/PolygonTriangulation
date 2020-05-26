@@ -1,5 +1,8 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Numerics;
 
     public class PolygonBuilder
@@ -41,7 +44,7 @@
             this.lastPoint = point;
         }
 
-        public Segment Close()
+        public ISegment Close()
         {
             var segment = new PolygonSegment(this.lastSegment.End, this.firstSegment.Start);
             this.lastSegment.SetNext(segment);
@@ -51,11 +54,29 @@
             return this.firstSegment;
         }
 
-        internal class PolygonSegment : Segment
+        [DebuggerDisplay("{Id} {Start} {End}")]
+        internal class PolygonSegment : ISegment
         {
+            public ISegment Prev { get; private set; }
+
+            public ISegment Next { get; private set; }
+
+            public bool First { get; private set; }
+
+            public int Id { get; private set; }
+
+            public Vector2 v0 => this.Start;
+
+            public Vector2 v1 => this.End;
+            
+            public Vector2 Start { get; private set; }
+
+            public Vector2 End { get; private set; }
+
             public PolygonSegment(Vector2 start, Vector2 end)
-                : base(start, end)
             {
+                this.Start = start;
+                this.End = end;
             }
 
             public void SetNext(PolygonSegment next)
@@ -72,6 +93,57 @@
             {
                 this.Id = id;
                 this.First = true;
+            }
+
+            public IEnumerator<ISegment> GetEnumerator()
+            {
+                return new SegmentEnumerator(this);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
+
+            /// <summary>
+            /// Iterate over segements
+            /// </summary>
+            private class SegmentEnumerator : IEnumerator<ISegment>
+            {
+                private ISegment first;
+
+                public SegmentEnumerator(ISegment segment)
+                {
+                    this.first = segment;
+                    this.Current = null;
+                }
+
+                public ISegment Current { get; private set; }
+
+                object IEnumerator.Current => this.Current;
+
+                public void Dispose()
+                {
+                }
+
+                public bool MoveNext()
+                {
+                    if (this.Current == null)
+                    {
+                        this.Current = first;
+                        return true;
+                    }
+
+                    if (this.Current.Next.First)
+                    {
+                        return false;
+                    }
+
+                    this.Current = this.Current.Next;
+                    return true;
+                }
+
+                public void Reset()
+                {
+                    this.Current = this.first;
+                }
             }
         }
     }

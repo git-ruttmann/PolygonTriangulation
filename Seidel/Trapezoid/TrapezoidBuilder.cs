@@ -1,12 +1,15 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Numerics;
 
     public class TrapezoidBuilder
     {
-        public TrapezoidBuilder(Segment segment)
+        private ISet<int> insertedSegments;
+
+        public TrapezoidBuilder(ISegment segment)
         {
             var (low, high, _) = SortSegment(segment);
             var left = CreateTrapezoid();     /* middle left */
@@ -24,7 +27,8 @@
             topMost.d[0] = bottomMost.u[0] = left;
             topMost.d[1] = bottomMost.u[1] = right;
 
-            segment.is_inserted = true;
+            this.insertedSegments = new HashSet<int>();
+            this.insertedSegments.Add(segment.Id);
 
             this.Tree = LocationNode.CreateRoot(left, right, topMost, bottomMost, low, high, segment);
         }
@@ -55,15 +59,15 @@
             return firstInsideTriangle;
         }
 
-        public void AddSegment(Segment segment)
+        public void AddSegment(ISegment segment)
         {
             Trapezoid topRight = null, bottomRight = null;
 
             var (low, high, is_swapped) = SortSegment(segment);
 
-            var highWasInsertedByNeighbor = is_swapped ? segment.Next.is_inserted : segment.Prev.is_inserted;
+            var highWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Next.Id : segment.Prev.Id);
             var (_, topLeft) = this.FindOrInsertVertex(high, low, highWasInsertedByNeighbor);
-            var lowWasInsertedByNeighbor = is_swapped ? segment.Prev.is_inserted : segment.Next.is_inserted;
+            var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Prev.Id : segment.Next.Id);
             var (bottomLeft, _) = this.FindOrInsertVertex(low, high, lowWasInsertedByNeighbor);
 
             // Console.WriteLine($"### seg {segment.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
@@ -169,10 +173,10 @@
             MergeTrapezoids(segment, topLeft, bottomLeft, true);
             MergeTrapezoids(segment, topRight, bottomRight, false);
 
-            segment.is_inserted = true;
+            this.insertedSegments.Add(segment.Id);
         }
 
-        private static (Vector2, Vector2, bool) SortSegment(Segment segment)
+        private static (Vector2, Vector2, bool) SortSegment(ISegment segment)
         {
             var swap = VertexComparer.Instance.Compare(segment.End, segment.Start) > 0;
             var high = swap ? segment.End : segment.Start;
@@ -210,7 +214,7 @@
             return (t, newLower);
         }
 
-        private void MergeTrapezoids(Segment segment, Trapezoid tfirst, Trapezoid tlast, bool leftSide)
+        private void MergeTrapezoids(ISegment segment, Trapezoid tfirst, Trapezoid tlast, bool leftSide)
         {
             /* Thread in the segment into the existing trapezoidation. The
              * limiting trapezoids are given by tfirst and tlast (which are the
@@ -304,7 +308,7 @@
             return t.d[dx];
         }
 
-        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, Segment segments, Vector2 vertex)
+        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, ISegment segments, Vector2 vertex)
         {
             var tmptriseg = is_swapped ? segments.Prev : segments.Next;
             if (VertexComparer.Instance.PointIsLeftOfSegment(vertex, tmptriseg))

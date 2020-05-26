@@ -39,7 +39,7 @@
         /// </summary>
         /// <param name="segments">the segments</param>
         /// <returns>a polygon</returns>
-        public static Polygon FromSegments(IEnumerable<Segment> segments)
+        public static Polygon FromSegments(IEnumerable<ISegment> segments)
         {
             var segmentsArray = segments.ToArray();
             var vertexList = new List<Vector2>();

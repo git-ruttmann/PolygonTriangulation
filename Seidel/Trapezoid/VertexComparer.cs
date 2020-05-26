@@ -51,7 +51,7 @@
             return 0;
         }
 
-        public bool PointIsLeftOfSegment(Vector2 vertex, Segment segment)
+        public bool PointIsLeftOfSegment(Vector2 vertex, ISegment segment)
         {
             if (this.EqualY(vertex, segment.Start))
             {

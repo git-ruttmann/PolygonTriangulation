@@ -27,9 +27,9 @@
 
         public Vector2 lo { get; set; }
 
-        public Segment lseg { get; set; }
+        public ISegment lseg { get; set; }
 
-        public Segment rseg { get; set; }
+        public ISegment rseg { get; set; }
 
         public int Id { get; } = ++count;
 
@@ -37,7 +37,7 @@
         {
         }
 
-        public Trapezoid GetDownlinkWithSameSegment(Segment segment, bool leftSide)
+        public Trapezoid GetDownlinkWithSameSegment(ISegment segment, bool leftSide)
         {
             for (int i = 0; i < 2; i++)
             {
