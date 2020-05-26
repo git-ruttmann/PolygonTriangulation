@@ -35,10 +35,10 @@
         public LocationNode Tree { get; }
 
         /// <summary>
-        /// Find the first trapezoid that is a triangle and it's inside the polygon
+        /// Find the first trapezoid that is a triangle and is inside the polygon
         /// </summary>
         /// <returns>The first triangle</returns>
-        public Trapezoid GetTopmostTrapezoid()
+        public Trapezoid GetFirstInsideTriangle()
         {
             // find a trapezoid that
             // - is unique (the tree includes several copies of the same)

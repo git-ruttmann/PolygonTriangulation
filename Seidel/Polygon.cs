@@ -94,39 +94,6 @@
 			return new Polygon(0, sharedData);
 		}
 
-		/// <summary>
-		/// Legacy: converts a monotone chain to a polygon
-		/// </summary>
-		/// <param name="monotone">the start of the monotone chain</param>
-		/// <returns>a polygon</returns>
-		public static Polygon FromMonotone(MonotoneChain monotone)
-		{
-#if false
-			var vertexList = new List<Vector2>();
-			var indexes = new List<int>();
-			var first = true;
-
-			for (var i = monotone; first || i != monotone; i = i.Next)
-			{
-				var vertexChain = i.Vnum;
-				if (vertexChain.id >= vertexList.Count)
-				{
-					var itemsToAdd = vertexChain.id - vertexList.Count + 1;
-					vertexList.AddRange(Enumerable.Repeat(default(Vector2), itemsToAdd));
-					indexes.AddRange(Enumerable.Repeat(default(int), itemsToAdd));
-				}
-
-				vertexList[vertexChain.id] = vertexChain.pt;
-				indexes[vertexChain.id] = i.Next.Vnum.id;
-				first = false;
-			}
-
-			return new Polygon(monotone.Vnum.id, vertexList, indexes);
-#else
-			throw new NotImplementedException();
-#endif
-		}
-
 		public static (Polygon[], Polygon[]) Split(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
 		{
 			var splitter = new PolygonSplitter(polygon, splits);
@@ -303,7 +270,6 @@
         {
             private readonly Polygon initialPolygon;
             private readonly Tuple<int, int>[] allSplits;
-            private readonly DumbPriorityQueue<Polygon> queue;
 
             public PolygonSplitter(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
             {
@@ -318,9 +284,6 @@
 					.OrderBy(x => x.Item1)
 					.ThenBy(x => x.Item2)
 					.ToArray();
-
-				this.queue = new DumbPriorityQueue<Polygon>();
-				this.queue.Add(polygon.start, polygon);
 
 				this.Triangles = new List<Polygon>();
 				this.polygonDict = new Dictionary<int, Polygon>();

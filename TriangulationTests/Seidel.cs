@@ -75,12 +75,15 @@
 
             trapezoidBuilder.Tree.DumpTree();
 
-            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
+            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
             Assert.AreEqual(2, firstInsideTriangle.Id);
 
-            var buff = new Bluff();
-            buff.monotonate_trapezoids(firstInsideTriangle, segments);
-            var result = buff.MonotonateAll();
+            var polygon = Polygon.FromSegments(segments);
+            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
+            var result = TriangleBuilder
+                .SplitAndTriangluate(polygon, splits)
+                .Triangles;
+
             Assert.IsTrue(VerifyTriangle(result, 1, 2, 4));
             Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
             Assert.AreEqual(2 * 3, result.Length);
@@ -97,11 +100,12 @@
                 trapezoidBuilder.AddSegment(segment);
             }
 
-            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
-
-            var buff = new Bluff();
-            buff.monotonate_trapezoids(firstInsideTriangle, segments);
-            var result = buff.MonotonateAll();
+            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
+            var polygon = Polygon.FromSegments(segments);
+            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
+            var result = TriangleBuilder
+                .SplitAndTriangluate(polygon, splits)
+                .Triangles;
 
             for (int i = 0; i < result.Length; i += 3)
             {
@@ -154,12 +158,12 @@
             trapezoidBuilder.AddSegment(segments[10]);
 
             // trapezoidBuilder.Tree.DumpTree();
-
-            var firstInsideTriangle = trapezoidBuilder.GetTopmostTrapezoid();
-
-            var bluff = new Bluff();
-            bluff.monotonate_trapezoids(firstInsideTriangle, segments);
-            var result = bluff.MonotonateAll();
+            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
+            var polygon = Polygon.FromSegments(segments);
+            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
+            var result = TriangleBuilder
+                .SplitAndTriangluate(polygon, splits)
+                .Triangles;
 
             for (int i = 0; i < result.Length; i += 3)
             {

@@ -36,12 +36,9 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Monotone\Bluff.cs" />
-    <Compile Include="Monotone\DumbPriorityQueue.cs" />
-    <Compile Include="Monotone\MonotoneChain.cs" />
-    <Compile Include="Monotone\NewEditorScript1.cs" />
+    <Compile Include="Monotone\TriangleBuilder.cs" />
+    <Compile Include="Monotone\TrapezoidToSplits.cs" />
     <Compile Include="Polygon.cs" />
-    <Compile Include="Monotone\VertexChain.cs" />
     <Compile Include="Trapezoid\LocationNode.cs" />
     <Compile Include="Trapezoid\TrapezoidBuilder.cs" />
     <Compile Include="PolygonBuilder.cs" />
