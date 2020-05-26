@@ -277,7 +277,7 @@
 
             public bool MoveNext()
             {
-                while(true)
+                while (true)
                 {
                     if (this.stack.Count == 0)
                     {

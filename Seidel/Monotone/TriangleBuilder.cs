@@ -81,7 +81,7 @@
             TriangulateMonotonePolygon(polygon, startPoint, result);
         }
 
-		public static void TriangulateMonotonePolygon(Polygon polygon, int startPoint, ITriangleCollector result)
+        public static void TriangulateMonotonePolygon(Polygon polygon, int startPoint, ITriangleCollector result)
         {
             var vertexStack = new Stack<int>();
 
@@ -123,56 +123,56 @@
             }
         }
 
-		private static int FindStartOfMonotonePolygon(Polygon polygon)
-		{
-			var iterator = polygon.Indices.GetEnumerator();
-			var movedNext = iterator.MoveNext();
-			var posmax = iterator.Current;
-			var posmin = posmax;
-			var ymax = polygon.Vertices[posmax];
-			var ymin = ymax;
+        private static int FindStartOfMonotonePolygon(Polygon polygon)
+        {
+            var iterator = polygon.Indices.GetEnumerator();
+            var movedNext = iterator.MoveNext();
+            var posmax = iterator.Current;
+            var posmin = posmax;
+            var ymax = polygon.Vertices[posmax];
+            var ymin = ymax;
 
-			movedNext = iterator.MoveNext();
-			var posmaxNext = iterator.Current;
-			var count = 1;
+            movedNext = iterator.MoveNext();
+            var posmaxNext = iterator.Current;
+            var count = 1;
 
-			while (movedNext)
-			{
-				var index = iterator.Current;
-				var vertex = polygon.Vertices[index];
-				movedNext = iterator.MoveNext();
+            while (movedNext)
+            {
+                var index = iterator.Current;
+                var vertex = polygon.Vertices[index];
+                movedNext = iterator.MoveNext();
 
-				if (VertexComparer.Instance.Compare(vertex, ymax) > 0)
-				{
-					ymax = vertex;
-					posmax = index;
-					posmaxNext = iterator.Current;
-				}
+                if (VertexComparer.Instance.Compare(vertex, ymax) > 0)
+                {
+                    ymax = vertex;
+                    posmax = index;
+                    posmaxNext = iterator.Current;
+                }
 
-				if (VertexComparer.Instance.Compare(vertex, ymin) < 0)
-				{
-					ymin = vertex;
-					posmin = index;
-				}
+                if (VertexComparer.Instance.Compare(vertex, ymin) < 0)
+                {
+                    ymin = vertex;
+                    posmin = index;
+                }
 
-				count++;
-			}
+                count++;
+            }
 
-			if (count == 3)
-			{
-				return -1;
-			}
+            if (count == 3)
+            {
+                return -1;
+            }
 
-			if (posmin == posmaxNext)
-			{
+            if (posmin == posmaxNext)
+            {
                 // LHS is a single segment and it's next in the chain
                 return posmaxNext;
-			}
-			else
-			{
+            }
+            else
+            {
                 return posmax;
-			}
-		}
+            }
+        }
 
         /// <summary>
         /// A simple triangle collector
