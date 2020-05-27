@@ -93,19 +93,10 @@
         [TestMethod]
         public void AddSegmentsSquareHolesLastTriangleOnStack()
         {
-            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             var polygon = this.PolygonSquareHolesLastTriangleOnStack();
-            var segments = polygon.AllSegments.ToArray();
-            var trapezoidBuilder = new TrapezoidBuilder(segments[0]);
-            foreach (var segment in segments.Skip(1))
-            {
-                trapezoidBuilder.AddSegment(segment);
-            }
+            var result = TriangleBuilder.TriangulatePolygon(polygon);
 
-            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
-            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
-            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
-
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             for (int i = 0; i < result.Length; i += 3)
             {
                 Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");

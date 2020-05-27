@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Runtime.CompilerServices;
 
     /// <summary>
@@ -37,6 +38,28 @@
         public static IArrayTriangleCollector CreateTriangleCollecor()
         {
             return new ArrayTriangleCollector();
+        }
+
+        /// <summary>
+        /// Triangulat the polygon
+        /// </summary>
+        /// <param name="polygon">the polygon</param>
+        /// <returns>an array of triangles</returns>
+        public static int[] TriangulatePolygon(Polygon polygon)
+        {
+            var result = new ArrayTriangleCollector();
+
+            var segments = polygon.AllSegments.ToArray();
+            var trapezoidBuilder = new TrapezoidBuilder(segments[0]);
+            foreach (var segment in segments.Skip(1))
+            {
+                trapezoidBuilder.AddSegment(segment);
+            }
+
+            var splits = TrapezoidToSplits.ExtractSplits(trapezoidBuilder.GetFirstInsideTriangle());
+            SplitAndTriangluate(polygon, splits, result);
+
+            return result.Triangles;
         }
 
         public static int[] SplitAndTriangluate(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
