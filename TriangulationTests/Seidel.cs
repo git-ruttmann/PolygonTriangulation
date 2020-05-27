@@ -19,10 +19,12 @@
 
             Assert.AreEqual("0 1 2 3", String.Join(" ", polygon.Indices));
 
-            var (triangles, result) = Polygon.Split(polygon, new[] { Tuple.Create(1, 3) });
 
-            Assert.AreEqual(2, result.Length);
-            Assert.AreEqual(0, triangles.Length);
+            var triangleCollector = TriangleBuilder.CreateTriangleCollecor();
+            var result = Polygon.Split(polygon, new[] { Tuple.Create(1, 3) }, triangleCollector);
+
+            Assert.AreEqual(0, result.Length);
+            Assert.AreEqual(6, triangleCollector.Triangles.Length);
         }
 
         [TestMethod]
@@ -36,10 +38,12 @@
                 Tuple.Create(6, 13),
                 Tuple.Create(5, 2),
             };
-            var (triangles, result) = Polygon.Split(polygon, splits);
+
+            var triangleCollector = TriangleBuilder.CreateTriangleCollecor();
+            var result = Polygon.Split(polygon, splits, triangleCollector);
 
             Assert.AreEqual(2, result.Length);
-            Assert.AreEqual(0, triangles.Length);
+            Assert.AreEqual(0, triangleCollector.Triangles.Length);
         }
 
         [TestMethod]

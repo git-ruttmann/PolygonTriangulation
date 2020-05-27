@@ -48,8 +48,8 @@
 
         public static void SplitAndTriangluate(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector result)
         {
-            var (triangles, monotones) = Polygon.Split(polygon, splits);
-            var triangleList = new List<Polygon>(triangles);
+            var monotones = Polygon.Split(polygon, splits, result);
+            var triangleList = new List<Polygon>();
 
             foreach (var monotonePolygon in monotones)
             {

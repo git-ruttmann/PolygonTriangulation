@@ -37,6 +37,9 @@
             /// </summary>
             private readonly VertexInfo[] chain;
 
+            // the collector for simple triangles
+            private readonly ITriangleCollector triangleCollector;
+
             /// <summary>
             /// The next free index in chain
             /// </summary>
@@ -47,7 +50,7 @@
             /// </summary>
             /// <param name="polygon">the original polygon</param>
             /// <param name="splits">tuples of vertex ids, where to split</param>
-            public PolygonSplitter(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
+            public PolygonSplitter(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector triangleCollector)
             {
                 this.allSplits = splits
                     .Select(x =>
@@ -60,7 +63,6 @@
                     .ThenBy(x => x.Item2)
                     .ToArray();
 
-                this.Triangles = new List<Polygon>();
                 this.polygonDict = new Dictionary<int, Polygon>();
 
                 this.chainFreeIndex = polygon.data.Chain.Length;
@@ -69,6 +71,7 @@
                 this.data = new SharedData(polygon.data.LastInitialPolygonId, polygon.data.VertexCoordinates, this.chain, polygon.data.VertexToChain);
 
                 this.polygonDict.Add(polygon.Id, new Polygon(polygon.start, this.data));
+                this.triangleCollector = triangleCollector;
             }
 
             /// <summary>
@@ -77,35 +80,11 @@
             public IEnumerable<Polygon> Result => this.polygonDict.Values;
 
             /// <summary>
-            /// The resulting polygons with length == 3
-            /// </summary>
-            public List<Polygon> Triangles { get; }
-
-            /// <summary>
             /// Process the splits
             /// </summary>
             public void Execute()
             {
-                IEnumerable<Tuple<int, int>> splits = this.allSplits;
-                if (this.data.LastInitialPolygonId > 1)
-                {
-                    var remaining = new List<Tuple<int, int>>();
-                    foreach (var split in this.allSplits)
-                    {
-                        var from = split.Item1;
-                        var to = split.Item2;
-                        if (this.chain[from].PolygonId != this.chain[to].PolygonId)
-                        {
-                            this.JoinHoleIntoPolygon(from, to);
-                        }
-                        else
-                        {
-                            remaining.Add(split);
-                        }
-                    }
-
-                    splits = remaining;
-                }
+                var splits = JoinHolesIntoPolygon();
 
                 foreach (var split in splits)
                 {
@@ -114,15 +93,80 @@
             }
 
             /// <summary>
+            /// Process all splits that join holes
+            /// </summary>
+            /// <returns>The remaining splits</returns>
+            private IEnumerable<Tuple<int, int>> JoinHolesIntoPolygon()
+            {
+                if (this.data.LastInitialPolygonId == 1)
+                {
+                    return this.allSplits;
+                }
+
+                var remaining = new List<Tuple<int, int>>();
+                foreach (var split in this.allSplits)
+                {
+                    var from = split.Item1;
+                    var to = split.Item2;
+                    if (this.chain[from].PolygonId != this.chain[to].PolygonId)
+                    {
+                        this.JoinHoleIntoPolygon(from, to);
+                    }
+                    else
+                    {
+                        remaining.Add(split);
+                    }
+                }
+
+                return remaining;
+            }
+
+            /// <summary>
             /// Split the polygon chains
             /// </summary>
             /// <param name="from">start of the segment</param>
             /// <param name="to">end of the segment</param>
+            /// <param name="triangleCollector">collector for simple triangles</param>
             /// <returns>the splitted polygon</returns>
-            private Polygon SplitPolygon(int from, int to)
+            private void SplitPolygon(int from, int to)
             {
                 (from, to) = this.FindCommonChain(from, to);
 
+                if (this.IsTriangle(from, to))
+                {
+                    if (!this.IsTriangle(to, from))
+                    {
+                        // only join skip from.Next in the current polygon chain.
+                        var polygon = this.polygonDict[chain[from].PolygonId];
+                        polygon.start = from;
+                        SetNext(this.chain, from, to);
+                    }
+                    else
+                    {
+                        // The polygon was split into two triangles. Remove it from the result.
+                        this.polygonDict.Remove(chain[from].PolygonId);
+                    }
+                }
+                else if (this.IsTriangle(to, from))
+                {
+                    // only skip to.Next in the current polygon chain.
+                    var polygon = this.polygonDict[chain[from].PolygonId];
+                    polygon.start = from;
+                    SetNext(this.chain, to, from);
+                }
+                else
+                {
+                    SplitChainIntoTwoPolygons(from, to);
+                }
+            }
+
+            /// <summary>
+            /// Split the chain into two polygons
+            /// </summary>
+            /// <param name="from">the start of the common edge</param>
+            /// <param name="to">the end of the common edge</param>
+            private void SplitChainIntoTwoPolygons(int from, int to)
+            {
                 var fromCopy = this.chainFreeIndex++;
                 var toCopy = this.chainFreeIndex++;
 
@@ -146,7 +190,26 @@
                 var newPolygon = new Polygon(startId, data);
                 this.polygonDict[newPolygon.Id] = newPolygon;
                 this.polygonDict[oldPolygon.Id] = oldPolygon;
-                return newPolygon;
+            }
+
+            /// <summary>
+            /// Check if the chain from..to forms a triangle. Adds the triangle to the result collector.
+            /// </summary>
+            /// <param name="from">the start index in the chain</param>
+            /// <param name="to">the target index in the chain</param>
+            /// <returns>true if it's a triangle</returns>
+            private bool IsTriangle(int from, int to)
+            {
+                ref var p0 = ref this.chain[from];
+                ref var p1 = ref this.chain[p0.Next];
+
+                if (p1.Next == to)
+                {
+                    this.triangleCollector.AddTriangle(p0.VertexId, p1.VertexId, this.chain[p1.Next].VertexId);
+                    return true;
+                }
+
+                return false;
             }
 
             /// <summary>

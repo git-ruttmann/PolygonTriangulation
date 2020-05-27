@@ -130,12 +130,13 @@
         /// </summary>
         /// <param name="polygon">the polygon to split. It's modified.</param>
         /// <param name="splits">the splits as tuples of vertex ids</param>
+        /// <param name="triangleCollector">the collector for simple triangles</param>
         /// <returns>(simple triangles, other polygones)</returns>
-        public static (Polygon[], Polygon[]) Split(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
+        public static Polygon[] Split(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector triangleCollector)
         {
-            var splitter = new PolygonSplitter(polygon, splits);
+            var splitter = new PolygonSplitter(polygon, splits, triangleCollector);
             splitter.Execute();
-            return (splitter.Triangles.ToArray(), splitter.Result.ToArray());
+            return splitter.Result.ToArray();
         }
 
         /// <summary>
