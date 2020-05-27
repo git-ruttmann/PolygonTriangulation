@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
 
     /// <summary>
     /// Receive triangles
@@ -88,51 +89,69 @@
             // push the first two points
             var iterator = polygon.IndicesStartingAt(startPoint).GetEnumerator();
             iterator.MoveNext();
-            vertexStack.Push(iterator.Current);
+            var third = iterator.Current;
             iterator.MoveNext();
-            vertexStack.Push(iterator.Current);
+            var second = iterator.Current;
+            iterator.MoveNext();
+            var current = iterator.Current;
 
-            bool movedNext = iterator.MoveNext();
-            while (movedNext || vertexStack.Count > 2)
+            while (true)
             {
-                if (vertexStack.Count > 1)
-                {
-                    var lastOnStack = vertexStack.Pop();
-                    var v0 = polygon.Vertices[iterator.Current];
-                    var v1 = polygon.Vertices[lastOnStack];
-                    var v2 = polygon.Vertices[vertexStack.Peek()];
-                    var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
-                    var isConvexCorner = cross > 0;
+                var v0 = polygon.Vertices[current];
+                var v1 = polygon.Vertices[second];
+                var v2 = polygon.Vertices[third];
+                var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
+                var isConvexCorner = cross > 0;
 
-                    if (isConvexCorner)
+                if (isConvexCorner)
+                {
+                    result.AddTriangle(current, third, second);
+                    if (vertexStack.Count > 0)
                     {
-                        result.AddTriangle(vertexStack.Peek(), lastOnStack, iterator.Current);
+                        second = third;
+                        third = vertexStack.Pop();
+                    }
+                    else if (!iterator.MoveNext())
+                    {
+                        break;
                     }
                     else
                     {
-                        vertexStack.Push(lastOnStack);
-                        vertexStack.Push(iterator.Current);
-                        movedNext = movedNext && iterator.MoveNext();
+                        second = current;
+                        current = iterator.Current;
                     }
                 }
                 else
                 {
-                    vertexStack.Push(iterator.Current);
-                    movedNext = movedNext && iterator.MoveNext();
+                    vertexStack.Push(third);
+                    third = second;
+                    second = current;
+                    if (!iterator.MoveNext())
+                    {
+                        throw new InvalidOperationException("Triangle is incomplete");
+                    }
+
+                    current = iterator.Current;
                 }
             }
         }
 
+        /// <summary>
+        /// Find the point in the polygon that starts at the monotone side
+        /// </summary>
+        /// <param name="polygon">the polygon</param>
+        /// <returns>highest/lowest point in the polygon, depending if itss left hand or right hand. -1 if its a triangle.</returns>
         private static int FindStartOfMonotonePolygon(Polygon polygon)
         {
             var iterator = polygon.Indices.GetEnumerator();
-            var movedNext = iterator.MoveNext();
-            var posmax = iterator.Current;
-            var posmin = posmax;
+            iterator.MoveNext();
+            var first = iterator.Current;
+            var posmax = first;
+            var posmin = first;
             var ymax = polygon.Vertices[posmax];
             var ymin = ymax;
 
-            movedNext = iterator.MoveNext();
+            var movedNext = iterator.MoveNext();
             var posmaxNext = iterator.Current;
             var count = 1;
 
@@ -146,7 +165,7 @@
                 {
                     ymax = vertex;
                     posmax = index;
-                    posmaxNext = iterator.Current;
+                    posmaxNext = movedNext ? iterator.Current : first;
                 }
 
                 if (VertexComparer.Instance.Compare(vertex, ymin) < 0)
