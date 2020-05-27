@@ -4,7 +4,7 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     [DebuggerDisplay("{Debug()}")]
     public class LocationNode
@@ -19,7 +19,7 @@
         private NodeType nodeType;
         private LocationNode left;
         private LocationNode right;
-        private Vector2 yval;
+        private Vertex yval;
         private ISegment segment;
 
         // HOBO
@@ -39,7 +39,7 @@
             this.segment = segment;
         }
 
-        private LocationNode(Vector2 yValue)
+        private LocationNode(Vertex yValue)
         {
             this.nodeType = NodeType.Y;
             this.yval = yValue;
@@ -77,7 +77,7 @@
 
         private LocationNode Parent { get; set; }
 
-        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vector2 low, Vector2 high, ISegment segment)
+        public static LocationNode CreateRoot(Trapezoid left, Trapezoid right, Trapezoid topMost, Trapezoid bottomMost, Vertex low, Vertex high, ISegment segment)
         {
             var segmentNode = new LocationNode(segment);
             segmentNode.Left = new LocationNode(left);
@@ -101,7 +101,7 @@
             }
         }
 
-        public Trapezoid LocateEndpoint(Vector2 vertex, Vector2 vo)
+        public Trapezoid LocateEndpoint(Vertex vertex, Vertex vo)
         {
             var node = this;
             while (true)
@@ -186,7 +186,7 @@
             return "Unkown node type";
         }
 
-        public void SplitY(Trapezoid lowerTrapezoid, Vector2 vertex)
+        public void SplitY(Trapezoid lowerTrapezoid, Vertex vertex)
         {
             var upperSink = new LocationNode(this.Trapezoid);      /* Upper trapezoid sink */
             var lowerSink = new LocationNode(lowerTrapezoid);      /* Lower trapezoid sink */

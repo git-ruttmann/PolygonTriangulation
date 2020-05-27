@@ -2,23 +2,24 @@
 {
     using System.Collections.Generic;
     using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     public interface ISegment : IEnumerable<ISegment>
     {
         ISegment Prev { get; }
 
-        ISegment Next { get; }
+        int PrevId { get; }
 
-        bool First { get; }
+        ISegment Next { get; }
 
         int Id { get; }
 
-        Vector2 v0 { get; }
+        Vertex v0 { get; }
 
-        Vector2 v1 { get; }
+        Vertex v1 { get; }
 
-        Vector2 Start { get; }
+        Vertex Start { get; }
 
-        Vector2 End { get; }
+        Vertex End { get; }
     }
 }

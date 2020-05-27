@@ -2,15 +2,15 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
-    public class VertexComparer : IComparer<Vector2>
+    public class VertexComparer : IComparer<Vertex>
     {
         const float epsilon = 0.1E-5f;
 
         public static VertexComparer Instance { get; } = new VertexComparer();
 
-        public bool Equal(Vector2 a, Vector2 b)
+        public bool Equal(Vertex a, Vertex b)
         {
             if (Math.Abs(a.Y - b.Y) < epsilon)
             {
@@ -23,13 +23,13 @@
             return false;
         }
 
-        public bool EqualY(in Vector2 a, in Vector2 b)
+        public bool EqualY(in Vertex a, in Vertex b)
         {
             return Math.Abs(a.Y - b.Y) < epsilon;
         }
 
         /// <inheritdoc/>
-        public int Compare(Vector2 a, Vector2 b)
+        public int Compare(Vertex a, Vertex b)
         {
             if (a.Y < b.Y - epsilon)
             {
@@ -51,7 +51,7 @@
             return 0;
         }
 
-        public bool PointIsLeftOfSegment(Vector2 vertex, ISegment segment)
+        public bool PointIsLeftOfSegment(Vertex vertex, ISegment segment)
         {
             if (this.EqualY(vertex, segment.Start))
             {

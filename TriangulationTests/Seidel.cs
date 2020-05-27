@@ -3,8 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Numerics;
-    using System.Text;
+
+    using Vertex = System.Numerics.Vector2;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using Ruttmann.PolygonTriangulation.Seidel;
@@ -15,11 +15,11 @@
         [TestMethod]
         public void SplitSimpleConcave()
         {
-            var polygon = Polygon.FromSegments(this.PolygonDoubleTriangleWithConcave());
+            var polygon = this.PolygonDoubleTriangleWithConcave();
 
-            Assert.AreEqual("1 2 3 4", String.Join(" ", polygon.Indices));
+            Assert.AreEqual("0 1 2 3", String.Join(" ", polygon.Indices));
 
-            var (triangles, result) = Polygon.Split(polygon, new[] { Tuple.Create(2, 4) });
+            var (triangles, result) = Polygon.Split(polygon, new[] { Tuple.Create(1, 3) });
 
             Assert.AreEqual(2, result.Length);
             Assert.AreEqual(0, triangles.Length);
@@ -28,8 +28,7 @@
         [TestMethod]
         public void SplitSquareWithHoles()
         {
-            var segments = this.PolygonSquareWithThreeNonOverlappingHoles().SelectMany(x => x).ToArray();
-            var polygon = Polygon.FromSegments(segments);
+            var polygon = this.PolygonSquareWithThreeNonOverlappingHoles();
             var splits = new[]
             {
                 Tuple.Create(9, 4),
@@ -46,28 +45,29 @@
         [TestMethod]
         public void PointIsLeftOfSegmentComparer()
         {
-            var segments = this.PolygonTripleStart().ToArray();
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1, 4), segments[9]));
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(3, 4), segments[9]));
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1, 4.5f), segments[9]));
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(3, 4.5f), segments[9]));
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1, 3.5f), segments[9]));
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(3, 3.5f), segments[9]));
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1, 3.5f), segments[9]));
+            var segment = this.PolygonTripleStart().PolygonSegments.ToArray()[9];
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1, 4), segment));
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(3, 4), segment));
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1, 4.5f), segment));
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(3, 4.5f), segment));
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1, 3.5f), segment));
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(3, 3.5f), segment));
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1, 3.5f), segment));
 
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(2.51f, 3.5f), segments[9]), "Close after lower");
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(2.49f, 3.5f), segments[9]), "Close before lower");
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1.51f, 4.5f), segments[9]), "Close after upper");
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1.49f, 4.5f), segments[9]), "Close before lower");
-            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(2.01f, 4.0f), segments[9]), "Close after center");
-            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vector2(1.9f, 4.0f), segments[9]), "Close before center");
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(2.51f, 3.5f), segment), "Close after lower");
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(2.49f, 3.5f), segment), "Close before lower");
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1.51f, 4.5f), segment), "Close after upper");
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1.49f, 4.5f), segment), "Close before lower");
+            Assert.IsFalse(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(2.01f, 4.0f), segment), "Close after center");
+            Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1.9f, 4.0f), segment), "Close before center");
         }
 
         [TestMethod]
         public void AddSegmentsSimpleConcave()
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            var segments = this.PolygonDoubleTriangleWithConcave().ToArray();
+            var polygon = this.PolygonDoubleTriangleWithConcave();
+            var segments = polygon.PolygonSegments.ToArray();
             var trapezoidBuilder = new TrapezoidBuilder(segments[2]);
             trapezoidBuilder.AddSegment(segments[0]);
             trapezoidBuilder.AddSegment(segments[1]);
@@ -78,22 +78,20 @@
             var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
             Assert.AreEqual(2, firstInsideTriangle.Id);
 
-            var polygon = Polygon.FromSegments(segments);
             var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
-            var result = TriangleBuilder
-                .SplitAndTriangluate(polygon, splits)
-                .Triangles;
+            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
 
-            Assert.IsTrue(VerifyTriangle(result, 1, 2, 4));
-            Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
+            Assert.IsTrue(VerifyTriangle(result, 0, 1, 3));
+            Assert.IsTrue(VerifyTriangle(result, 1, 2, 3));
             Assert.AreEqual(2 * 3, result.Length);
         }
 
         [TestMethod]
-        public void AddSegmentsSquareWithThreeNonOverlappingHoles()
+        public void AddSegmentsSquareHolesLastTriangleOnStack()
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            var segments = this.PolygonSquareWithThreeNonOverlappingHoles().SelectMany(x => x).ToArray();
+            var polygon = this.PolygonSquareHolesLastTriangleOnStack();
+            var segments = polygon.AllSegments.ToArray();
             var trapezoidBuilder = new TrapezoidBuilder(segments[0]);
             foreach (var segment in segments.Skip(1))
             {
@@ -101,11 +99,48 @@
             }
 
             var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
-            var polygon = Polygon.FromSegments(segments);
             var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
-            var result = TriangleBuilder
-                .SplitAndTriangluate(polygon, splits)
-                .Triangles;
+            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
+
+            for (int i = 0; i < result.Length; i += 3)
+            {
+                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
+            }
+
+            Assert.IsTrue(VerifyTriangle(result, 10, 3, 4));
+            Assert.IsTrue(VerifyTriangle(result, 8, 3, 10));
+            Assert.IsTrue(VerifyTriangle(result, 12, 3, 8));
+            Assert.IsTrue(VerifyTriangle(result, 13, 3, 12));
+            Assert.IsTrue(VerifyTriangle(result, 6, 13, 11));
+            Assert.IsTrue(VerifyTriangle(result, 6, 3, 13));
+            Assert.IsTrue(VerifyTriangle(result, 7, 3, 6));
+            Assert.IsTrue(VerifyTriangle(result, 2, 7, 5));
+            Assert.IsTrue(VerifyTriangle(result, 2, 3, 7));
+            Assert.IsTrue(VerifyTriangle(result, 5, 1, 2));
+            Assert.IsTrue(VerifyTriangle(result, 6, 1, 5));
+            Assert.IsTrue(VerifyTriangle(result, 11, 1, 6));
+            Assert.IsTrue(VerifyTriangle(result, 8, 11, 12));
+            Assert.IsTrue(VerifyTriangle(result, 8, 1, 11));
+            Assert.IsTrue(VerifyTriangle(result, 4, 9, 10));
+            Assert.IsTrue(VerifyTriangle(result, 4, 8, 9));
+            Assert.IsTrue(VerifyTriangle(result, 4, 1, 8));
+        }
+
+        [TestMethod]
+        public void AddSegmentsSquareWithThreeNonOverlappingHoles()
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            var polygon = this.PolygonSquareWithThreeNonOverlappingHoles();
+            var segments = polygon.AllSegments.ToArray();
+            var trapezoidBuilder = new TrapezoidBuilder(segments[0]);
+            foreach (var segment in segments.Skip(1))
+            {
+                trapezoidBuilder.AddSegment(segment);
+            }
+
+            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
+            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
+            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
 
             for (int i = 0; i < result.Length; i += 3)
             {
@@ -137,7 +172,8 @@
         public void AddSegmentsTripleStart()
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            var segments = this.PolygonTripleStart().ToArray();
+            var polygon = this.PolygonTripleStart();
+            var segments = polygon.PolygonSegments.ToArray();
             var trapezoidBuilder = new TrapezoidBuilder(segments[9]);
             trapezoidBuilder.AddSegment(segments[0]);
             trapezoidBuilder.AddSegment(segments[4]);
@@ -159,11 +195,8 @@
 
             // trapezoidBuilder.Tree.DumpTree();
             var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
-            var polygon = Polygon.FromSegments(segments);
             var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
-            var result = TriangleBuilder
-                .SplitAndTriangluate(polygon, splits)
-                .Triangles;
+            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
 
             for (int i = 0; i < result.Length; i += 3)
             {
@@ -192,22 +225,22 @@
         [TestMethod]
         public void LocatePointAfterInitializeTree()
         {
-            var segments = this.PolygonTripleStart().ToArray();
-            var locationTree = new TrapezoidBuilder(segments[9]).Tree;
+            var segment = this.PolygonTripleStart().PolygonSegments.ToArray()[9];
+            var locationTree = new TrapezoidBuilder(segment).Tree;
 
-            var trapezoid = locationTree.LocateEndpoint(new Vector2(1, 4), new Vector2(0, 4));
+            var trapezoid = locationTree.LocateEndpoint(new Vertex(1, 4), new Vertex(0, 4));
             Assert.IsNull(trapezoid.lseg);
-            Assert.AreEqual(trapezoid.rseg, segments[9], "Must find the left trapezoid and the segment is right to it");
+            Assert.AreEqual(trapezoid.rseg, segment, "Must find the left trapezoid and the segment is right to it");
 
-            trapezoid = locationTree.LocateEndpoint(new Vector2(3, 4), new Vector2(3, 4));
-            Assert.AreEqual(trapezoid.lseg, segments[9], "Must find the left trapezoid and the segment is right to it");
+            trapezoid = locationTree.LocateEndpoint(new Vertex(3, 4), new Vertex(3, 4));
+            Assert.AreEqual(trapezoid.lseg, segment, "Must find the left trapezoid and the segment is right to it");
             Assert.IsNull(trapezoid.rseg);
 
-            trapezoid = locationTree.LocateEndpoint(new Vector2(2.5f, 3.5f), new Vector2(3, 4));
-            Assert.AreEqual(trapezoid.lseg, segments[9], "Joined at point but more to the right");
+            trapezoid = locationTree.LocateEndpoint(new Vertex(2.5f, 3.5f), new Vertex(3, 4));
+            Assert.AreEqual(trapezoid.lseg, segment, "Joined at point but more to the right");
             Assert.IsNull(trapezoid.rseg);
 
-            trapezoid = locationTree.LocateEndpoint(new Vector2(2.5f, 3.5f), new Vector2(3, 1));
+            trapezoid = locationTree.LocateEndpoint(new Vertex(2.5f, 3.5f), new Vertex(3, 1));
             Assert.IsNull(trapezoid.lseg);
             Assert.IsNull(trapezoid.rseg, "Joined at point but more to the left => must be treated as 'lower than the existing trapezoids'");
         }
@@ -215,12 +248,12 @@
         [TestMethod]
         public void ConstructSegments()
         {
-            var first = this.PolygonTripleStart();
-            Assert.IsTrue(first.First);
+            var polygon = this.PolygonTripleStart();
+            var first = polygon.PolygonSegments.First();
             Assert.AreEqual(1, first.Id);
 
             var segmentCount = 0;
-            foreach (var segment in first)
+            foreach (var segment in polygon.PolygonSegments)
             {
                 segmentCount++;
                 Assert.AreEqual(segmentCount, segment.Id);
@@ -228,8 +261,7 @@
 
             Assert.AreEqual(18, segmentCount);
             Assert.AreEqual(1, first.Id);
-            Assert.AreEqual(1, first.First().Id);
-            Assert.AreEqual(18, first.Count());
+            Assert.AreEqual(18, polygon.PolygonSegments.Count());
         }
 
         /// <summary>
@@ -278,27 +310,35 @@
             return false;
         }
 
-        private ISegment PolygonTripleStart()
+        private Polygon PolygonTripleStart()
         {
-            var builder = new PolygonBuilder();
-            builder.Add(new Vector2(4.0f, 1.0f));
-            builder.Add(new Vector2(4.0f, 2.0f));
-            builder.Add(new Vector2(5.0f, 0.0f));
-            builder.Add(new Vector2(6.0f, 1.0f));
-            builder.Add(new Vector2(6.0f, 5.0f));
-            builder.Add(new Vector2(5.0f, 6.0f));
-            builder.Add(new Vector2(5.5f, 4.5f));
-            builder.Add(new Vector2(4.5f, 3.0f));
-            builder.Add(new Vector2(3.5f, 4.5f));
-            builder.Add(new Vector2(2.5f, 3.5f));
-            builder.Add(new Vector2(1.5f, 4.5f));
-            builder.Add(new Vector2(1.0f, 5.5f));
-            builder.Add(new Vector2(0.0f, 4.5f));
-            builder.Add(new Vector2(0.0f, 1.0f));
-            builder.Add(new Vector2(1.0f, 0.0f));
-            builder.Add(new Vector2(2.0f, 1.0f));
-            builder.Add(new Vector2(2.0f, 2.0f));
-            builder.Add(new Vector2(3.0f, 0.0f));
+            var vertices = new[]
+            {
+                new Vertex(-20f, -20f),
+                new Vertex(4.0f, 1.0f),
+                new Vertex(4.0f, 2.0f),
+                new Vertex(5.0f, 0.0f),
+                new Vertex(6.0f, 1.0f),
+                new Vertex(6.0f, 5.0f),
+                new Vertex(5.0f, 6.0f),
+                new Vertex(5.5f, 4.5f),
+                new Vertex(4.5f, 3.0f),
+                new Vertex(3.5f, 4.5f),
+                new Vertex(2.5f, 3.5f),
+                new Vertex(1.5f, 4.5f),
+                new Vertex(1.0f, 5.5f),
+                new Vertex(0.0f, 4.5f),
+                new Vertex(0.0f, 1.0f),
+                new Vertex(1.0f, 0.0f),
+                new Vertex(2.0f, 1.0f),
+                new Vertex(2.0f, 2.0f),
+                new Vertex(3.0f, 0.0f),
+            };
+
+            var builder = Polygon
+                .Build(vertices)
+                .AddVertices(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
+
             return builder.Close();
         }
 
@@ -306,46 +346,89 @@
         /// Return a simple polygon with two triangles and one concave vertex
         /// </summary>
         /// <returns></returns>
-        private ISegment PolygonDoubleTriangleWithConcave()
+        private Polygon PolygonDoubleTriangleWithConcave()
         {
-            var builder = new PolygonBuilder();
-            builder.Add(new Vector2(0.5f, 0.0f));
-            builder.Add(new Vector2(1.5f, 2.0f));
-            builder.Add(new Vector2(0.0f, 3.0f));
-            builder.Add(new Vector2(1.0f, 1.5f));
-            return builder.Close();
+            var vertices = new[]
+            {
+                new Vertex(0.5f, 0.0f),
+                new Vertex(1.5f, 2.0f),
+                new Vertex(0.0f, 3.0f),
+                new Vertex(1.0f, 1.5f),
+            };
+
+            return Polygon.Build(vertices).Auto();
         }
 
         /// <summary>
         /// Return a simple polygon with two triangles and one concave vertex
         /// </summary>
-        /// <returns></returns>
-        private IEnumerable<ISegment> PolygonSquareWithThreeNonOverlappingHoles()
+        /// <returns>a polygon</returns>
+        private Polygon PolygonSquareWithThreeNonOverlappingHoles()
         {
-            var segments = new List<ISegment>();
-            var builder = new PolygonBuilder();
-            builder.Add(new Vector2(0.0f, 0.0f));
-            builder.Add(new Vector2(6.0f, 0.0f));
-            builder.Add(new Vector2(6.0f, 6.0f));
-            builder.Add(new Vector2(0.0f, 6.0f));
-            segments.Add(builder.Close());
+            var vertices = new[]
+            {
+                new Vertex(-20f, -20f),
+                new Vertex(0.0f, 0.0f),
+                new Vertex(6.0f, 0.0f),
+                new Vertex(6.0f, 6.0f),
+                new Vertex(0.0f, 6.0f),
+                new Vertex(0.5f, 1.0f),
+                new Vertex(1.0f, 2.0f),
+                new Vertex(2.0f, 1.5f),
+                new Vertex(0.5f, 4.0f),
+                new Vertex(1.0f, 5.0f),
+                new Vertex(2.0f, 4.5f),
+                new Vertex(3.0f, 3.0f),
+                new Vertex(5.0f, 3.5f),
+                new Vertex(5.0f, 2.5f), 
+            };
 
-            builder.Add(new Vector2(0.5f, 1.0f));
-            builder.Add(new Vector2(1.0f, 2.0f));
-            builder.Add(new Vector2(2.0f, 1.5f));
-            segments.Add(builder.Close());
+            var builder = Polygon
+                .Build(vertices)
+                .AddVertices(1, 2, 3, 4)
+                .AddHole(5, 6, 7)
+                .AddHole(8, 9, 10)
+                .AddHole(11, 12, 13);
 
-            builder.Add(new Vector2(0.5f, 4.0f));
-            builder.Add(new Vector2(1.0f, 5.0f));
-            builder.Add(new Vector2(2.0f, 4.5f));
-            segments.Add(builder.Close());
+            return builder.Close();
+        }
 
-            builder.Add(new Vector2(3.0f, 3.0f));
-            builder.Add(new Vector2(5.0f, 3.5f));
-            builder.Add(new Vector2(5.0f, 2.5f));
-            segments.Add(builder.Close());
+        /// <summary>
+        /// Return a polygon that ends with 3 triangles on the stack
+        /// </summary>
+        /// <returns></returns>
+        private Polygon PolygonSquareHolesLastTriangleOnStack()
+        {
+            var vertices = new[]
+            {
+                new Vertex(-20f, -20f),
 
-            return segments;
+                new Vertex(0.0f, 0.0f),
+                new Vertex(6.0f, 0.0f),
+                new Vertex(6.0f, 6.0f),
+                new Vertex(0.0f, 6.0f),
+
+                new Vertex(5.0f, 2.5f),
+                new Vertex(5.2f, 3.0f),
+                new Vertex(5.5f, 2.7f),
+
+                new Vertex(0.5f, 4.5f),
+                new Vertex(1.0f, 5.0f),
+                new Vertex(2.0f, 5.5f),
+
+                new Vertex(2.5f, 3.5f),
+                new Vertex(3.5f, 4.0f),
+                new Vertex(4.0f, 3.7f),
+            };
+
+            var builder = Polygon
+                .Build(vertices)
+                .AddVertices(1, 2, 3, 4)
+                .AddHole(5, 6, 7)
+                .AddHole(8, 9, 10)
+                .AddHole(11, 12, 13);
+
+            return builder.Close();
         }
     }
 }

@@ -1,12 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using PolygonTriangulation;
-
-namespace TriangulationTests
+﻿namespace TriangulationTests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    
+    using Vertex = System.Numerics.Vector2;
+    using Plane = System.Numerics.Plane;
+    using Vector3 = System.Numerics.Vector3;
+
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using PolygonTriangulation;
+
     [TestClass]
     public class UnitTest1
     {
@@ -15,19 +19,19 @@ namespace TriangulationTests
         {
             var vertices = new[]
             {
-                new Vector2(1, 1), // 0
-                new Vector2(1, 3),
-                new Vector2(1.5f, 3), // 2
-                new Vector2(2, 2),
-                new Vector2(2, 4), // 4
-                new Vector2(2.5f, 1),
-                new Vector2(2.5f, 2), // 6
-                new Vector2(2.5f, 3),
-                new Vector2(3.5f, 2.5f), // 8
-                new Vector2(3.5f, 1),
-                new Vector2(4, 1.5f), // 10
-                new Vector2(4, 3.5f),
-                new Vector2(4, 4), // 12
+                new Vertex(1, 1), // 0
+                new Vertex(1, 3),
+                new Vertex(1.5f, 3), // 2
+                new Vertex(2, 2),
+                new Vertex(2, 4), // 4
+                new Vertex(2.5f, 1),
+                new Vertex(2.5f, 2), // 6
+                new Vertex(2.5f, 3),
+                new Vertex(3.5f, 2.5f), // 8
+                new Vertex(3.5f, 1),
+                new Vertex(4, 1.5f), // 10
+                new Vertex(4, 3.5f),
+                new Vertex(4, 4), // 12
             };
 
             var sorted = new SortedActiveEdgeList<int>(vertices);
@@ -112,28 +116,28 @@ namespace TriangulationTests
         {
             var clockwise = new[]
             {
-                new Vector2(1, 1),
-                new Vector2(2.5f, 2),
-                new Vector2(2, 2),
-                new Vector2(1, 3),
-                new Vector2(2, 4),
-                new Vector2(4, 4),
-                new Vector2(1.5f, 3),
-                new Vector2(2.5f, 3),
-                new Vector2(4, 3.5f),
-//                new Vector2(2.25f, 2.5f),
-                new Vector2(3, 2.5f),
-                new Vector2(4, 1.5f),
-                new Vector2(3.5f, 1),
-                new Vector2(2.5f, 1),
+                new Vertex(1, 1),
+                new Vertex(2.5f, 2),
+                new Vertex(2, 2),
+                new Vertex(1, 3),
+                new Vertex(2, 4),
+                new Vertex(4, 4),
+                new Vertex(1.5f, 3),
+                new Vertex(2.5f, 3),
+                new Vertex(4, 3.5f),
+//                new Vertex(2.25f, 2.5f),
+                new Vertex(3, 2.5f),
+                new Vertex(4, 1.5f),
+                new Vertex(3.5f, 1),
+                new Vertex(2.5f, 1),
             };
 
             var counter = new[]
             {
-                new Vector2(3, 3),
-                new Vector2(2, 2.5f),
-                new Vector2(3, 2),
-                new Vector2(2.5f, 2.5f),
+                new Vertex(3, 3),
+                new Vertex(2, 2.5f),
+                new Vertex(3, 2),
+                new Vertex(2.5f, 2.5f),
             };
 
             var planeMeshBuilder = new PlaneMeshBuilder(new Plane(new Vector3(0, 0, -1), 0));
@@ -164,24 +168,24 @@ namespace TriangulationTests
         {
             var clockwise = new[]
             {
-                new Vector2(1, 0),
-                new Vector2(0, 1),
-                new Vector2(2, 2),
-                new Vector2(1, 2),
-                new Vector2(0, 3),
-                new Vector2(2, 4),
-                new Vector2(1, 4),
-                new Vector2(0, 5),
-                new Vector2(1, 6),
-                new Vector2(4, 6),
-                new Vector2(5, 5),
-                new Vector2(4, 4.5f),
-                new Vector2(3, 3.5f),
-                new Vector2(4, 2.5f),
-                new Vector2(3, 1.5f),
-                new Vector2(4, 0.5f),
-                new Vector2(5.5f, 1),
-                new Vector2(4.5f, 0),
+                new Vertex(1, 0),
+                new Vertex(0, 1),
+                new Vertex(2, 2),
+                new Vertex(1, 2),
+                new Vertex(0, 3),
+                new Vertex(2, 4),
+                new Vertex(1, 4),
+                new Vertex(0, 5),
+                new Vertex(1, 6),
+                new Vertex(4, 6),
+                new Vertex(5, 5),
+                new Vertex(4, 4.5f),
+                new Vertex(3, 3.5f),
+                new Vertex(4, 2.5f),
+                new Vertex(3, 1.5f),
+                new Vertex(4, 0.5f),
+                new Vertex(5.5f, 1),
+                new Vertex(4.5f, 0),
             };
 
             var planeMeshBuilder = new PlaneMeshBuilder(new Plane(new Vector3(0, 0, -1), 0));

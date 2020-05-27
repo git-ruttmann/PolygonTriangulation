@@ -36,12 +36,13 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IPolygonBuilder.cs" />
     <Compile Include="Monotone\TriangleBuilder.cs" />
     <Compile Include="Monotone\TrapezoidToSplits.cs" />
+    <Compile Include="PolygonInternal.cs" />
     <Compile Include="Polygon.cs" />
     <Compile Include="Trapezoid\LocationNode.cs" />
     <Compile Include="Trapezoid\TrapezoidBuilder.cs" />
-    <Compile Include="PolygonBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Segment.cs" />
     <Compile Include="Trapezoid\Trapezoid.cs" />

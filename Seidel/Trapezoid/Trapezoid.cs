@@ -1,6 +1,6 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     public class Trapezoid
     {
@@ -23,9 +23,9 @@
 
         public bool ThirdFromLeft { get; set; }
 
-        public Vector2 hi { get; set; }
+        public Vertex hi { get; set; }
 
-        public Vector2 lo { get; set; }
+        public Vertex lo { get; set; }
 
         public ISegment lseg { get; set; }
 

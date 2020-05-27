@@ -39,11 +39,11 @@
             return new ArrayTriangleCollector();
         }
 
-        public static IArrayTriangleCollector SplitAndTriangluate(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
+        public static int[] SplitAndTriangluate(Polygon polygon, IEnumerable<Tuple<int, int>> splits)
         {
             var result = new ArrayTriangleCollector();
             SplitAndTriangluate(polygon, splits, result);
-            return result;
+            return result.Triangles;
         }
 
         public static void SplitAndTriangluate(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector result)

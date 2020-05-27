@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     public class TrapezoidBuilder
     {
@@ -16,8 +16,8 @@
             var right = CreateTrapezoid();     /* middle right */
             var bottomMost = CreateTrapezoid();
             var topMost = CreateTrapezoid();
-            topMost.hi = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
-            bottomMost.lo = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+            topMost.hi = new Vertex(float.PositiveInfinity, float.PositiveInfinity);
+            bottomMost.lo = new Vertex(float.NegativeInfinity, float.NegativeInfinity);
 
             left.hi = right.hi = topMost.lo = high;
             left.lo = right.lo = bottomMost.hi = low;
@@ -65,9 +65,9 @@
 
             var (low, high, is_swapped) = SortSegment(segment);
 
-            var highWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Next.Id : segment.Prev.Id);
+            var highWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Next.Id : segment.PrevId);
             var (_, topLeft) = this.FindOrInsertVertex(high, low, highWasInsertedByNeighbor);
-            var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Prev.Id : segment.Next.Id);
+            var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.PrevId : segment.Next.Id);
             var (bottomLeft, _) = this.FindOrInsertVertex(low, high, lowWasInsertedByNeighbor);
 
             // Console.WriteLine($"### seg {segment.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
@@ -176,7 +176,7 @@
             this.insertedSegments.Add(segment.Id);
         }
 
-        private static (Vector2, Vector2, bool) SortSegment(ISegment segment)
+        private static (Vertex, Vertex, bool) SortSegment(ISegment segment)
         {
             var swap = VertexComparer.Instance.Compare(segment.End, segment.Start) > 0;
             var high = swap ? segment.End : segment.Start;
@@ -184,7 +184,7 @@
             return (low, high, swap);
         }
 
-        private (Trapezoid, Trapezoid) FindOrInsertVertex(in Vector2 vertex, in Vector2 other, bool vertexWasInsertedByNeighboringSegment)
+        private (Trapezoid, Trapezoid) FindOrInsertVertex(in Vertex vertex, in Vertex other, bool vertexWasInsertedByNeighboringSegment)
         {
             var t = this.Tree.LocateEndpoint(vertex, other);
             if (vertexWasInsertedByNeighboringSegment)
@@ -248,7 +248,7 @@
             }
         }
 
-        private bool lowerIntersectsAtIndex0(Trapezoid t, Vector2 low, Vector2 high)
+        private bool lowerIntersectsAtIndex0(Trapezoid t, Vertex low, Vertex high)
         {
             if (VertexComparer.Instance.EqualY(t.lo, low))
             {
@@ -308,7 +308,7 @@
             return t.d[dx];
         }
 
-        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, ISegment segments, Vector2 vertex)
+        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, ISegment segments, Vertex vertex)
         {
             var tmptriseg = is_swapped ? segments.Prev : segments.Next;
             if (VertexComparer.Instance.PointIsLeftOfSegment(vertex, tmptriseg))
@@ -350,7 +350,7 @@
             t.u[0].d[1] = tn;
         }
 
-        private void upperHandleUpwardCusp(Trapezoid t, Trapezoid tn, Vector2 vertex)
+        private void upperHandleUpwardCusp(Trapezoid t, Trapezoid tn, Vertex vertex)
         {
             var tmp_u = t.u[0];
             var td0 = tmp_u.d[0];
