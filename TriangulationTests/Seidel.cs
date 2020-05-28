@@ -1,4 +1,4 @@
-﻿namespace TriangulationTests
+﻿namespace Ruttmann.PolygonTriangulation.Seidel.Tests
 {
     using System;
     using System.Collections.Generic;
@@ -7,18 +7,22 @@
     using Vertex = System.Numerics.Vector2;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
-    using Ruttmann.PolygonTriangulation.Seidel;
 
+    /// <summary>
+    /// Test the polygon triangulation in the Seidel library
+    /// </summary>
     [TestClass]
     public class Seidel
     {
+        /// <summary>
+        /// Test the split of a simple quad.
+        /// </summary>
         [TestMethod]
         public void SplitSimpleConcave()
         {
             var polygon = this.PolygonDoubleTriangleWithConcave();
 
-            Assert.AreEqual("0 1 2 3", String.Join(" ", polygon.Indices));
-
+            Assert.AreEqual("0 1 2 3", string.Join(" ", polygon.Indices));
 
             var triangleCollector = TriangleBuilder.CreateTriangleCollecor();
             var result = Polygon.Split(polygon, new[] { Tuple.Create(1, 3) }, triangleCollector);
@@ -27,6 +31,9 @@
             Assert.AreEqual(6, triangleCollector.Triangles.Length);
         }
 
+        /// <summary>
+        /// Test the polygon split operation - join holes into a polygon and finally split it to two monotones
+        /// </summary>
         [TestMethod]
         public void SplitSquareWithHoles()
         {
@@ -46,6 +53,77 @@
             Assert.AreEqual(0, triangleCollector.Triangles.Length);
         }
 
+        /// <summary>
+        /// Test the <see cref="Polygon.IndicesStartingAt"/> after a polygon is split with multiple colliding points
+        /// </summary>
+        [TestMethod]
+        public void IteratePolygonsAfterSplit()
+        {
+            var vertices = Enumerable.Repeat(new Vertex(0f, 0f), 40).ToArray();
+            var polygon = Polygon.Build(vertices).Auto();
+
+            var splits = new[]
+            {
+                Tuple.Create(5, 8),
+                Tuple.Create(5, 12),
+                Tuple.Create(5, 16),
+                Tuple.Create(5, 32),
+                Tuple.Create(20, 32),
+                Tuple.Create(24, 32),
+                Tuple.Create(32, 36),
+                Tuple.Create(36, 0),
+            };
+
+            var triangleCollector = TriangleBuilder.CreateTriangleCollecor();
+            var result = Polygon.Split(polygon, splits, triangleCollector);
+            Assert.AreEqual(0, triangleCollector.Triangles.Length);
+
+            var sorted = result
+                .OrderBy(x => x.Indices.First())
+                .ThenBy(x => x.Indices.Skip(1).First())
+                .ToArray();
+
+            Assert.AreEqual("0 1 2 3 4 5 32 36", string.Join(" ", sorted[0].Indices));
+            Assert.AreEqual("0 36 37 38 39", string.Join(" ", sorted[1].Indices));
+            Assert.AreEqual("5 6 7 8", string.Join(" ", sorted[2].Indices));
+            Assert.AreEqual("5 8 9 10 11 12", string.Join(" ", sorted[3].Indices));
+            Assert.AreEqual("5 12 13 14 15 16", string.Join(" ", sorted[4].Indices));
+            Assert.AreEqual("5 16 17 18 19 20 32", string.Join(" ", sorted[5].Indices));
+            Assert.AreEqual("20 21 22 23 24 32", string.Join(" ", sorted[6].Indices));
+            Assert.AreEqual("24 25 26 27 28 29 30 31 32", string.Join(" ", sorted[7].Indices));
+            Assert.AreEqual("32 33 34 35 36", string.Join(" ", sorted[8].Indices));
+
+            Assert.AreEqual("5 6 7 8", string.Join(" ", sorted[2].IndicesStartingAt(5)), "Must find the correct start vertex in a collision chain");
+            Assert.AreEqual("5 8 9 10 11 12", string.Join(" ", sorted[3].IndicesStartingAt(5)));
+            Assert.AreEqual("5 12 13 14 15 16", string.Join(" ", sorted[4].IndicesStartingAt(5)));
+            Assert.AreEqual("5 16 17 18 19 20 32", string.Join(" ", sorted[5].IndicesStartingAt(5)));
+
+            Assert.AreEqual("6 7 8 5", string.Join(" ", sorted[2].IndicesStartingAt(6)), "Must find the correct vertex in the middle of the polygon");
+            Assert.AreEqual("7 8 5 6", string.Join(" ", sorted[2].IndicesStartingAt(7)));
+            Assert.AreEqual("8 5 6 7", string.Join(" ", sorted[2].IndicesStartingAt(8)));
+            Assert.AreEqual("8 9 10 11 12 5", string.Join(" ", sorted[3].IndicesStartingAt(8)));
+            Assert.AreEqual("12 13 14 15 16 5", string.Join(" ", sorted[4].IndicesStartingAt(12)));
+            Assert.AreEqual("16 17 18 19 20 32 5", string.Join(" ", sorted[5].IndicesStartingAt(16)));
+
+            Assert.AreEqual("32 5 16 17 18 19 20", string.Join(" ", sorted[5].IndicesStartingAt(32)), "Must find the correct vertex in an end-point collision chain");
+            Assert.AreEqual("32 20 21 22 23 24", string.Join(" ", sorted[6].IndicesStartingAt(32)));
+
+            Assert.AreEqual("0 1 2 3 4 5 32 36", string.Join(" ", sorted[0].IndicesStartingAt(0)), "Must accept 0 as vertex id in collision chain");
+            Assert.AreEqual("0 36 37 38 39", string.Join(" ", sorted[1].IndicesStartingAt(0)), "Must accept 0 as vertex id in collision chain");
+
+            try
+            {
+                var _ = string.Join(" ", sorted[1].IndicesStartingAt(9));
+                Assert.IsTrue(false, "that polygon doesn't contain vertex 9");
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        /// <summary>
+        /// Test the segment/vertex compearer
+        /// </summary>
         [TestMethod]
         public void PointIsLeftOfSegmentComparer()
         {
@@ -66,6 +144,9 @@
             Assert.IsTrue(VertexComparer.Instance.PointIsLeftOfSegment(new Vertex(1.9f, 4.0f), segment), "Close before center");
         }
 
+        /// <summary>
+        /// Add segments of a quad with a concave corner.
+        /// </summary>
         [TestMethod]
         public void AddSegmentsSimpleConcave()
         {

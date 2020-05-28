@@ -303,6 +303,8 @@
 
             public ISegment Next => new Segment(this.data.Chain[this.chainId].Next, this.data);
 
+            public int NextId => this.data.Chain[this.data.Chain[this.chainId].Next].VertexId;
+
             public int Id => this.data.Chain[this.chainId].VertexId;
 
             public Vertex v0 => this.Start;

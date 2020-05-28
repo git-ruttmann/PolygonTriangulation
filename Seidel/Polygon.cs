@@ -150,7 +150,7 @@
             while (this.data.Chain[startId].PolygonId != this.Id)
             {
                 startId = this.data.Chain[startId].SameVertexChain;
-                if (startId == 0)
+                if (startId < 0)
                 {
                     throw new InvalidOperationException($"Vertex {startVertex} is not part of polygon {this.Id}");
                 }
@@ -159,16 +159,25 @@
             return new NextChainEnumerator(startId, this.data.Chain).Select(x => this.data.Chain[x].VertexId);
         }
 
+        /// <summary>
+        /// - each chain element belongs to exactly one polygon.
+        /// - multiple polygons are stored in the chain. (avoids copy during split)
+        /// - if a vertex belongs to multple polygons, it has multiple chain elements with the same VertexId
+        ///   the start of that chain is in the <see cref="SharedData.VertexToChain"/>, the collision list is in SameVertexChain
+        ///   the combination of PolygonId/VertexId is distinct.
+        ///   during polygon triangulation, the maximum collision count is 3
+        /// - a polygon has a specific chain element as start index
+        /// - a polygon with holes has multiple chain start elements. They are joined via <see cref="PolygonSplitter.JoinHoleIntoPolygon(int, int)"/>
+        /// </summary>
         public struct VertexInfo
         {
-
             /// <summary>
-            /// the id in the vertex list and the content of the result
+            /// the index in <see cref="SharedData.VertexCoordinates"/>
             /// </summary>
             public int VertexId;
 
             /// <summary>
-            /// The id of the polygon. Holes are a separate polygon
+            /// The id of the polygon. Holes are a separate polygon.
             /// </summary>
             public int PolygonId;
 
@@ -207,13 +216,11 @@
         {
             private readonly int start;
             private readonly IList<VertexInfo> chain;
-            private int position;
             private bool reset;
 
             public NextChainEnumerator(int start, IList<VertexInfo> chain)
             {
                 this.start = start;
-                this.Current = start;
                 this.chain = chain;
                 this.reset = true;
             }
@@ -239,14 +246,12 @@
                 if (this.reset)
                 {
                     this.reset = false;
-                    this.position = this.start;
-                    this.Current = this.position;
+                    this.Current = this.start;
                 }
                 else
                 {
-                    this.position = this.chain[this.position].Next;
-                    this.Current = this.position;
-                    if (this.position == this.start)
+                    this.Current = this.chain[this.Current].Next;
+                    if (this.Current == this.start)
                     {
                         return false;
                     }

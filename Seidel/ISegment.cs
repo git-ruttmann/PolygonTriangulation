@@ -11,6 +11,8 @@
 
         ISegment Next { get; }
 
+        int NextId { get; }
+
         int Id { get; }
 
         Vertex v0 { get; }
