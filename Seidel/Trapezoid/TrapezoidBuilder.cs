@@ -9,6 +9,8 @@
     {
         private ISet<int> insertedSegments;
 
+        private int trapezoidId = 1;
+
         public TrapezoidBuilder(ISegment segment)
         {
             var (low, high, _) = SortSegment(segment);
@@ -414,7 +416,7 @@
 
         private Trapezoid CreateTrapezoid()
         {
-            return new Trapezoid();
+            return new Trapezoid(this.trapezoidId++);
         }
 
         private Trapezoid CloneTrapezoid(Trapezoid t)

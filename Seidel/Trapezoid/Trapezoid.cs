@@ -4,13 +4,11 @@
 
     public class Trapezoid
     {
-        // HOBO
-        static int count = 0;
-
-        public Trapezoid()
+        public Trapezoid(int id)
         {
             this.u = new Trapezoid[2];
             this.d = new Trapezoid[2];
+            this.Id = id;
         }
 
         public Trapezoid[] u { get; }
@@ -31,7 +29,7 @@
 
         public ISegment rseg { get; set; }
 
-        public int Id { get; } = ++count;
+        public int Id { get; }
 
         internal void Invalidate()
         {

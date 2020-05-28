@@ -39,87 +39,110 @@
         {
             var visitedTrapezoids = new HashSet<Trapezoid>();
             var stack = new Stack<Trapezoid>();
+            visitedTrapezoids.Add(trapezoid);
             stack.Push(trapezoid);
 
             while (stack.Count > 0)
             {
                 trapezoid = stack.Pop();
-                int uplinkCount = (trapezoid.u[0] == null ? 0 : 1) + (trapezoid.u[1] == null ? 0 : 1);
-                int downlinkCount = (trapezoid.d[0] == null ? 0 : 1) + (trapezoid.d[1] == null ? 0 : 1);
 
-                switch (uplinkCount * 4 + downlinkCount)
-                {
-                    // downward opening triangle
-                    case 0 * 4 + 2:
-                        this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.lseg.Id);
-                        break;
-
-                    // upward opening triangle
-                    case 2 * 4 + 0:
-                        this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.u[0].rseg.Id);
-                        break;
-
-                    // downward + upward cusps
-                    case 2 * 4 + 2:
-                        this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.u[0].rseg.Id);
-                        break;
-
-                    // only downward cusp
-                    case 2 * 4 + 1:
-                        if (VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
-                        {
-                            this.AddSegmentSplit(trapezoid.u[0].rseg.Id, trapezoid.lseg.NextId);
-                        }
-                        else
-                        {
-                            this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.u[0].rseg.Id);
-                        }
-                        break;
-
-                    // only upward cusp
-                    case 1 * 4 + 2:
-                        if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0))
-                        {
-                            this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.lseg.Id);
-                        }
-                        else
-                        {
-                            this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.rseg.NextId);
-                        }
-                        break;
-
-                    // no cusp
-                    case 1 * 4 + 1:
-                        if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0) &&
-                            VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.rseg.v0))
-                        {
-                            this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.lseg.Id);
-                        }
-                        else if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.rseg.v1) &&
-                            VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
-                        {
-                            this.AddSegmentSplit(trapezoid.rseg.NextId, trapezoid.lseg.NextId);
-                        }
-                        else
-                        {
-                            // no split possible
-                        }
-                        break;
-
-                    case 1 * 4 + 0:
-                        break;
-
-                    case 0 * 4 + 1:
-                        break;
-
-                    default:
-                        throw new InvalidOperationException("Bad UL/DL count combination");
-                }
+                ProcessTrapezoid(trapezoid);
 
                 PushIfNew(visitedTrapezoids, stack, trapezoid.d[0]);
                 PushIfNew(visitedTrapezoids, stack, trapezoid.d[1]);
                 PushIfNew(visitedTrapezoids, stack, trapezoid.u[0]);
                 PushIfNew(visitedTrapezoids, stack, trapezoid.u[1]);
+            }
+        }
+
+        /// <summary>
+        /// Detect if the trapezoid represents a split situation, depending on number of trapezoids in up/down direction
+        /// </summary>
+        /// <param name="trapezoid">the trapezoid to process</param>
+        private void ProcessTrapezoid(Trapezoid trapezoid)
+        {
+            int uplinkCount = (trapezoid.u[0] == null ? 0 : 1) + (trapezoid.u[1] == null ? 0 : 1);
+            int downlinkCount = (trapezoid.d[0] == null ? 0 : 1) + (trapezoid.d[1] == null ? 0 : 1);
+
+            switch (uplinkCount * 4 + downlinkCount)
+            {
+                // cusp from below is reaching inside terminal triangle. cut our triangle cusp and the touching cusp
+                case 0 * 4 + 2:
+                    this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.lseg.Id);
+                    break;
+
+                // cusp from above is reaching inside terminal triangle. cut our triangle cusp and the touching cusp
+                case 2 * 4 + 0:
+                    this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.u[0].rseg.Id);
+                    break;
+
+                // downward + upward cusps, connect the two cusps
+                case 2 * 4 + 2:
+                    this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.u[0].rseg.Id);
+                    break;
+
+                // downward cusp is touching from above
+                case 2 * 4 + 1:
+                    if (VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
+                    {
+                        this.AddSegmentSplit(trapezoid.u[0].rseg.Id, trapezoid.lseg.NextId);
+                    }
+#if DEBUG
+                    else if (!VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.rseg.v0))
+                    {
+                        throw new InvalidOperationException("Low point must be either on left or right segment as there is only one downlink");
+                    }
+#endif
+                    else
+                    {
+                        this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.u[0].rseg.Id);
+                    }
+                    break;
+
+                // upward cusp is touching from below
+                case 1 * 4 + 2:
+                    if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0))
+                    {
+                        this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.lseg.Id);
+                    }
+#if DEBUG
+                    else if (!VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.rseg.v1))
+                    {
+                        throw new InvalidOperationException("High point must be either on left or right segment as there is only one uplink");
+                    }
+#endif
+                    else
+                    {
+                        this.AddSegmentSplit(trapezoid.d[1].lseg.Id, trapezoid.rseg.NextId);
+                    }
+                    break;
+
+                // one above and one below, check if the trapezoid has two vertexes in the diagonale
+                case 1 * 4 + 1:
+                    if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.lseg.v0) &&
+                        VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.rseg.v0))
+                    {
+                        this.AddSegmentSplit(trapezoid.rseg.Id, trapezoid.lseg.Id);
+                    }
+                    else if (VertexComparer.Instance.Equal(trapezoid.hi, trapezoid.rseg.v1) &&
+                        VertexComparer.Instance.Equal(trapezoid.lo, trapezoid.lseg.v1))
+                    {
+                        this.AddSegmentSplit(trapezoid.rseg.NextId, trapezoid.lseg.NextId);
+                    }
+                    else
+                    {
+                        // upper and lower are on the same segment diagonale - no split possible
+                    }
+                    break;
+
+                case 1 * 4 + 0:
+                    break;
+
+                case 0 * 4 + 1:
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Bad UL/DL count combination");
             }
         }
 

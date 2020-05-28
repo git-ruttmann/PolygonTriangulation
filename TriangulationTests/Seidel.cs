@@ -175,6 +175,83 @@
         /// Test triangulation with a monotone that has the last three elements on the stack
         /// </summary>
         [TestMethod]
+        public void AddSegmentsPolygonTripleStartWithSideTriangles()
+        {
+            var polygon = this.PolygonTripleStartWithSideTriangles();
+            var result = TriangleBuilder.TriangulatePolygon(polygon);
+
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            for (int i = 0; i < result.Length; i += 3)
+            {
+                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
+            }
+        }
+
+        /// <summary>
+        /// Test triangulation with all kinds of splits in <see cref="TrapezoidToSplits"/>
+        /// </summary>
+        [TestMethod]
+        public void DownwardAndUpwardOpeningTriangle()
+        {
+            var vertices = new[]
+            {
+                new Vertex(0.0f, 2.0f),
+                new Vertex(0.5f, 0.0f),
+                new Vertex(1.5f, 1.5f),
+                new Vertex(2.5f, 0.5f),
+                new Vertex(3.0f, 2.0f),
+                new Vertex(3.5f, 1.0f),
+                new Vertex(4.0f, 2.5f),
+                new Vertex(4.5f, 1.0f),
+                new Vertex(5.0f, 0.5f),
+                new Vertex(4.5f, 4.0f),
+                new Vertex(5.5f, 3.0f),
+                new Vertex(5.0f, 5.0f),
+                new Vertex(4.0f, 3.5f),
+                new Vertex(3.5f, 4.5f),
+                new Vertex(3.0f, 3.0f),
+                new Vertex(2.5f, 4.5f),
+                new Vertex(2.0f, 3.7f),
+                new Vertex(0.5f, 5.0f),
+                new Vertex(1.0f, 4.0f),
+                new Vertex(1.5f, 2.2f),
+                new Vertex(1.0f, 1.0f),
+            };
+
+            var polygon = Polygon.Build(vertices).Auto();
+            var result = TriangleBuilder.TriangulatePolygon(polygon);
+
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            for (int i = 0; i < result.Length; i += 3)
+            {
+                Console.WriteLine($"{result[i + 0]} {result[i + 1]} {result[i + 2]}");
+            }
+
+            Assert.IsTrue(VerifyTriangle(result, 20, 0, 1));
+            Assert.IsTrue(VerifyTriangle(result, 2, 3, 4));
+            Assert.IsTrue(VerifyTriangle(result, 20, 1, 2));
+            Assert.IsTrue(VerifyTriangle(result, 9, 10, 11));
+            Assert.IsTrue(VerifyTriangle(result, 9, 11, 12));
+            Assert.IsTrue(VerifyTriangle(result, 12, 13, 14));
+            Assert.IsTrue(VerifyTriangle(result, 14, 15, 16));
+            Assert.IsTrue(VerifyTriangle(result, 16, 17, 18));
+            Assert.IsTrue(VerifyTriangle(result, 19, 2, 4));
+            Assert.IsTrue(VerifyTriangle(result, 19, 20, 2));
+            Assert.IsTrue(VerifyTriangle(result, 4, 6, 19));
+            Assert.IsTrue(VerifyTriangle(result, 5, 6, 4));
+            Assert.IsTrue(VerifyTriangle(result, 6, 12, 14));
+            Assert.IsTrue(VerifyTriangle(result, 6, 9, 12));
+            Assert.IsTrue(VerifyTriangle(result, 7, 9, 6));
+            Assert.IsTrue(VerifyTriangle(result, 8, 9, 7));
+            Assert.IsTrue(VerifyTriangle(result, 14, 19, 6));
+            Assert.IsTrue(VerifyTriangle(result, 16, 19, 14));
+            Assert.IsTrue(VerifyTriangle(result, 18, 19, 16));
+        }
+
+        /// <summary>
+        /// Test triangulation with a monotone that has the last three elements on the stack
+        /// </summary>
+        [TestMethod]
         public void AddSegmentsSquareHolesLastTriangleOnStack()
         {
             var polygon = this.PolygonSquareHolesLastTriangleOnStack();
@@ -420,6 +497,44 @@
             var builder = Polygon
                 .Build(vertices)
                 .AddVertices(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
+
+            return builder.Close();
+        }
+
+        private Polygon PolygonTripleStartWithSideTriangles()
+        {
+            var vertices = new[]
+            {
+                new Vertex(-20f, -20f),
+                new Vertex(4.0f, 1.0f),
+                new Vertex(4.0f, 2.0f),
+                new Vertex(5.0f, 0.0f),
+                new Vertex(6.0f, 1.0f),
+                new Vertex(6.0f, 2.5f),
+                new Vertex(5.0f, 3.5f),
+                new Vertex(6.0f, 4.5f),
+                new Vertex(6.0f, 5.0f),
+                new Vertex(5.0f, 6.0f),
+                new Vertex(5.5f, 4.5f),
+                new Vertex(4.5f, 3.0f),
+                new Vertex(3.5f, 4.5f),
+                new Vertex(2.5f, 3.5f),
+                new Vertex(1.5f, 4.5f),
+                new Vertex(1.0f, 5.5f),
+                new Vertex(0.0f, 4.5f),
+                new Vertex(0.0f, 3.5f),
+                new Vertex(1.0f, 2.5f),
+                new Vertex(0.0f, 1.5f),
+                new Vertex(0.0f, 1.0f),
+                new Vertex(1.0f, 0.0f),
+                new Vertex(2.0f, 1.0f),
+                new Vertex(2.0f, 2.0f),
+                new Vertex(3.0f, 0.0f),
+            };
+
+            var builder = Polygon
+                .Build(vertices)
+                .AddVertices(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24);
 
             return builder.Close();
         }

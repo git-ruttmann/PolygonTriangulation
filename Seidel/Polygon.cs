@@ -271,6 +271,11 @@
             }
         }
 
+        public static object Build(object vertices)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// data shared between the splitted polygons - the vertex coordinates, the chain and the mapping
         /// </summary>
