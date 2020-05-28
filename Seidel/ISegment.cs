@@ -1,7 +1,6 @@
 ﻿namespace Ruttmann.PolygonTriangulation.Seidel
 {
     using System.Collections.Generic;
-    using System.Numerics;
     using Vertex = System.Numerics.Vector2;
 
     public interface ISegment : IEnumerable<ISegment>

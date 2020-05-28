@@ -44,7 +44,7 @@
     <Compile Include="Trapezoid\LocationNode.cs" />
     <Compile Include="Trapezoid\TrapezoidBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Segment.cs" />
+    <Compile Include="ISegment.cs" />
     <Compile Include="Trapezoid\Trapezoid.cs" />
     <Compile Include="Trapezoid\VertexComparer.cs" />
   </ItemGroup>

@@ -90,6 +90,9 @@
             Assert.AreEqual(2 * 3, result.Length);
         }
 
+        /// <summary>
+        /// Test triangulation with a monotone that has the last three elements on the stack
+        /// </summary>
         [TestMethod]
         public void AddSegmentsSquareHolesLastTriangleOnStack()
         {
@@ -121,21 +124,15 @@
             Assert.IsTrue(VerifyTriangle(result, 4, 1, 8));
         }
 
+        /// <summary>
+        /// Test triangulation of a polygon with holes
+        /// </summary>
         [TestMethod]
         public void AddSegmentsSquareWithThreeNonOverlappingHoles()
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             var polygon = this.PolygonSquareWithThreeNonOverlappingHoles();
-            var segments = polygon.AllSegments.ToArray();
-            var trapezoidBuilder = new TrapezoidBuilder(segments[0]);
-            foreach (var segment in segments.Skip(1))
-            {
-                trapezoidBuilder.AddSegment(segment);
-            }
-
-            var firstInsideTriangle = trapezoidBuilder.GetFirstInsideTriangle();
-            var splits = TrapezoidToSplits.ExtractSplits(firstInsideTriangle);
-            var result = TriangleBuilder.SplitAndTriangluate(polygon, splits);
+            var result = TriangleBuilder.TriangulatePolygon(polygon);
 
             for (int i = 0; i < result.Length; i += 3)
             {
@@ -163,6 +160,9 @@
             // Assert.AreEqual(2 * 3, result.Length);
         }
 
+        /// <summary>
+        /// Test adding segments in an "random" order
+        /// </summary>
         [TestMethod]
         public void AddSegmentsTripleStart()
         {
@@ -217,6 +217,9 @@
             Assert.AreEqual(16 * 3, result.Length);
         }
 
+        /// <summary>
+        /// Test location inside a TrapezoidBuilder tree, initialized with a single segment
+        /// </summary>
         [TestMethod]
         public void LocatePointAfterInitializeTree()
         {
@@ -240,6 +243,9 @@
             Assert.IsNull(trapezoid.rseg, "Joined at point but more to the left => must be treated as 'lower than the existing trapezoids'");
         }
 
+        /// <summary>
+        /// Test polygon construction and Segment idendity
+        /// </summary>
         [TestMethod]
         public void ConstructSegments()
         {
