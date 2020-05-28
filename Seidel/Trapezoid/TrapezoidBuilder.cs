@@ -239,9 +239,6 @@
                     tnext.TreeNode.ReplaceSinkAtParent(t.TreeNode);
                     t.ReplaceDownlink(tnext);
                     t.lo = tnext.lo;
-
-                    // hobo
-                    tnext.Invalidate();
                 }
                 else
                 {

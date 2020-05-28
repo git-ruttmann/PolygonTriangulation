@@ -31,10 +31,6 @@
 
         public int Id { get; }
 
-        internal void Invalidate()
-        {
-        }
-
         public Trapezoid GetDownlinkWithSameSegment(ISegment segment, bool leftSide)
         {
             for (int i = 0; i < 2; i++)
