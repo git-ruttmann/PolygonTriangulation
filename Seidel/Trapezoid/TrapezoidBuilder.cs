@@ -65,9 +65,9 @@
 
             var (low, high, is_swapped) = SortSegment(segment);
 
-            var highWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.Next.Id : segment.PrevId);
+            var highWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.NextId : segment.PrevId);
             var (_, topLeft) = this.FindOrInsertVertex(high, low, highWasInsertedByNeighbor);
-            var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.PrevId : segment.Next.Id);
+            var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.PrevId : segment.NextId);
             var (bottomLeft, _) = this.FindOrInsertVertex(low, high, lowWasInsertedByNeighbor);
 
             // Console.WriteLine($"### seg {segment.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
@@ -308,9 +308,9 @@
             return t.d[dx];
         }
 
-        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, ISegment segments, Vertex vertex)
+        private Trapezoid lowerHandleBottomTriangleWithSingleDownlink(int dx, bool is_swapped, Trapezoid t, Trapezoid tn, ISegment segment, Vertex vertex)
         {
-            var tmptriseg = is_swapped ? segments.Prev : segments.Next;
+            var tmptriseg = is_swapped ? segment.Prev : segment.Next;
             if (VertexComparer.Instance.PointIsLeftOfSegment(vertex, tmptriseg))
             {
                 /* L-R downward cusp */
