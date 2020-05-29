@@ -72,13 +72,7 @@
             var lowWasInsertedByNeighbor = this.insertedSegments.Contains(is_swapped ? segment.PrevId : segment.NextId);
             var (bottomLeft, _) = this.FindOrInsertVertex(low, high, lowWasInsertedByNeighbor);
 
-            // Console.WriteLine($"### seg {segment.Id} first: hi:{tfirst.High.X:0.00} {tfirst.High.Y:0.00} lo:{tfirst.Low.X:0.00} {tfirst.Low.Y:0.00} last: hi:{tlast.High.X:0.00} {tlast.High.Y:0.00} lo:{tlast.Low.X:0.00} {tlast.Low.Y:0.00}");
-            // this.Tree.DumpTree();
-
-            /* Thread the segment into the query tree creating a new X-node */
-            /* First, split all the trapezoids which are intersected by s into two */
-
-            /* traverse top down */
+            // split all trapezoids along the segment in left and right
             Trapezoid tnext;
             for (var left = topLeft; left != null; left = tnext)
             {
@@ -94,80 +88,16 @@
                 if (left == topLeft)
                     topRight = right;
 
-                /* 
-                handle up links
-                */
-                if (nodeCount(left.u) == 2)
-                {
-                    if (left.Third != null)
-                    {
-                        // Console.WriteLine("upperHandleTriple");
-                        upperHandleTriple(left, right);
-                    }
-                    else
-                    {
-                        // Console.WriteLine("upperHandleDual");
-                        upperHandleDual(left, right);
-                    }
-                }
-                else
-                {
-                    if (nodeCount(left.u[0].d) == 2)
-                    {
-                        // Console.WriteLine("upperHandleUpwardCusp");
-                        upperHandleUpwardCusp(left, right, low);
-                    }
-                    else
-                    {
-                        // Console.WriteLine("upperHandleFreshSegment");
-                        upperHandleFreshSegment(left, right);
-                    }
-                }
-
-                /*
-                handle down links
-                */
-                var bottomIsTriangle = lowWasInsertedByNeighbor && VertexComparer.Instance.Equal(left.lo, bottomLeft.lo);
-                int downlinkNodeCount = nodeCount(left.d);
-
-                if (downlinkNodeCount == 0) /* case must not arise */
-                {
-                    throw new InvalidOperationException("both downlink channels are null");
-                }
-                else if (bottomIsTriangle)
-                {
-                    if (downlinkNodeCount == 2)
-                    {
-                        // Console.WriteLine("lowerHandleBottomTriangletWithDualDownlink");
-                        tnext = lowerHandleBottomTriangletWithDualDownlink(left, right);
-                    }
-                    else
-                    {
-                        int dx = downlinkNodeCount == 1 ? 0 : 1;
-                        // Console.WriteLine("lowerHandleBottomTriangleWithSingleDownlink");
-                        tnext = lowerHandleBottomTriangleWithSingleDownlink(dx, is_swapped, left, right, segment, high);
-                    }
-                }
-                else if (downlinkNodeCount == 1 || downlinkNodeCount == -1)
-                {
-                    /* only one trapezoid below. partition t into two and make the */
-                    /* two resulting trapezoids t and tn as the upper neighbours of */
-                    /* the sole lower trapezoid */
-                    int dx = downlinkNodeCount == 1 ? 0 : 1;
-                    // Console.WriteLine("lowerHandleTrapezoidWithSingleDownlink");
-                    tnext = lowerHandleTrapezoidWithSingleDownlink(dx, left, right);
-                }
-                /* two trapezoids below, intersecting the one at d[0]. proceed down that one */
-                else if (lowerIntersectsAtIndex0(left, low, high))
-                {
-                    // Console.WriteLine("lowerHandleDonwlink0Intersect");
-                    tnext = lowerHandleDonwlink0Intersect(left, right);
-                }
-                else
-                {
-                    // Console.WriteLine("lowerHandleDonwlink1Intersect");
-                    tnext = lowerHandleDonwlink1Intersect(left, right);
-                }
+                HandleUplink(low, left, right);
+                tnext = HandleDownlink(
+                    segment, 
+                    low, 
+                    high, 
+                    is_swapped, 
+                    lowWasInsertedByNeighbor, 
+                    bottomLeft, 
+                    left, 
+                    right);
 
                 left.rseg = right.lseg = segment;
             }
@@ -176,6 +106,75 @@
             MergeTrapezoids(segment, topRight, bottomRight, false);
 
             this.insertedSegments.Add(segment.Id);
+        }
+
+        private void HandleUplink(Vertex low, Trapezoid left, Trapezoid right)
+        {
+            if (nodeCount(left.u) == 2)
+            {
+                if (left.Third != null)
+                {
+                    upperHandleTriple(left, right);
+                }
+                else
+                {
+                    upperHandleDual(left, right);
+                }
+            }
+            else
+            {
+                if (nodeCount(left.u[0].d) == 2)
+                {
+                    upperHandleUpwardCusp(left, right, low);
+                }
+                else
+                {
+                    upperHandleFreshSegment(left, right);
+                }
+            }
+        }
+
+        private Trapezoid HandleDownlink(ISegment segment, Vertex low, Vertex high, bool is_swapped, bool lowWasInsertedByNeighbor, Trapezoid bottomLeft, Trapezoid left, Trapezoid right)
+        {
+            Trapezoid tnext;
+            var bottomIsTriangle = lowWasInsertedByNeighbor && VertexComparer.Instance.Equal(left.lo, bottomLeft.lo);
+            int downlinkNodeCount = nodeCount(left.d);
+
+            if (downlinkNodeCount == 0)
+            {
+                throw new InvalidOperationException("both downlink channels are null");
+            }
+            else if (bottomIsTriangle)
+            {
+                if (downlinkNodeCount == 2)
+                {
+                    tnext = lowerHandleBottomTriangletWithDualDownlink(left, right);
+                }
+                else
+                {
+                    int dx = downlinkNodeCount == 1 ? 0 : 1;
+                    tnext = lowerHandleBottomTriangleWithSingleDownlink(dx, is_swapped, left, right, segment, high);
+                }
+            }
+            else if (downlinkNodeCount == 1 || downlinkNodeCount == -1)
+            {
+                /* only one trapezoid below. partition t into two and make the */
+                /* two resulting trapezoids t and tn as the upper neighbours of */
+                /* the sole lower trapezoid */
+                int dx = downlinkNodeCount == 1 ? 0 : 1;
+                tnext = lowerHandleTrapezoidWithSingleDownlink(dx, left, right);
+            }
+            /* two trapezoids below, intersecting the one at d[0]. proceed down that one */
+            else if (lowerIntersectsAtIndex0(left, low, high))
+            {
+                tnext = lowerHandleDonwlink0Intersect(left, right);
+            }
+            else
+            {
+                tnext = lowerHandleDonwlink1Intersect(left, right);
+            }
+
+            return tnext;
         }
 
         private static (Vertex, Vertex, bool) SortSegment(ISegment segment)
