@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace PolygonTriangulation
+﻿namespace PolygonTriangulation
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Numerics;
+
     /// <summary>
     /// Build a list of triangles from polygon edges
     /// </summary>
@@ -232,62 +230,75 @@ namespace PolygonTriangulation
 
             for (int i = 0; i < edgeStart.Length; i++)
             {
-                var start = edgeStart[i];
-                var next = edgeNext[i];
-                var prev = edgePrev[i];
-
-                if (start < prev && start < next)
-                {
-                    var edge = this.activeEdges.Begin(start, prev, next);
-                    if (edge.End == edge.Left)
-                    {
-                        Trapezoid.EnterInsideBySplit(start, edge);
-                    }
-                    else
-                    {
-                        var trapezoid = edge.Below.Data;
-                        trapezoid.LeaveInsideBySplit(start, edge);
-                        this.AddSplit(trapezoid.GetSplit());
-                    }
-                }
-                else if (start > prev && start > next)
-                {
-                    var edge = this.activeEdges.EdgeForVertex(start);
-                    activeEdges.Finish(edge, edge.Above);
-
-                    var lowerTrapezoid = edge.Data;
-                    var upperTrapezoid = edge.Above.Data;
-                    if (edge.Left == prev)
-                    {
-                        Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, start);
-                        this.AddSplit(lowerTrapezoid.GetSplit());
-                        this.AddSplit(upperTrapezoid.GetSplit());
-                    }
-                    else
-                    {
-                        lowerTrapezoid.LeaveInsideByJoin(start);
-                        this.AddSplit(lowerTrapezoid.GetSplit());
-                    }
-                }
-                else
-                {
-                    var oldEdge = this.activeEdges.EdgeForVertex(start);
-                    var target = next > start ? next : prev;
-                    var newEdge = this.activeEdges.Transition(oldEdge, target);
-
-                    var trapezoid = oldEdge.Data;
-                    trapezoid.Transition(start, newEdge);
-
-                    this.AddSplit(trapezoid.GetSplit());
-                }
+                HandleVertex(edgeStart[i], edgeNext[i], edgePrev[i]);
             }
         }
 
-        private void AddSplit(Tuple<int, int> tuple)
+        /// <summary>
+        /// Handle a vertex in context of its previous and next vertex
+        /// </summary>
+        /// <param name="vertexId">the id of the vertex</param>
+        /// <param name="next">the next vertex in the polygon</param>
+        /// <param name="prev">the previous vertex in the polygon</param>
+        private void HandleVertex(int vertexId, int next, int prev)
         {
-            if (tuple != null)
+            if (vertexId < prev && vertexId < next)
             {
-                Console.WriteLine($"Split from {tuple?.Item1} {tuple?.Item2}");
+                var edge = this.activeEdges.Begin(vertexId, prev, next);
+                if (edge.End == edge.Left)
+                {
+                    Trapezoid.EnterInsideBySplit(vertexId, edge);
+                }
+                else
+                {
+                    var trapezoid = edge.Below.Data;
+                    trapezoid.LeaveInsideBySplit(vertexId, edge);
+                    this.DetectSplit(trapezoid);
+                }
+            }
+            else if (vertexId > prev && vertexId > next)
+            {
+                var edge = this.activeEdges.EdgeForVertex(vertexId);
+                activeEdges.Finish(edge, edge.Above);
+
+                var lowerTrapezoid = edge.Data;
+                var upperTrapezoid = edge.Above.Data;
+                if (edge.Left == prev)
+                {
+                    Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, vertexId);
+                    this.DetectSplit(lowerTrapezoid);
+                    this.DetectSplit(upperTrapezoid);
+                }
+                else
+                {
+                    lowerTrapezoid.LeaveInsideByJoin(vertexId);
+                    this.DetectSplit(lowerTrapezoid);
+                }
+            }
+            else
+            {
+                var oldEdge = this.activeEdges.EdgeForVertex(vertexId);
+                var trapezoid = oldEdge.Data;
+                if (next > vertexId)
+                {
+                    var newEdge = this.activeEdges.Transition(oldEdge, next);
+                    trapezoid.TransitionOnUpperEdge(vertexId, newEdge);
+                }
+                else
+                {
+                    var newEdge = this.activeEdges.Transition(oldEdge, prev);
+                    trapezoid.TransitionOnLowerEdge(vertexId, newEdge);
+                }
+
+                this.DetectSplit(trapezoid);
+            }
+        }
+
+        private void DetectSplit(Trapezoid trapezoid)
+        {
+            if (trapezoid.IsSplit)
+            {
+                Console.WriteLine($"Split from {trapezoid.LeftVertex} {trapezoid.RightVertex}");
             }
         }
 

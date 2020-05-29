@@ -1,255 +1,208 @@
 ﻿namespace PolygonTriangulation
 {
     using System;
-    using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Linq;
 
     using IEdge = IActiveEdge<Trapezoid>;
 
+    /// <summary>
+    /// The receiver of split commands
+    /// </summary>
+    public interface IPolygonSplitter
+    {
+        /// <summary>
+        /// Split the polygon between left and right vertex
+        /// </summary>
+        /// <param name="leftVertex">the left vertex</param>
+        /// <param name="rightVertex">the right vertex</param>
+        void SplitPolygon(int leftVertex, int rightVertex);
+    }
+
+    /// <summary>
+    /// Create trapezoids by splitting, joining and traversing along a polygon.
+    /// Each trapezoid has a left and a right base and an upper and lower edge.
+    /// The left/right base lines are vertical, parallel and the X coordinate is defined by the associated vertex.
+    /// Trapezoids are built from left to right.
+    /// Each edge, the upper and the lower, has one current trapezoid.
+    /// </summary>
     [DebuggerDisplay("{Debug}")]
     public class Trapezoid
     {
         /// <summary>
-        /// corners with valid points (to detect diagonales)
+        /// The neighbor state of the left/right base line
         /// </summary>
         [Flags]
-        private enum CornerValidity
+        private enum Base
         {
-            None = 0,
-            UpperLeft = 1,
-            LowerLeft = 2,
-            UpperRight = 4,
-            LowerRight = 8,
-            Diagonale1 = UpperLeft + LowerRight,
-            Diagonale2 = LowerLeft + UpperRight,
+            /// <summary>
+            /// No neighbor, i.e. a triangle.
+            /// </summary>
+            NoNeighbor = 1,
+
+            /// <summary>
+            /// One neighbor and the common vertex is on the upper corner.
+            /// </summary>
+            UpperCorner = 2,
+
+            /// <summary>
+            /// One neighbor and the common vertex is on the lower corner.
+            /// </summary>
+            LowerCorner = 4,
+
+            /// <summary>
+            /// The baseline has two neighbors, the associated vertex is somewhere in the middle of the base.
+            /// </summary>
+            TwoNeighbors = 8,
         }
 
         /// <summary>
-        /// Number of neighbors to the left and to the right
+        /// Gets the upper edge
         /// </summary>
-        [Flags]
-        private enum Count
-        {
-            None = 0,
-            OneLeft = 1,
-            TwoLeft = 2,
-            OneRight = 4,
-            TwoRight = 8,
-        }
-
-        private CornerValidity cornerValidity;
-
-        private Count neighborCount;
+        private readonly IEdge upperEdge;
 
         /// <summary>
-        /// Instantiate a new trapezoid without left neighbors
+        /// Gets the lower edge
         /// </summary>
-        /// <param name="vertexId">the left vertex</param>
+        private readonly IEdge lowerEdge;
+
+        /// <summary>
+        /// The neighbor state of the left base and <see cref="leftVertex"/>.
+        /// </summary>
+        private readonly Base leftBase;
+
+        /// <summary>
+        /// Gets the index of the left vertex, defining the left base.
+        /// </summary>
+        private readonly int leftVertex;
+
+        /// <summary>
+        /// Initialize a new trapzoid
+        /// </summary>
+        /// <param name="leftVertex">the id of the vertex for the left "virtual trapezoid" edge</param>
+        /// <param name="leftNeighborCount">number of left trapezoids</param>
+        /// <param name="leftCornerValidity">the validity of the leftVertex. Can be Upper, Lower or None for Cusps</param>
         /// <param name="lowerEdge">the lower edge</param>
-        private Trapezoid(int vertexId, IEdge lowerEdge)
+        /// <param name="upperEdge">the upper edge</param>
+        private Trapezoid(int leftVertex, Base leftBase, IEdge lowerEdge, IEdge upperEdge)
         {
-            this.LeftVertex = vertexId;
-            this.cornerValidity = CornerValidity.None;
+            this.leftBase = leftBase;
+            this.leftVertex = leftVertex;
 
-            this.UpperEdge = lowerEdge.Above;
-            this.LowerEdge = lowerEdge;
-
-            this.UpperEdge.Data = this;
-            this.LowerEdge.Data = this;
-
-            this.neighborCount = Count.None;
+            this.lowerEdge = lowerEdge;
+            this.upperEdge = upperEdge;
+            this.lowerEdge.Data = this;
+            this.upperEdge.Data = this;
         }
-
-        /// <summary>
-        /// Instanstiate a new trapezoid with one left neighbor
-        /// </summary>
-        /// <param name="left">the left neighbor</param>
-        /// <param name="nextEdge">the next edge</param>
-        /// <param name="upper">flag if nextEdge is the upper or the lower edge</param>
-        private Trapezoid(Trapezoid left, IEdge nextEdge, bool upper)
-        {
-            this.LeftVertex = left.RightVertex;
-
-            this.UpperEdge = upper ? nextEdge : left.UpperEdge;
-            this.LowerEdge = !upper ? nextEdge : left.LowerEdge;
-
-            this.UpperEdge.Data = this;
-            this.LowerEdge.Data = this;
-
-            this.neighborCount = Count.OneLeft;
-        }
-
-        /// <summary>
-        /// Instanstiate a new trapezoid with two left neighbors
-        /// </summary>
-        /// <param name="upper">the upper left neighbor</param>
-        /// <param name="lower">the lower left neighbor</param>
-        private Trapezoid(Trapezoid upper, Trapezoid lower)
-        {
-            this.LeftVertex = upper.RightVertex;
-            this.cornerValidity = CornerValidity.None;
-
-            this.UpperEdge = upper.UpperEdge;
-            this.LowerEdge = lower.LowerEdge;
-
-            this.UpperEdge.Data = this;
-            this.LowerEdge.Data = this;
-
-            this.neighborCount = Count.TwoLeft;
-        }
-
-        /// <summary>
-        /// Gets the index of the left vertex. The corner validity defines if it was an upper or a lower or a triangle point
-        /// </summary>
-        public int LeftVertex { get; private set; }
-
-        /// <summary>
-        /// Gets the index of the right vertex.
-        /// </summary>
-        public int RightVertex { get; private set; }
-
-        /// <summary>
-        /// Gets the upper edge, limiting the trapezoid
-        /// </summary>
-        public IEdge UpperEdge { get; }
-
-        /// <summary>
-        /// Gets the lower edge, limiting the trapezoid
-        /// </summary>
-        public IEdge LowerEdge { get; }
 
         /// <summary>
         /// Gets a debug string
         /// </summary>
-        public string Debug => $"{this.LeftVertex} {this.RightVertex} {this.cornerValidity} {this.neighborCount} Low: {this.LowerEdge.Debug} High: {this.UpperEdge.Debug}";
+        public string Debug => $"Left:{this.leftVertex} {this.leftBase} Low: {this.lowerEdge} High: {this.upperEdge}";
 
         /// <summary>
-        /// A left cusp that enters the polygon space. Create a new Trapezoid.
+        /// A left pointing cusp that enters the polygon space.
         /// </summary>
-        /// <param name="vertexId"></param>
-        /// <param name="lowerEdge"></param>
+        /// <param name="vertexId">the vertex id of the cusp</param>
+        /// <param name="lowerEdge">the lower edge of the cusp</param>
         public static void EnterInsideBySplit(int vertexId, IEdge lowerEdge)
         {
-            var _ = new Trapezoid(vertexId, lowerEdge);
+            new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, lowerEdge.Above);
         }
 
         /// <summary>
-        /// A right cusp that enters the polygon space. Join the two Trapezoids in one.
+        /// A right pointing cusp that enters the polygon space. Join the upper left and the lower left trapezoids in one.
         /// </summary>
-        /// <param name="vertexId">the vertex id</param>
-        public static void EnterInsideByJoin(Trapezoid lower, Trapezoid upper, int vertexId)
+        /// <param name="vertexId">the vertex id that joins the two edges.</param>
+        /// <param name="splitter">the polygon splitter</param>
+        public static void EnterInsideByJoin(Trapezoid lower, Trapezoid upper, int vertexId, IPolygonSplitter splitter)
         {
-            lower.RightVertex = upper.RightVertex = vertexId;
+            upper.EvaluateRight(vertexId, Base.LowerCorner, splitter);
+            lower.EvaluateRight(vertexId, Base.UpperCorner, splitter);
 
-            upper.cornerValidity |= CornerValidity.LowerRight;
-            lower.cornerValidity |= CornerValidity.UpperRight;
-
-            upper.neighborCount |= Count.OneRight;
-            lower.neighborCount |= Count.OneRight;
-
-            var _ = new Trapezoid(upper, lower);
-        }
-
-        /// <summary>
-        /// Transition from one edge to the next
-        /// </summary>
-        /// <param name="vertexId">the vertex id of the transition point</param>
-        /// <param name="nextEdge">the next edge</param>
-        public void Transition(int vertexId, IEdge nextEdge)
-        {
-            this.RightVertex = vertexId;
-            this.neighborCount |= Count.OneRight;
-
-            bool upper;
-            if (vertexId == this.UpperEdge.Right)
-            {
-                upper = true;
-                this.cornerValidity |= CornerValidity.UpperRight;
-            }
-            else if (vertexId == this.LowerEdge.Right)
-            {
-                upper = false;
-                this.cornerValidity |= CornerValidity.LowerRight;
-            }
-            else
-            {
-                throw new InvalidOperationException("Transition must be on either segment");
-            }
-
-            var nextTrapezoid = new Trapezoid(this, nextEdge, upper);
-            nextTrapezoid.cornerValidity = (CornerValidity)(((int)this.cornerValidity) >> 2);
+            new Trapezoid(vertexId, Base.TwoNeighbors, lower.lowerEdge, upper.upperEdge);
         }
 
         /// <summary>
         /// A cusp that transitions from inside to outside. Splits the Trapezoid by one point.
         /// </summary>
         /// <param name="vertexId">the vertex id of the start point</param>
-        /// <param name="upperEdge">the upper edge</param>
-        /// <param name="lowerEdge">the lower edge</param>
-        public void LeaveInsideBySplit(int vertexId, IEdge lowerEdge)
+        /// <param name="edge">the lower edge or the split</param>
+        public void LeaveInsideBySplit(int vertexId, IEdge edge)
         {
-            this.RightVertex = vertexId;
-            this.neighborCount |= Count.TwoRight;
+            this.EvaluateRight(vertexId, Base.TwoNeighbors, splitter);
 
-            var upperTrapezoid = new Trapezoid(this, lowerEdge.Above, false);
-            upperTrapezoid.cornerValidity = CornerValidity.LowerLeft;
-
-            var lowerTrapezoid = new Trapezoid(this, lowerEdge, true);
-            lowerTrapezoid.cornerValidity = CornerValidity.UpperLeft;
+            new Trapezoid(vertexId, Base.LowerCorner, edge.Above, this.upperEdge);
+            new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, edge);
         }
 
         /// <summary>
-        /// Join two edges and right to the vertex is outside the polygon
+        /// Join two edges. Right of the vertex is outside.
         /// </summary>
         /// <param name="vertexId">the closing vertex id</param>
-        public void LeaveInsideByJoin(int vertexId)
+        /// <param name="splitter">the polygon splitter</param>
+        public void LeaveInsideByJoin(int vertexId, IPolygonSplitter splitter)
         {
-            if (this.UpperEdge.Right != this.LowerEdge.Right)
-            {
-                throw new InvalidOperationException("Joining two non-equal segements");
-            }
-
-            this.RightVertex = vertexId;
+            this.EvaluateRight(vertexId, Base.NoNeighbor, splitter);
         }
 
         /// <summary>
-        /// Get the split of the trapezoid
+        /// The upper edge transitions at vertex to a new edge
         /// </summary>
-        /// <returns>null if no split</returns>
-        public Tuple<int, int> GetSplit()
+        /// <param name="vertexId">the transition vertex</param>
+        /// <param name="nextEdge">the new edge</param>
+        /// <param name="splitter">the polygon splitter</param>
+        public void TransitionOnUpperEdge(int vertexId, IEdge nextEdge, IPolygonSplitter splitter)
         {
-            switch (this.neighborCount)
+            this.EvaluateRight(vertexId, Base.UpperCorner, splitter);
+
+            new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, nextEdge);
+        }
+
+        /// <summary>
+        /// The lower edge transitions at vertex to a new edge
+        /// </summary>
+        /// <param name="vertexId">the transition vertex</param>
+        /// <param name="nextEdge">the new edge</param>
+        /// <param name="splitter">the polygon splitter</param>
+        public void TransitionOnLowerEdge(int vertexId, IEdge nextEdge, IPolygonSplitter splitter)
+        {
+            this.EvaluateRight(vertexId, Base.LowerCorner, splitter);
+
+            new Trapezoid(vertexId, Base.LowerCorner, nextEdge, this.upperEdge);
+        }
+
+        /// <summary>
+        /// Detects whether the left and right vertex represent a diagonale of the trapezoid.
+        /// </summary>
+        /// <param name="combinedBase">the combined base line state</param>
+        /// <returns>true if a diagonale is detected</returns>
+        private static bool DetectDiagonale(Base combinedBase)
+        {
+            return combinedBase == (Base.LowerCorner | Base.UpperCorner);
+        }
+
+        /// <summary>
+        /// Detects whether one side has two neighbors (i.e. a touching cusp).
+        /// </summary>
+        /// <param name="combinedBase">the combined base line state</param>
+        /// <returns>true if any base line has two neighbors</returns>
+        private static bool DetectDoubleNeighbor(Base combinedBase)
+        {
+            return (combinedBase & Base.TwoNeighbors) != 0;
+        }
+
+        /// <summary>
+        /// Combine the right side info with the left side and evaluate if it matches a split situation.
+        /// </summary>
+        /// <param name="rightVertex">the vertex that defines the right side</param>
+        /// <param name="neighborCount">the number of right neighbors</param>
+        /// <param name="cornerValidity">the vertex position of the right vertex</param>
+        private void EvaluateRight(int rightVertex, Base rightBase, IPolygonSplitter splitter)
+        {
+            var combinedBase = this.leftBase | rightBase;
+            if (DetectDoubleNeighbor(combinedBase) || DetectDiagonale(combinedBase))
             {
-                // anything with two neighbors => a cusp => always split
-                case Count.TwoLeft:
-                case Count.TwoRight:
-                case Count.OneLeft | Count.TwoRight:
-                case Count.TwoLeft | Count.OneRight:
-                case Count.TwoLeft | Count.TwoRight:
-                    return Tuple.Create(this.LeftVertex, this.RightVertex);
-
-                // one left and one right => cut diagonales only
-                case Count.OneLeft | Count.OneRight:
-                    if (this.cornerValidity == CornerValidity.Diagonale1)
-                    {
-                        return Tuple.Create(this.LeftVertex, this.RightVertex);
-                    }
-                    if (this.cornerValidity == CornerValidity.Diagonale2)
-                    {
-                        return Tuple.Create(this.LeftVertex, this.RightVertex);
-                    }
-                    else
-                    {
-                        return null;
-                    }
-
-                case Count.OneLeft:
-                case Count.OneRight:
-                    return null;
-
-                default:
-                    throw new InvalidOperationException("Bad combination of neighbor count");
+                splitter.SplitPolygon(this.leftVertex, rightVertex);
             }
         }
     }
