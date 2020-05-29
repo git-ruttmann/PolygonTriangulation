@@ -1,167 +1,256 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace PolygonTriangulation
+﻿namespace PolygonTriangulation
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
+
+    using IEdge = IActiveEdge<Trapezoid>;
+
     [DebuggerDisplay("{Debug}")]
     public class Trapezoid
     {
-        private List<int> upperPoints;
-        private List<int> lowerPoints;
-        private bool? lastWasLower;
-
-        public Trapezoid(int start)
+        /// <summary>
+        /// corners with valid points (to detect diagonales)
+        /// </summary>
+        [Flags]
+        private enum CornerValidity
         {
-            this.Start = start;
-            this.lastWasLower = null;
-            this.upperPoints = new List<int>();
-            this.lowerPoints = new List<int>();
+            None = 0,
+            UpperLeft = 1,
+            LowerLeft = 2,
+            UpperRight = 4,
+            LowerRight = 8,
+            Diagonale1 = UpperLeft + LowerRight,
+            Diagonale2 = LowerLeft + UpperRight,
         }
 
         /// <summary>
-        /// Gets the start point - the leftmost point.
+        /// Number of neighbors to the left and to the right
         /// </summary>
-        public int Start { get; }
-
-        /// <summary>
-        /// Get's the previous closed trapezoid
-        /// </summary>
-        public Trapezoid Prev { get; private set; }
-
-        internal string Debug => $"{this.Start} _:{String.Join(" ", this.lowerPoints)} {(this.lastWasLower == true ? "*" : "")}|{(this.lastWasLower == false ? "*" : "")} ¯:{String.Join(" ", this.upperPoints)}";
-
-        /// <summary>
-        /// Create the lower half of a split. the new vertex is added at the upper points
-        /// </summary>
-        /// <param name="vertexId">the start point of the split</param>
-        /// <returns>the new lower half</returns>
-        internal Trapezoid SplitLower(int vertexId)
+        [Flags]
+        private enum Count
         {
-            var trapezoid = new Trapezoid(this.Start);
-            trapezoid.Prev = this.Prev;
+            None = 0,
+            OneLeft = 1,
+            TwoLeft = 2,
+            OneRight = 4,
+            TwoRight = 8,
+        }
 
-            if (this.lastWasLower == null)
+        private CornerValidity cornerValidity;
+
+        private Count neighborCount;
+
+        /// <summary>
+        /// Instantiate a new trapezoid without left neighbors
+        /// </summary>
+        /// <param name="vertexId">the left vertex</param>
+        /// <param name="lowerEdge">the lower edge</param>
+        private Trapezoid(int vertexId, IEdge lowerEdge)
+        {
+            this.LeftVertex = vertexId;
+            this.cornerValidity = CornerValidity.None;
+
+            this.UpperEdge = lowerEdge.Above;
+            this.LowerEdge = lowerEdge;
+
+            this.UpperEdge.Data = this;
+            this.LowerEdge.Data = this;
+
+            this.neighborCount = Count.None;
+        }
+
+        /// <summary>
+        /// Instanstiate a new trapezoid with one left neighbor
+        /// </summary>
+        /// <param name="left">the left neighbor</param>
+        /// <param name="nextEdge">the next edge</param>
+        /// <param name="upper">flag if nextEdge is the upper or the lower edge</param>
+        private Trapezoid(Trapezoid left, IEdge nextEdge, bool upper)
+        {
+            this.LeftVertex = left.RightVertex;
+
+            this.UpperEdge = upper ? nextEdge : left.UpperEdge;
+            this.LowerEdge = !upper ? nextEdge : left.LowerEdge;
+
+            this.UpperEdge.Data = this;
+            this.LowerEdge.Data = this;
+
+            this.neighborCount = Count.OneLeft;
+        }
+
+        /// <summary>
+        /// Instanstiate a new trapezoid with two left neighbors
+        /// </summary>
+        /// <param name="upper">the upper left neighbor</param>
+        /// <param name="lower">the lower left neighbor</param>
+        private Trapezoid(Trapezoid upper, Trapezoid lower)
+        {
+            this.LeftVertex = upper.RightVertex;
+            this.cornerValidity = CornerValidity.None;
+
+            this.UpperEdge = upper.UpperEdge;
+            this.LowerEdge = lower.LowerEdge;
+
+            this.UpperEdge.Data = this;
+            this.LowerEdge.Data = this;
+
+            this.neighborCount = Count.TwoLeft;
+        }
+
+        /// <summary>
+        /// Gets the index of the left vertex. The corner validity defines if it was an upper or a lower or a triangle point
+        /// </summary>
+        public int LeftVertex { get; private set; }
+
+        /// <summary>
+        /// Gets the index of the right vertex.
+        /// </summary>
+        public int RightVertex { get; private set; }
+
+        /// <summary>
+        /// Gets the upper edge, limiting the trapezoid
+        /// </summary>
+        public IEdge UpperEdge { get; }
+
+        /// <summary>
+        /// Gets the lower edge, limiting the trapezoid
+        /// </summary>
+        public IEdge LowerEdge { get; }
+
+        /// <summary>
+        /// Gets a debug string
+        /// </summary>
+        public string Debug => $"{this.LeftVertex} {this.RightVertex} {this.cornerValidity} {this.neighborCount} Low: {this.LowerEdge.Debug} High: {this.UpperEdge.Debug}";
+
+        /// <summary>
+        /// A left cusp that enters the polygon space. Create a new Trapezoid.
+        /// </summary>
+        /// <param name="vertexId"></param>
+        /// <param name="lowerEdge"></param>
+        public static void EnterInsideBySplit(int vertexId, IEdge lowerEdge)
+        {
+            var _ = new Trapezoid(vertexId, lowerEdge);
+        }
+
+        /// <summary>
+        /// A right cusp that enters the polygon space. Join the two Trapezoids in one.
+        /// </summary>
+        /// <param name="vertexId">the vertex id</param>
+        public static void EnterInsideByJoin(Trapezoid lower, Trapezoid upper, int vertexId)
+        {
+            lower.RightVertex = upper.RightVertex = vertexId;
+
+            upper.cornerValidity |= CornerValidity.LowerRight;
+            lower.cornerValidity |= CornerValidity.UpperRight;
+
+            upper.neighborCount |= Count.OneRight;
+            lower.neighborCount |= Count.OneRight;
+
+            var _ = new Trapezoid(upper, lower);
+        }
+
+        /// <summary>
+        /// Transition from one edge to the next
+        /// </summary>
+        /// <param name="vertexId">the vertex id of the transition point</param>
+        /// <param name="nextEdge">the next edge</param>
+        public void Transition(int vertexId, IEdge nextEdge)
+        {
+            this.RightVertex = vertexId;
+            this.neighborCount |= Count.OneRight;
+
+            bool upper;
+            if (vertexId == this.UpperEdge.Right)
             {
-                trapezoid.upperPoints.Add(this.Start);
-                trapezoid.upperPoints.Add(vertexId);
-                trapezoid.lastWasLower = false;
-                return trapezoid;
+                upper = true;
+                this.cornerValidity |= CornerValidity.UpperRight;
             }
-
-            trapezoid.lastWasLower = this.lastWasLower;
-            if (this.lastWasLower == true)
+            else if (vertexId == this.LowerEdge.Right)
             {
-                trapezoid.lowerPoints.AddRange(this.lowerPoints);
-                return trapezoid.AddedNewPoint(false);
+                upper = false;
+                this.cornerValidity |= CornerValidity.LowerRight;
             }
             else
             {
-                trapezoid.lastWasLower = false;
-                return trapezoid;
+                throw new InvalidOperationException("Transition must be on either segment");
             }
+
+            var nextTrapezoid = new Trapezoid(this, nextEdge, upper);
+            nextTrapezoid.cornerValidity = (CornerValidity)(((int)this.cornerValidity) >> 2);
         }
 
         /// <summary>
-        /// Create the upper half of a split. the new vertex is added at the lower points
+        /// A cusp that transitions from inside to outside. Splits the Trapezoid by one point.
         /// </summary>
-        /// <param name="vertexId">the start point of the split</param>
-        /// <returns>the new lower half</returns>
-        internal Trapezoid SplitUpper(int vertexId)
+        /// <param name="vertexId">the vertex id of the start point</param>
+        /// <param name="upperEdge">the upper edge</param>
+        /// <param name="lowerEdge">the lower edge</param>
+        public void LeaveInsideBySplit(int vertexId, IEdge lowerEdge)
         {
-            var trapezoid = new Trapezoid(this.Start);
-            trapezoid.Prev = this.Prev;
-            trapezoid.lowerPoints.Add(this.Start);
-            trapezoid.lowerPoints.Add(vertexId);
+            this.RightVertex = vertexId;
+            this.neighborCount |= Count.TwoRight;
 
-            if (this.lastWasLower == null)
-            {
-                trapezoid.lastWasLower = true;
-                return trapezoid;
-            }
+            var upperTrapezoid = new Trapezoid(this, lowerEdge.Above, false);
+            upperTrapezoid.cornerValidity = CornerValidity.LowerLeft;
 
-            trapezoid.lastWasLower = this.lastWasLower;
-            if (this.lastWasLower == false)
-            {
-                trapezoid.upperPoints.AddRange(this.upperPoints);
-                return trapezoid.AddedNewPoint(true);
-            }
-            else
-            {
-                trapezoid.lastWasLower = true;
-                return trapezoid;
-            }
+            var lowerTrapezoid = new Trapezoid(this, lowerEdge, true);
+            lowerTrapezoid.cornerValidity = CornerValidity.UpperLeft;
         }
 
         /// <summary>
-        /// Add a point from a leftToRight line transition.
+        /// Join two edges and right to the vertex is outside the polygon
         /// </summary>
-        /// <param name="vertexId">the point</param>
-        /// <returns>the same or a newly created trapezoid</returns>
-        internal Trapezoid AddUpper(int vertexId)
+        /// <param name="vertexId">the closing vertex id</param>
+        public void LeaveInsideByJoin(int vertexId)
         {
-            if (this.lastWasLower == null)
+            if (this.UpperEdge.Right != this.LowerEdge.Right)
             {
-                this.lowerPoints.Add(this.Start);
-                this.upperPoints.Add(vertexId);
-                this.lastWasLower = false;
-                return this;
+                throw new InvalidOperationException("Joining two non-equal segements");
             }
 
-            this.upperPoints.Add(vertexId);
-            return this.AddedNewPoint(false);
+            this.RightVertex = vertexId;
         }
 
         /// <summary>
-        /// Add a point from a rightToLeft line transition.
+        /// Get the split of the trapezoid
         /// </summary>
-        /// <param name="vertexId">the point</param>
-        /// <returns>the same or a newly created trapezoid</returns>
-        internal Trapezoid AddLower(int vertexId)
+        /// <returns>null if no split</returns>
+        public Tuple<int, int> GetSplit()
         {
-            if (this.lastWasLower == null)
+            switch (this.neighborCount)
             {
-                this.upperPoints.Add(this.Start);
-                this.lowerPoints.Add(vertexId);
-                this.lastWasLower = true;
-                return this;
-            }
+                // anything with two neighbors => a cusp => always split
+                case Count.TwoLeft:
+                case Count.TwoRight:
+                case Count.OneLeft | Count.TwoRight:
+                case Count.TwoLeft | Count.OneRight:
+                case Count.TwoLeft | Count.TwoRight:
+                    return Tuple.Create(this.LeftVertex, this.RightVertex);
 
-            this.lowerPoints.Add(vertexId);
-            return this.AddedNewPoint(true);
-        }
+                // one left and one right => cut diagonales only
+                case Count.OneLeft | Count.OneRight:
+                    if (this.cornerValidity == CornerValidity.Diagonale1)
+                    {
+                        return Tuple.Create(this.LeftVertex, this.RightVertex);
+                    }
+                    if (this.cornerValidity == CornerValidity.Diagonale2)
+                    {
+                        return Tuple.Create(this.LeftVertex, this.RightVertex);
+                    }
+                    else
+                    {
+                        return null;
+                    }
 
-        private Trapezoid AddedNewPoint(bool addedLower)
-        {
-            if (addedLower == this.lastWasLower)
-            {
-                return this;
-            }
+                case Count.OneLeft:
+                case Count.OneRight:
+                    return null;
 
-            this.lastWasLower = addedLower;
-            if (this.upperPoints.Count <= 1 && this.lowerPoints.Count <= 1)
-            {
-                return this;
+                default:
+                    throw new InvalidOperationException("Bad combination of neighbor count");
             }
-
-            Trapezoid newTrapezoid;
-            if (addedLower)
-            {
-                newTrapezoid = new Trapezoid(this.upperPoints.Last());
-            }
-            else
-            {
-                newTrapezoid = new Trapezoid(this.lowerPoints.Last());
-            }
-
-            newTrapezoid.lowerPoints.Add(this.lowerPoints.Last());
-            newTrapezoid.upperPoints.Add(this.upperPoints.Last());
-            newTrapezoid.lastWasLower = addedLower;
-            newTrapezoid.Prev = this;
-            return newTrapezoid;
         }
     }
 }

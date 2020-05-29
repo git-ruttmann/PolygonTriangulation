@@ -21,8 +21,6 @@ namespace PolygonTriangulation
         private readonly Quaternion rotation;
         private List<Vector3> vertices3D;
         private SortedActiveEdgeList<Trapezoid> activeEdges;
-        private Dictionary<int, IActiveEdge<Trapezoid>> leftToRight;
-        private Dictionary<int, IActiveEdge<Trapezoid>> rightToLeft;
 
         public PlaneMeshBuilder(Plane plane)
         {
@@ -102,8 +100,6 @@ namespace PolygonTriangulation
             this.JoinEdgesToPolygones();
             this.BuildOrientationArray();
             this.FindPlanePolygones();
-
-            Priority_Queue.IPriorityQueue<int, float> queue = new Priority_Queue.SimplePriorityQueue<int>();
         }
 
         /// <summary>
@@ -233,8 +229,6 @@ namespace PolygonTriangulation
             }
 
             this.activeEdges = new SortedActiveEdgeList<Trapezoid>(vertices);
-            this.leftToRight = new Dictionary<int, IActiveEdge<Trapezoid>>();
-            this.rightToLeft = new Dictionary<int, IActiveEdge<Trapezoid>>();
 
             for (int i = 0; i < edgeStart.Length; i++)
             {
@@ -245,120 +239,55 @@ namespace PolygonTriangulation
                 if (start < prev && start < next)
                 {
                     var edge = this.activeEdges.Begin(start, prev, next);
-                    if (edge.Start == edge.Left)
+                    if (edge.End == edge.Left)
                     {
-                        this.leftToRight[edge.Right] = edge;
-                        this.rightToLeft[edge.Above.Right] = edge.Above;
-                        this.StartInsideToOutside(edge);
+                        Trapezoid.EnterInsideBySplit(start, edge);
                     }
                     else
                     {
-                        this.rightToLeft[edge.Right] = edge;
-                        this.leftToRight[edge.Above.Right] = edge.Above;
-                        this.StartOutsideToInside(edge);
+                        var trapezoid = edge.Below.Data;
+                        trapezoid.LeaveInsideBySplit(start, edge);
+                        this.AddSplit(trapezoid.GetSplit());
                     }
                 }
                 else if (start > prev && start > next)
                 {
-                    var rightToLeftEdge = this.rightToLeft[start];
-                    var leftToRightEdge = this.leftToRight[start];
-                    this.rightToLeft.Remove(start);
-                    this.leftToRight.Remove(start);
-                    if (rightToLeftEdge == leftToRightEdge.Below)
+                    var edge = this.activeEdges.EdgeForVertex(start);
+                    activeEdges.Finish(edge, edge.Above);
+
+                    var lowerTrapezoid = edge.Data;
+                    var upperTrapezoid = edge.Above.Data;
+                    if (edge.Left == prev)
                     {
-                        this.activeEdges.Finish(rightToLeftEdge, leftToRightEdge);
-                        this.FinishInsideToOutside(rightToLeftEdge, leftToRightEdge);
-                    }
-                    else if (leftToRightEdge == rightToLeftEdge.Below)
-                    {
-                        this.activeEdges.Finish(leftToRightEdge, rightToLeftEdge);
-                        this.FinishOutsideToInside(leftToRightEdge, rightToLeftEdge);
+                        Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, start);
+                        this.AddSplit(lowerTrapezoid.GetSplit());
+                        this.AddSplit(upperTrapezoid.GetSplit());
                     }
                     else
                     {
-                        throw new InvalidOperationException($"data error: lower and upper edge not joining at point {start}");
+                        lowerTrapezoid.LeaveInsideByJoin(start);
+                        this.AddSplit(lowerTrapezoid.GetSplit());
                     }
                 }
                 else
                 {
-                    this.HandleTransition(start, next, prev);
+                    var oldEdge = this.activeEdges.EdgeForVertex(start);
+                    var target = next > start ? next : prev;
+                    var newEdge = this.activeEdges.Transition(oldEdge, target);
+
+                    var trapezoid = oldEdge.Data;
+                    trapezoid.Transition(start, newEdge);
+
+                    this.AddSplit(trapezoid.GetSplit());
                 }
             }
         }
 
-        private void FinishOutsideToInside(IActiveEdge<Trapezoid> upperEdge, IActiveEdge<Trapezoid> lowerEdge)
+        private void AddSplit(Tuple<int, int> tuple)
         {
-            Console.WriteLine($"Finish outside to inside {upperEdge.Right}");
-        }
-
-        private void FinishInsideToOutside(IActiveEdge<Trapezoid> upperEdge, IActiveEdge<Trapezoid> lowerEdge)
-        {
-            Console.WriteLine($"Finish inside to outside {upperEdge.Right}");
-        }
-
-        /// <summary>
-        /// A starting vertex from outside to inside (start new trapezoid)
-        /// </summary>
-        /// <param name="edge">the lower edge</param>
-        private void StartOutsideToInside(IActiveEdge<Trapezoid> lowerEdge)
-        {
-            var trapezoid = new Trapezoid(lowerEdge.Left);
-            lowerEdge.Data = lowerEdge.Above.Data = trapezoid;
-        }
-
-        /// <summary>
-        /// A starting vertex from inside to outside (split outer trapezoid)
-        /// </summary>
-        /// <param name="lowerEdge"></param>
-        private void StartInsideToOutside(IActiveEdge<Trapezoid> lowerEdge)
-        {
-            var upperEdge = lowerEdge.Above;
-
-            if (upperEdge.Above.Data == lowerEdge.Below.Data)
+            if (tuple != null)
             {
-                var upperTrapezoid = upperEdge.Above.Data.SplitUpper(upperEdge.Left);
-                upperEdge.Data = upperEdge.Above.Data = upperTrapezoid;
-
-                var lowerTrapezoid = lowerEdge.Below.Data.SplitLower(lowerEdge.Left);
-                lowerEdge.Data = lowerEdge.Below.Data = lowerTrapezoid;
-            }
-            else
-            {
-                var upperTrapezoid = upperEdge.Above.Data.AddLower(upperEdge.Left);
-                upperEdge.Data = upperEdge.Above.Data = upperTrapezoid;
-
-                var lowerTrapezoid = lowerEdge.Below.Data.AddUpper(lowerEdge.Left);
-                lowerEdge.Data = lowerEdge.Below.Data = lowerTrapezoid;
-            }
-        }
-
-        private void HandleTransition(int start, int next, int prev)
-        {
-            if (next < start)
-            {
-                var oldEdge = this.rightToLeft[start];
-                var newEdge = this.activeEdges.Transition(oldEdge, prev);
-                this.rightToLeft.Add(prev, newEdge);
-                this.rightToLeft.Remove(start);
-
-                newEdge.Data = oldEdge.Data.AddLower(start);
-                if (oldEdge.Data == oldEdge.Above.Data)
-                {
-                    newEdge.Above.Data = newEdge.Data;
-                }
-            }
-            else
-            {
-                var oldEdge = this.leftToRight[start];
-                var newEdge = this.activeEdges.Transition(oldEdge, next);
-                this.leftToRight.Add(next, newEdge);
-                this.leftToRight.Remove(start);
-
-                newEdge.Data = oldEdge.Data.AddUpper(start);
-                if (oldEdge.Data == oldEdge.Below.Data)
-                {
-                    newEdge.Below.Data = newEdge.Data;
-                }
+                Console.WriteLine($"Split from {tuple?.Item1} {tuple?.Item2}");
             }
         }
 

@@ -54,6 +54,11 @@ namespace PolygonTriangulation
         /// Gets or sets the associated data. Never modified by the <see cref="SortedActiveEdgeList{TData}"/>.
         /// </summary>
         TData Data { get; set; }
+
+        /// <summary>
+        /// Gets debug information
+        /// </summary>
+        string Debug { get; }
     }
 
     /// <summary>
@@ -66,6 +71,7 @@ namespace PolygonTriangulation
         private readonly IReadOnlyList<Vector2> vertices;
         private readonly IActiveEdge<TData> upperNone;
         private readonly IActiveEdge<TData> lowerNone;
+        private Dictionary<int, IActiveEdge<TData>> vertexToEdge;
 
         /// <summary>
         /// Constructor
@@ -74,6 +80,7 @@ namespace PolygonTriangulation
         public SortedActiveEdgeList(IReadOnlyList<Vector2> vertices)
         {
             this.vertices = vertices;
+            this.vertexToEdge = new Dictionary<int, IActiveEdge<TData>>();
 
             var upper = new Edge(-1, -1, false);
             var lower = new Edge(-1, -1, false);
@@ -86,28 +93,35 @@ namespace PolygonTriangulation
         }
 
         /// <summary>
+        /// Gets the active edge with the right point == vertexId. If there are two edges, it return the lower one.
+        /// </summary>
+        /// <param name="vertexId">the vertex id</param>
+        /// <returns>the edge</returns>
+        public IActiveEdge<TData> EdgeForVertex(int vertexId)
+        {
+            var edge = this.vertexToEdge[vertexId];
+            if (edge.Below.Right == vertexId)
+            {
+                return edge.Below;
+            }
+
+            return edge;
+        }
+
+        /// <summary>
         /// Insert two edges starting in one point.
         /// </summary>
         /// <param name="start">the index of the starting vertex</param>
-        /// <param name="lowerTarget">the end index of the lower edge</param>
-        /// <param name="upperTarget">the end index of the upper edge </param>
+        /// <param name="prev">the end index of the lower edge</param>
+        /// <param name="next">the end index of the upper edge </param>
         /// <param name="reversed">false: the direction is lowerTarget->start->upperTarget</param>
         /// <returns>the lower edge</returns>
         /// <remarks>
         /// There is never a Begin where the lowerTarget has the same X coordinate as start.
         /// </remarks>
-        public IActiveEdge<TData> Begin(int start, int lowerTarget, int upperTarget)
+        public IActiveEdge<TData> Begin(int start, int prev, int next)
         {
-            var lower = new Edge(start, lowerTarget, true);
-            var upper = new Edge(start, upperTarget, false);
-
-            if (CalculateYatX(lower, this.vertices[upperTarget].X) > this.vertices[upperTarget].Y)
-            {
-                var swap = lower;
-                lower = upper;
-                upper = swap;
-            }
-
+            var (lower, upper) = this.CreateSortedStartingEdges(start, prev, next);
             lower.Above = upper;
             upper.Below = lower;
 
@@ -130,7 +144,51 @@ namespace PolygonTriangulation
             ((Edge)upper.Above).Below = upper;
             ((Edge)lower.Below).Above = lower;
 
+            vertexToEdge[upper.Right] = upper;
+            vertexToEdge[lower.Right] = lower;
+
             return lower;
+        }
+
+        /// <summary>
+        /// Create a pair of edges with a common start point. The returned edges are sorted by the end point
+        /// </summary>
+        /// <param name="start">start vertex</param>
+        /// <param name="prev">previous vertex, always > start</param>
+        /// <param name="next">next vertex, always > start</param>
+        /// <returns></returns>
+        private (Edge lower, Edge upper) CreateSortedStartingEdges(int start, int prev, int next)
+        {
+            var prevEdge = new Edge(start, prev, true);
+            var nextEdge = new Edge(start, next, false);
+
+            var startVertex = this.vertices[start];
+            var prevVertex = this.vertices[prev];
+            var nextVertex = this.vertices[next];
+
+            if (startVertex.Y < nextVertex.Y)
+            {
+                if (prevVertex.Y <= startVertex.Y || (prevVertex.X >= nextVertex.X && prevVertex.Y < nextVertex.Y))
+                {
+                    return (prevEdge, nextEdge);
+                }
+            }
+            else
+            {
+                if (prevVertex.Y >= startVertex.Y || (prevVertex.X >= nextVertex.X && prevVertex.Y < nextVertex.Y))
+                {
+                    return (nextEdge, prevEdge);
+                }
+            }
+
+            if (CalculateYatX(prevEdge, this.vertices[next].X) > this.vertices[next].Y)
+            {
+                return (nextEdge, prevEdge);
+            }
+            else
+            {
+                return (prevEdge, nextEdge);
+            }
         }
 
         /// <summary>
@@ -150,6 +208,10 @@ namespace PolygonTriangulation
             ((Edge)nextEdge.Below).Above = nextEdge;
 
             nextEdge.Data = edge.Data;
+
+            this.vertexToEdge.Remove(edge.Right);
+            this.vertexToEdge[nextEdge.Right] = nextEdge;
+
             return nextEdge;
         }
 
@@ -174,6 +236,7 @@ namespace PolygonTriangulation
             {
                 nextUpper.Below = nextLower;
                 nextLower.Above = nextUpper;
+                this.vertexToEdge.Remove(lower.Right);
             }
             else
             {
