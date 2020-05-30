@@ -187,8 +187,8 @@
                 .Where(x => x.Key == x.Value.StartKey)
                 .Select(x => x.Value));
 
-            Console.WriteLine("closed: " + String.Join(" | ", this.closedPolygones.Select(x => x.Debug())));
-            Console.WriteLine("unclosed: " + String.Join(" | ", this.unclosedPolygones.Select(x => x.Debug())));
+            Console.WriteLine("closed: " + String.Join(" | ", this.closedPolygones.Select(x => x.Debug)));
+            Console.WriteLine("unclosed: " + String.Join(" | ", this.unclosedPolygones.Select(x => x.Debug)));
         }
 
         private static void TranslateList(int[] translation, List<int> data)
