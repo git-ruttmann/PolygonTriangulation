@@ -1,64 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace PolygonTriangulation
+﻿namespace PolygonTriangulation
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
+    using Vertex = System.Numerics.Vector2;
+
     /// <summary>
     /// An active edge sorted between all other edges. IsNone is set in the lowest and highest edge
     /// </summary>
-    /// <typeparam name="TData">the data type</typeparam>
+    /// <typeparam name="TData">the type of the stored data</typeparam>
     public interface IActiveEdge<TData>
     {
         /// <summary>
-        /// Gets the start of the edge
+        /// Gets the direction of the edge
         /// </summary>
-        int Start { get; }
+        bool IsRightToLeft { get; }
 
         /// <summary>
-        /// Gets the end of the edge
+        /// Gets the data of the edge below
         /// </summary>
-        int End { get; }
+        TData BelowData { get; }
 
         /// <summary>
-        /// Gets the left vertex of the edge
+        /// Gets the data of the edge above
         /// </summary>
-        int Left { get; }
-
-        /// <summary>
-        /// Gets the right vertex of the edge
-        /// </summary>
-        int Right { get; }
-
-        /// <summary>
-        /// not a real edge
-        /// </summary>
-        bool IsNone { get; }
-
-        /// <summary>
-        /// Gets the edge below this edge
-        /// </summary>
-        IActiveEdge<TData> Below { get; }
-
-        /// <summary>
-        /// Gets the edge above this edge
-        /// </summary>
-        IActiveEdge<TData> Above { get; }
+        TData AboveData { get; }
 
         /// <summary>
         /// Gets or sets the associated data. Never modified by the <see cref="SortedActiveEdgeList{TData}"/>.
         /// </summary>
         TData Data { get; set; }
-
-        /// <summary>
-        /// Gets debug information
-        /// </summary>
-        string Debug { get; }
     }
 
     /// <summary>
@@ -68,32 +39,41 @@ namespace PolygonTriangulation
     public class SortedActiveEdgeList<TData>
     {
         const float epsilon = 1.0E-5f;
-        private readonly IReadOnlyList<Vector2> vertices;
-        private readonly IActiveEdge<TData> upperNone;
-        private readonly IActiveEdge<TData> lowerNone;
-        private Dictionary<int, IActiveEdge<TData>> vertexToEdge;
+        private readonly IReadOnlyList<Vertex> vertices;
+        private readonly Edge upperNone;
+        private readonly Edge lowerNone;
+        private Dictionary<int, Edge> vertexToEdge;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="vertices">the coordinates of the vertices</param>
-        public SortedActiveEdgeList(IReadOnlyList<Vector2> vertices)
+        public SortedActiveEdgeList(IReadOnlyList<Vertex> vertices)
         {
             this.vertices = vertices;
-            this.vertexToEdge = new Dictionary<int, IActiveEdge<TData>>();
+            this.vertexToEdge = new Dictionary<int, Edge>();
 
-            var upper = new Edge(-1, -1, false);
-            var lower = new Edge(-1, -1, false);
-            upper.Below = lower;
-            upper.Above = upper;
-            lower.Above = upper;
-            lower.Below = lower;
-            this.upperNone = upper;
-            this.lowerNone = lower;
+            this.upperNone = new Edge(-1, -1, false);
+            this.lowerNone = new Edge(-1, -1, false);
+            this.lowerNone.Above = this.upperNone;
         }
 
         /// <summary>
-        /// Gets the active edge with the right point == vertexId. If there are two edges, it return the lower one.
+        /// Gets all edges starting from the lowest
+        /// </summary>
+        public IEnumerable<IActiveEdge<TData>> Edges
+        {
+            get
+            {
+                for (var edge = this.lowerNone.Above; !edge.IsNone; edge = edge.Above)
+                {
+                    yield return edge;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the active edge with right point == vertexId. If there are two edges, it return the lower one.
         /// </summary>
         /// <param name="vertexId">the vertex id</param>
         /// <returns>the edge</returns>
@@ -115,39 +95,41 @@ namespace PolygonTriangulation
         /// <param name="prev">the end index of the lower edge</param>
         /// <param name="next">the end index of the upper edge </param>
         /// <param name="reversed">false: the direction is lowerTarget->start->upperTarget</param>
-        /// <returns>the lower edge</returns>
+        /// <returns>(lower edge, upper edge)</returns>
         /// <remarks>
-        /// There is never a Begin where the lowerTarget has the same X coordinate as start.
+        /// There is never a Begin() where the prev or next is left to start or prev is at same X and below start.
         /// </remarks>
-        public IActiveEdge<TData> Begin(int start, int prev, int next)
+        public (IActiveEdge<TData> lower, IActiveEdge<TData> upper) Begin(int start, int prev, int next)
         {
-            var (lower, upper) = this.CreateSortedStartingEdges(start, prev, next);
-            lower.Above = upper;
-            upper.Below = lower;
+            var lower = this.CreateAndSortPairOfEdges(start, prev, next);
 
+            var below = this.FindEdgeBelowVertex(start);
+            below.InsertAbove(lower);
+
+            var upper = lower.Above;
+            this.vertexToEdge[upper.Right] = upper;
+            this.vertexToEdge[lower.Right] = lower;
+
+            return (lower, upper);
+        }
+
+        /// <summary>
+        /// Find the edge that is below the vertex. Edge.Above is above the vertex.
+        /// </summary>
+        /// <param name="vertexId">the id of the vertex</param>
+        /// <returns>the edge below the vertex.</returns>
+        private Edge FindEdgeBelowVertex(int vertexId)
+        {
             // superslow.....
-            var startVertex = this.vertices[start];
-            var below = this.lowerNone;
             for (var candidate = this.upperNone.Below; !candidate.IsNone; candidate = candidate.Below)
             {
-                if (this.CalculateYatX(candidate, startVertex.X) < startVertex.Y)
+                if (candidate.IsVertexAbove(vertexId, this.vertices))
                 {
-                    below = candidate;
-                    break;
+                    return candidate;
                 }
             }
 
-            var above = below.Above;
-            lower.Below = below;
-            upper.Above = above;
-
-            ((Edge)upper.Above).Below = upper;
-            ((Edge)lower.Below).Above = lower;
-
-            vertexToEdge[upper.Right] = upper;
-            vertexToEdge[lower.Right] = lower;
-
-            return lower;
+            return this.lowerNone;
         }
 
         /// <summary>
@@ -156,38 +138,21 @@ namespace PolygonTriangulation
         /// <param name="start">start vertex</param>
         /// <param name="prev">previous vertex, always > start</param>
         /// <param name="next">next vertex, always > start</param>
-        /// <returns></returns>
-        private (Edge lower, Edge upper) CreateSortedStartingEdges(int start, int prev, int next)
+        /// <returns>the lower edge</returns>
+        private Edge CreateAndSortPairOfEdges(int start, int prev, int next)
         {
             var prevEdge = new Edge(start, prev, true);
             var nextEdge = new Edge(start, next, false);
 
-            var startVertex = this.vertices[start];
-            var prevVertex = this.vertices[prev];
-            var nextVertex = this.vertices[next];
-
-            if (startVertex.Y < nextVertex.Y)
+            if (prevEdge.IsVertexAbove(next, this.vertices))
             {
-                if (prevVertex.Y <= startVertex.Y || (prevVertex.X >= nextVertex.X && prevVertex.Y < nextVertex.Y))
-                {
-                    return (prevEdge, nextEdge);
-                }
+                prevEdge.Above = nextEdge;
+                return prevEdge;
             }
             else
             {
-                if (prevVertex.Y >= startVertex.Y || (prevVertex.X >= nextVertex.X && prevVertex.Y < nextVertex.Y))
-                {
-                    return (nextEdge, prevEdge);
-                }
-            }
-
-            if (CalculateYatX(prevEdge, this.vertices[next].X) > this.vertices[next].Y)
-            {
-                return (nextEdge, prevEdge);
-            }
-            else
-            {
-                return (prevEdge, nextEdge);
+                nextEdge.Above = prevEdge;
+                return nextEdge;
             }
         }
 
@@ -200,16 +165,10 @@ namespace PolygonTriangulation
         /// <returns>the new edge</returns>
         public IActiveEdge<TData> Transition(IActiveEdge<TData> edge, int newTarget)
         {
-            var nextEdge = new Edge(edge.Right, newTarget, edge.Right != edge.End);
+            var currentEdge = (Edge)edge;
+            var nextEdge = currentEdge.CreateTransition(newTarget);
 
-            nextEdge.Above = edge.Above;
-            nextEdge.Below = edge.Below;
-            ((Edge)nextEdge.Above).Below = nextEdge;
-            ((Edge)nextEdge.Below).Above = nextEdge;
-
-            nextEdge.Data = edge.Data;
-
-            this.vertexToEdge.Remove(edge.Right);
+            this.vertexToEdge.Remove(currentEdge.Right);
             this.vertexToEdge[nextEdge.Right] = nextEdge;
 
             return nextEdge;
@@ -218,85 +177,155 @@ namespace PolygonTriangulation
         /// <summary>
         /// Two edges join in a final vertex
         /// </summary>
-        /// <param name="lower">the lower edge</param>
-        /// <param name="upper">the upper edge</param>
-        public void Finish(IActiveEdge<TData> lower, IActiveEdge<TData> upper)
+        /// <param name="lowerEdge">the lower edge</param>
+        public void Finish(IActiveEdge<TData> lower)
         {
-            if (lower.Right != upper.Right)
-            {
-                throw new InvalidOperationException("Internal error: joined edges must have the same vertex on the right");
-            }
+            var lowerEdge = (Edge)lower;
+            lowerEdge.Below.Above = lowerEdge.Above.Above;
 
-            if (lower.Above != upper || upper.Below != lower)
-            {
-                throw new InvalidOperationException("Internal error: can't join non-adjacent edges");
-            }
-
-            if (lower.Below is Edge nextLower && upper.Above is Edge nextUpper)
-            {
-                nextUpper.Below = nextLower;
-                nextLower.Above = nextUpper;
-                this.vertexToEdge.Remove(lower.Right);
-            }
-            else
-            {
-                throw new InvalidOperationException("Can't operate without internal IActiveEdge implementation");
-            }
+            this.vertexToEdge.Remove(lowerEdge.Right);
         }
 
-        private float CalculateYatX(IActiveEdge<TData> edge, float x)
-        {
-            var left = this.vertices[edge.Left];
-            var right = this.vertices[edge.Right];
-            var xSpan = right.X - left.X;
-
-            // during a start operation, the start.Y will always be larger than left.Y and right.Y of a vertical edge, 
-            // otherwise start would have been sorted between left and right. So it's no difference to return left.Y or right.Y
-            if (xSpan < epsilon)
-            {
-                return left.Y;
-            }
-
-            return (x - left.X) / (xSpan) * (right.Y - left.Y) + left.Y;
-        }
-
-        [DebuggerDisplay("{Debug}")]
+        /// <summary>
+        /// Internal representation of an edge
+        /// </summary>
         private class Edge : IActiveEdge<TData>
         {
-            public Edge(int left, int right, bool reverse)
+            private Edge above;
+
+            public Edge(int left, int right, bool isRightToLeft)
             {
-                this.Start = reverse ? right : left;
-                this.End = reverse ? left : right;
+                this.IsRightToLeft = isRightToLeft;
                 this.Left = left;
                 this.Right = right;
                 this.IsNone = left < 0 && right < 0;
             }
 
             /// <inheritdoc/>
-            public int Start { get; private set; }
+            public bool IsRightToLeft { get; }
 
             /// <inheritdoc/>
-            public int End { get; private set; }
+            public int Left { get; }
 
             /// <inheritdoc/>
-            public int Left { get; private set; }
+            public int Right { get; }
 
             /// <inheritdoc/>
-            public int Right { get; private set; }
+            public bool IsNone { get; }
 
-            /// <inheritdoc/>
-            public bool IsNone { get; private set; }
+            /// <summary>
+            /// Gets or sets the edge below this edge
+            /// </summary>
+            public Edge Below { get; private set; }
 
-            public string Debug => Start == Left ? $"{Left}>{Right}" : $"{Left}<{Right}";
-
-            /// <inheritdoc/>
-            public IActiveEdge<TData> Below { get; set; }
-
-            /// <inheritdoc/>
-            public IActiveEdge<TData> Above { get; set; }
+            /// <summary>
+            /// Gets or sets the edge above this edge
+            /// </summary>
+            public Edge Above 
+            { 
+                get => this.above;
+                set
+                {
+                    this.above = value;
+                    value.Below = this;
+                }
+            }
 
             /// <inheritdoc/>
             public TData Data { get; set; }
+
+            /// <inheritdoc/>
+            public TData BelowData => this.Below.Data;
+
+            /// <inheritdoc/>
+            public TData AboveData => this.Above.Data;
+
+            /// <summary>
+            /// Test if the vertex is above this edge.
+            /// </summary>
+            /// <param name="vertexId">the id of the vertex</param>
+            /// <param name="vertices">the vertex list</param>
+            /// <returns>true if the verex is above</returns>
+            public bool IsVertexAbove(int vertexId, IReadOnlyList<Vertex> vertices)
+            {
+                var vertex = vertices[vertexId];
+                var left = vertices[this.Left];
+                var right = vertices[this.Right];
+
+                // this is very likely as the points are added in order left to right
+                if (vertex.X >= left.X)
+                {
+                    if (vertex.Y > left.Y)
+                    {
+                        if (left.Y >= right.Y || (vertex.X < right.X && vertex.Y > right.Y))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (left.Y < right.Y || (vertex.X < right.X && vertex.Y < right.Y))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return this.IsVertexAboveSlow(vertexId, vertices);
+            }
+
+            /// <summary>
+            /// Test if the vertex is above this edge by calculating the edge.Y at vertex.X
+            /// </summary>
+            /// <param name="vertexId">the id of the vertex</param>
+            /// <param name="vertices">the vertex list</param>
+            /// <returns>true if the verex is above</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private bool IsVertexAboveSlow(int vertexId, IReadOnlyList<Vertex> vertices)
+            {
+                var vertex = vertices[vertexId];
+
+                var left = vertices[this.Left];
+                var right = vertices[this.Right];
+                var xSpan = right.X - left.X;
+
+                // during a start operation, the start.Y will always be larger than left.Y and right.Y of a vertical edge, 
+                // otherwise start would have been sorted between left and right. So it's no difference to test against left.Y or right.Y
+                if (xSpan < epsilon)
+                {
+                    return vertex.Y > left.Y;
+                }
+
+                var yOfEdgeAtVertex = (vertex.X - left.X) / (xSpan) * (right.Y - left.Y) + left.Y;
+                return yOfEdgeAtVertex < vertex.Y;
+            }
+
+            public override string ToString()
+            {
+                return $"{this.Left}{(this.IsRightToLeft ? "<" : ">")}{this.Right}";
+            }
+
+            public Edge CreateTransition(int newTarget)
+            {
+                var nextEdge = new Edge(this.Right, newTarget, this.IsRightToLeft)
+                {
+                    Data = this.Data,
+                    Above = this.Above,
+                };
+
+                this.Below.Above = nextEdge;
+                return nextEdge;
+            }
+
+            /// <summary>
+            /// Insert the new above between this and the current above
+            /// </summary>
+            /// <param name="newAbove">the element that's newly above this edge</param>
+            public void InsertAbove(Edge newAbove)
+            {
+                newAbove.Above.Above = this.Above;
+                this.Above = newAbove;
+            }
         }
     }
 }

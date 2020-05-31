@@ -244,52 +244,67 @@
         {
             if (vertexId < prev && vertexId < next)
             {
-                var edge = this.activeEdges.Begin(vertexId, prev, next);
-                if (edge.End == edge.Left)
-                {
-                    Trapezoid.EnterInsideBySplit(vertexId, edge);
-                }
-                else
-                {
-                    var trapezoid = edge.Below.Data;
-                    trapezoid.LeaveInsideBySplit(vertexId, edge);
-                    this.DetectSplit(trapezoid);
-                }
+                this.HandleSplit(vertexId, next, prev);
             }
             else if (vertexId > prev && vertexId > next)
             {
-                var edge = this.activeEdges.EdgeForVertex(vertexId);
-                activeEdges.Finish(edge, edge.Above);
-
-                var lowerTrapezoid = edge.Data;
-                var upperTrapezoid = edge.Above.Data;
-                if (edge.Left == prev)
-                {
-                    Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, vertexId);
-                    this.DetectSplit(lowerTrapezoid);
-                    this.DetectSplit(upperTrapezoid);
-                }
-                else
-                {
-                    lowerTrapezoid.LeaveInsideByJoin(vertexId);
-                    this.DetectSplit(lowerTrapezoid);
-                }
+                this.HandleJoin(vertexId);
             }
             else
             {
-                var oldEdge = this.activeEdges.EdgeForVertex(vertexId);
-                var trapezoid = oldEdge.Data;
-                if (next > vertexId)
-                {
-                    var newEdge = this.activeEdges.Transition(oldEdge, next);
-                    trapezoid.TransitionOnUpperEdge(vertexId, newEdge);
-                }
-                else
-                {
-                    var newEdge = this.activeEdges.Transition(oldEdge, prev);
-                    trapezoid.TransitionOnLowerEdge(vertexId, newEdge);
-                }
+                this.HandleTransition(vertexId, next, prev);
+            }
+        }
 
+        private void HandleTransition(int vertexId, int next, int prev)
+        {
+            var oldEdge = this.activeEdges.EdgeForVertex(vertexId);
+            var trapezoid = oldEdge.Data;
+            if (oldEdge.IsRightToLeft)
+            {
+                var newEdge = this.activeEdges.Transition(oldEdge, prev);
+                trapezoid.TransitionOnLowerEdge(vertexId, newEdge);
+            }
+            else
+            {
+                var newEdge = this.activeEdges.Transition(oldEdge, next);
+                trapezoid.TransitionOnUpperEdge(vertexId, newEdge);
+            }
+
+            this.DetectSplit(trapezoid);
+        }
+
+        private void HandleJoin(int vertexId)
+        {
+            var lowerEdge = this.activeEdges.EdgeForVertex(vertexId);
+            activeEdges.Finish(lowerEdge);
+
+            var lowerTrapezoid = lowerEdge.Data;
+            if (lowerEdge.IsRightToLeft)
+            {
+                lowerTrapezoid.LeaveInsideByJoin(vertexId);
+                this.DetectSplit(lowerTrapezoid);
+            }
+            else
+            {
+                var upperTrapezoid = lowerEdge.AboveData;
+                Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, vertexId);
+                this.DetectSplit(lowerTrapezoid);
+                this.DetectSplit(upperTrapezoid);
+            }
+        }
+
+        private void HandleSplit(int vertexId, int next, int prev)
+        {
+            var (lowerEdge, upperEdge) = this.activeEdges.Begin(vertexId, prev, next);
+            if (lowerEdge.IsRightToLeft)
+            {
+                Trapezoid.EnterInsideBySplit(vertexId, lowerEdge, upperEdge);
+            }
+            else
+            {
+                var trapezoid = lowerEdge.BelowData;
+                trapezoid.LeaveInsideBySplit(vertexId, lowerEdge, upperEdge);
                 this.DetectSplit(trapezoid);
             }
         }

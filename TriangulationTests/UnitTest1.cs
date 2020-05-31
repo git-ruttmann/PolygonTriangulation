@@ -35,16 +35,13 @@
             };
 
             var sorted = new SortedActiveEdgeList<int>(vertices);
-            var b0 = sorted.Begin(0, 5, 6);
-            var b0Upper = b0.Above;
+            var (b0, b0Upper) = sorted.Begin(0, 5, 6);
             Assert.IsTrue(VerifySortedEdges(b0, 0,5, 0,6));
 
-            var b1 = sorted.Begin(1, 3, 4);
-            var b1Upper = b1.Above;
+            var (b1, b1Upper) = sorted.Begin(1, 3, 4);
             Assert.IsTrue(VerifySortedEdges(b0, 0,5, 0,6, 1,3, 1,4));
 
-            var b2 = sorted.Begin(2, 7, 12);
-            var b2Upper = b2.Above;
+            var (b2, b2Upper) = sorted.Begin(2, 7, 12);
             Assert.IsTrue(VerifySortedEdges(b0, 0,5, 0,6, 1,3, 2,7, 2,12, 1,4));
 
             var t3 = sorted.Transition(b1, 6);
@@ -56,54 +53,55 @@
             var t5 = sorted.Transition(b0, 9);
             Assert.IsTrue(VerifySortedEdges(t5, 5,9, 0,6, 3,6, 2,7, 2,12, 4,12));
 
-            sorted.Finish(b0Upper, t3);
+            sorted.Finish(b0Upper);
             Assert.IsTrue(VerifySortedEdges(t5, 5,9, 2,7, 2,12, 4,12));
 
             var t7 = sorted.Transition(b2, 11);
             Assert.IsTrue(VerifySortedEdges(t5, 5,9, 7,11, 2,12, 4,12));
 
-            var b8 = sorted.Begin(8, 10, 11);
-            var b8Upper = b8.Above;
+            var (b8, b8Upper) = sorted.Begin(8, 10, 11);
             Assert.IsTrue(VerifySortedEdges(t5, 5,9, 8,10, 8,11, 7,11, 2,12, 4,12));
 
             var t9 = sorted.Transition(t5, 10);
             Assert.IsTrue(VerifySortedEdges(t9, 9,10, 8,10, 8,11, 7,11, 2,12, 4,12));
 
-            sorted.Finish(t9, b8);
+            sorted.Finish(t9);
             Assert.IsTrue(VerifySortedEdges(t9, 8,11, 7,11, 2,12, 4,12));
 
-            sorted.Finish(b8Upper, t7);
+            sorted.Finish(b8Upper);
             Assert.IsTrue(VerifySortedEdges(t9, 2,12, 4,12));
 
-            sorted.Finish(b2Upper, t4);
+            sorted.Finish(b2Upper);
             Assert.IsTrue(VerifySortedEdges(t9));
         }
 
         private bool VerifySortedEdges(IActiveEdge<int> edge, params int[] edgePairs)
         {
-            while (!edge.IsNone)
+            var edgeTesting = (IActiveEdgeTesting<int>)edge;
+
+            while (!edgeTesting.IsNone)
             {
-                edge = edge.Below;
+                edgeTesting = edgeTesting.Below;
             }
 
-            edge = edge.Above;
+            edgeTesting = edgeTesting.Above;
 
             for (int i = 0; i < edgePairs.Length; i += 2)
             {
-                if (edge.Left != edgePairs[i])
+                if (((IActiveEdgeTesting<int>)edgeTesting).Left != edgePairs[i])
                 {
                     return false;
                 }
 
-                if (edge.Right != edgePairs[i + 1])
+                if (((IActiveEdgeTesting<int>)edgeTesting).Right != edgePairs[i + 1])
                 {
                     return false;
                 }
 
-                edge = edge.Above;
+                edgeTesting = edgeTesting.Above;
             }
 
-            if (!edge.IsNone)
+            if (!edgeTesting.IsNone)
             {
                 return false;
             }

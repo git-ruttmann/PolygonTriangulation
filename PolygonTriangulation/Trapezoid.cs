@@ -103,16 +103,20 @@
         /// A left pointing cusp that enters the polygon space.
         /// </summary>
         /// <param name="vertexId">the vertex id of the cusp</param>
-        /// <param name="lowerEdge">the lower edge of the cusp</param>
-        public static void EnterInsideBySplit(int vertexId, IEdge lowerEdge)
+        /// <param name="lowerEdge">the lower edge of the new split</param>
+        /// <param name="upperEdge">the upper edge of the new split</param>
+        /// <param name="splitter">the polygon splitter</param>
+        public static void EnterInsideBySplit(int vertexId, IEdge lowerEdge, IEdge upperEdge, IPolygonSplitter splitter)
         {
-            new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, lowerEdge.Above);
+            new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, upperEdge);
         }
 
         /// <summary>
         /// A right pointing cusp that enters the polygon space. Join the upper left and the lower left trapezoids in one.
         /// </summary>
         /// <param name="vertexId">the vertex id that joins the two edges.</param>
+        /// <param name="lower">the left lower trapezoid</param>
+        /// <param name="upper">the left upper trapezoid</param>
         /// <param name="splitter">the polygon splitter</param>
         public static void EnterInsideByJoin(Trapezoid lower, Trapezoid upper, int vertexId, IPolygonSplitter splitter)
         {
@@ -126,13 +130,15 @@
         /// A cusp that transitions from inside to outside. Splits the Trapezoid by one point.
         /// </summary>
         /// <param name="vertexId">the vertex id of the start point</param>
-        /// <param name="edge">the lower edge or the split</param>
-        public void LeaveInsideBySplit(int vertexId, IEdge edge)
+        /// <param name="lowerEdge">the lower edge of the new split</param>
+        /// <param name="upperEdge">the upper edge of the new split</param>
+        /// <param name="splitter">the polygon splitter</param>
+        public void LeaveInsideBySplit(int vertexId, IEdge lowerEdge, IEdge upperEdge, IPolygonSplitter splitter)
         {
             this.EvaluateRight(vertexId, Base.TwoNeighbors, splitter);
 
-            new Trapezoid(vertexId, Base.LowerCorner, edge.Above, this.upperEdge);
-            new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, edge);
+            new Trapezoid(vertexId, Base.LowerCorner, upperEdge, this.upperEdge);
+            new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, lowerEdge);
         }
 
         /// <summary>
