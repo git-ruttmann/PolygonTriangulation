@@ -8,7 +8,7 @@
     /// <summary>
     /// Build a list of triangles from polygon edges
     /// </summary>
-    public class PlaneMeshBuilder
+    public class PlaneMeshBuilder : IPolygonSplitter
     {
         private readonly Plane plane;
         private readonly List<int> pseudoTriangles;
@@ -19,6 +19,7 @@
         private readonly Quaternion rotation;
         private List<Vector3> vertices3D;
         private SortedActiveEdgeList<Trapezoid> activeEdges;
+        private IPolygonSplitter polygonSplitter;
 
         public PlaneMeshBuilder(Plane plane)
         {
@@ -29,6 +30,7 @@
             this.vertices2D = new List<Vector2>();
             this.closedPolygones = new List<PolygonLine>();
             this.unclosedPolygones = new List<PolygonLine>();
+            this.polygonSplitter = this;
             this.rotation = Quaternion.Identity;
                 // .FromToRotation(this.plane.Normal, new Vector3(0, 0, -1));
         }
@@ -96,7 +98,6 @@
         {
             this.ClusterVertices();
             this.JoinEdgesToPolygones();
-            this.BuildOrientationArray();
             this.FindPlanePolygones();
         }
 
@@ -263,15 +264,13 @@
             if (oldEdge.IsRightToLeft)
             {
                 var newEdge = this.activeEdges.Transition(oldEdge, prev);
-                trapezoid.TransitionOnLowerEdge(vertexId, newEdge);
+                trapezoid.TransitionOnLowerEdge(vertexId, newEdge, this.polygonSplitter);
             }
             else
             {
                 var newEdge = this.activeEdges.Transition(oldEdge, next);
-                trapezoid.TransitionOnUpperEdge(vertexId, newEdge);
+                trapezoid.TransitionOnUpperEdge(vertexId, newEdge, this.polygonSplitter);
             }
-
-            this.DetectSplit(trapezoid);
         }
 
         private void HandleJoin(int vertexId)
@@ -282,15 +281,12 @@
             var lowerTrapezoid = lowerEdge.Data;
             if (lowerEdge.IsRightToLeft)
             {
-                lowerTrapezoid.LeaveInsideByJoin(vertexId);
-                this.DetectSplit(lowerTrapezoid);
+                lowerTrapezoid.LeaveInsideByJoin(vertexId, this.polygonSplitter);
             }
             else
             {
                 var upperTrapezoid = lowerEdge.AboveData;
-                Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, vertexId);
-                this.DetectSplit(lowerTrapezoid);
-                this.DetectSplit(upperTrapezoid);
+                Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, vertexId, this.polygonSplitter);
             }
         }
 
@@ -299,41 +295,18 @@
             var (lowerEdge, upperEdge) = this.activeEdges.Begin(vertexId, prev, next);
             if (lowerEdge.IsRightToLeft)
             {
-                Trapezoid.EnterInsideBySplit(vertexId, lowerEdge, upperEdge);
+                Trapezoid.EnterInsideBySplit(vertexId, lowerEdge, upperEdge, this.polygonSplitter);
             }
             else
             {
                 var trapezoid = lowerEdge.BelowData;
-                trapezoid.LeaveInsideBySplit(vertexId, lowerEdge, upperEdge);
-                this.DetectSplit(trapezoid);
+                trapezoid.LeaveInsideBySplit(vertexId, lowerEdge, upperEdge, this.polygonSplitter);
             }
         }
 
-        private void DetectSplit(Trapezoid trapezoid)
+        public void SplitPolygon(int leftVertex, int rightVertex)
         {
-            if (trapezoid.IsSplit)
-            {
-                Console.WriteLine($"Split from {trapezoid.LeftVertex} {trapezoid.RightVertex}");
-            }
-        }
-
-        private void BuildOrientationArray()
-        {
-            Console.WriteLine("3D " + String.Join(" ", this.vertices3D));
-            Console.WriteLine("2D " + String.Join(" ", this.vertices2D));
-
-            foreach (var polygon in this.closedPolygones)
-            {
-                var dots = polygon.ToIndexes().Select(x => this.vertices2D[x]).ToArray();
-                var dotsBackShifted = Enumerable.Repeat(dots.Last(), 1).Concat(dots);
-                var vectors = dotsBackShifted.Zip(dots, (previous, current) => current - previous);
-                var orientation = vectors.Skip(1).Concat(vectors.Take(1)).Zip(vectors, (x, y) => x.X * (x.Y + y.Y) - (x.X + y.X) * x.Y).ToArray();
-
-                Console.WriteLine("Indexes " + String.Join(" ", polygon.ToIndexes()));
-                Console.WriteLine("Vertizes " + String.Join(" ", dots));
-                Console.WriteLine("2D Vectors " + String.Join(" ", vectors));
-                Console.WriteLine("Orientation " + String.Join(" ", orientation) + " sum " + orientation.Sum());
-            }
+            Console.WriteLine($"Split from {leftVertex} {rightVertex}");
         }
     }
 }
