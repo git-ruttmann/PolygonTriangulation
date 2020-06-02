@@ -205,16 +205,20 @@
                 last = vertex;
             }
 
-            /*
             last = counter.Last();
             foreach (var dot in counter)
             {
                 planeMeshBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(dot.X, dot.Y, 0));
                 last = dot;
             }
-            */
 
-            planeMeshBuilder.Build();
+            var result = planeMeshBuilder.Build();
+            for (int i = 0; i < result.Triangles.Length; i += 3)
+            {
+                Console.WriteLine($"{result.Triangles[i + 0]} {result.Triangles[i + 1]} {result.Triangles[i + 2]}");
+            }
+
+            Assert.AreEqual(3 * 17, result.Triangles.Length);
         }
 
         /// <summary>
