@@ -60,7 +60,7 @@
         /// <summary>
         /// Finally, build the triangles
         /// </summary>
-        /// <param name="collector"
+        /// <param name="collector">the triangle collector</param>
         public void BuildTriangles(ITriangleCollector collector)
         {
             var splits = ScanSplitByTrapezoidation.BuildSplits(this.polygon);
