@@ -73,7 +73,7 @@
         }
 
         /// <summary>
-        /// Gets the active edge with right point == vertexId. If there are two edges, it return the lower one.
+        /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
         /// </summary>
         /// <param name="vertexId">the vertex id</param>
         /// <returns>the edge</returns>
