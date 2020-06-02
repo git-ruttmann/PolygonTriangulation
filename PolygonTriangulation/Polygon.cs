@@ -82,16 +82,38 @@
             return new PolygonBuilder(vertices);
         }
 
-        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IEnumerable<PolygonLine> lines)
+        /// <summary>
+        /// create a polygon from multiple polygon lines
+        /// </summary>
+        /// <param name="vertexCoordinates">the vertex coordinates</param>
+        /// <param name="lines">the polygon lines.</param>
+        /// <returns>a polygon</returns>
+        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines)
         {
-            var builder = new PolygonBuilder(vertexCoordinates);
-            foreach (var polygonLine in lines)
+            var chain = new VertexChain[lines.Sum(x => x.Count)];
+            var id = 0;
+            var first = id;
+            var polygonId = 1;
+            var vertexToChain = new int[vertexCoordinates.Length];
+
+            foreach (var line in lines)
             {
-                builder.AddVertices(polygonLine.ToIndexes());
-                builder.ClosePartialPolygon();
+                foreach (var vertexId in line)
+                {
+                    chain[id].VertexId = vertexId;
+                    chain[id].PolygonId = polygonId;
+                    chain[id].SameVertexChain = -1;
+                    SetNext(chain, id, id == chain.Length - 1 ? first : id + 1);
+                    vertexToChain[vertexId] = id++;
+                }
+
+                SetNext(chain, id - 1, first);
+                first = id;
+                polygonId++;
             }
 
-            return builder.Close();
+            var data = new SharedData(polygonId - 1, vertexCoordinates, chain, vertexToChain);
+            return new Polygon(0, data);
         }
 
         /// <summary>
@@ -331,7 +353,7 @@
         /// <summary>
         /// Information about an element in the vertex chain.
         /// </summary>
-        [DebuggerDisplay("{PrevVertex}>{VertexId}>{NextVertex}")]
+        [DebuggerDisplay("{Prev}>{Id}>{Next}")]
         private class VertexInfo : IPolygonVertexInfo
         {
             private readonly int element;

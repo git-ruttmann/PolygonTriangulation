@@ -199,10 +199,10 @@
 
             var planeMeshBuilder = new PlaneMeshBuilder(new Plane(new Vector3(0, 0, -1), 0));
             var last = clockwise.Last();
-            foreach (var dot in clockwise)
+            foreach (var vertex in clockwise)
             {
-                planeMeshBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(dot.X, dot.Y, 0));
-                last = dot;
+                planeMeshBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
             }
 
             /*
@@ -215,6 +215,42 @@
             */
 
             planeMeshBuilder.Build();
+        }
+
+        /// <summary>
+        /// Build a polygon by adding multile edges
+        /// </summary>
+        [TestMethod]
+        public void BuildPolygonFromEdges()
+        {
+            var clockwise = new[]
+            {
+                new Vertex(1, 1),
+                new Vertex(2.5f, 2),
+                new Vertex(2, 2),
+                new Vertex(1, 3),
+                new Vertex(2, 4),
+                new Vertex(4, 4),
+                new Vertex(1.5f, 3),
+                new Vertex(2.5f, 3),
+                new Vertex(4, 3.5f),
+//                new Vertex(2.25f, 2.5f),
+                new Vertex(3, 2.5f),
+                new Vertex(4, 1.5f),
+                new Vertex(3.5f, 1),
+                new Vertex(2.5f, 1),
+            };
+
+            var builder = new EdgesToPolygonBuilder();
+            var last = clockwise.Last();
+            foreach (var vertex in clockwise)
+            {
+                builder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
+            }
+
+            var result = builder.BuildPolygon();
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", String.Join(" ", result.Polygon.Indices));
         }
 
         /// <summary>
