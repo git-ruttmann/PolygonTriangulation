@@ -49,8 +49,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EdgesToPolygonBuilder.cs" />
-    <Compile Include="PlaneMeshBuilder.cs" />
+    <Compile Include="PlanePolygonBuilder.cs" />
     <Compile Include="Polygon.cs" />
     <Compile Include="PolygonTriangulator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

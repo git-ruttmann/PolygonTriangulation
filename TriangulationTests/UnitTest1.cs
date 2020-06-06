@@ -197,7 +197,7 @@
                 new Vertex(2.5f, 2.5f),
             };
 
-            var planeMeshBuilder = new PlaneMeshBuilder(new Plane(new Vector3(0, 0, -1), 0));
+            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(new Vector3(0, 0, -1), 0));
             var last = clockwise.Last();
             foreach (var vertex in clockwise)
             {
@@ -245,7 +245,7 @@
                 new Vertex(2.5f, 1),
             };
 
-            var builder = new EdgesToPolygonBuilder();
+            var builder = PlanePolygonBuilder.CreatePolygonBuilder();
             var last = clockwise.Last();
             foreach (var vertex in clockwise)
             {
@@ -285,7 +285,7 @@
                 new Vertex(4.5f, 0),
             };
 
-            var planeMeshBuilder = new PlaneMeshBuilder(new Plane(new Vector3(0, 0, -1), 0));
+            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(new Vector3(0, 0, -1), 0));
             var last = clockwise.Last();
             foreach (var dot in clockwise)
             {
