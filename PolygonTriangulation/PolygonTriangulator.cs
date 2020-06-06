@@ -82,11 +82,11 @@
         }
 
         /// <summary>
-        /// Traverse the polygon, build trapezoids and evaluate possible splits
+        /// Traverse the polygon, build trapezoids and collect possible splits
         /// </summary>
-        private class ScanSplitByTrapezoidation : IPolygonSplitter
+        private class ScanSplitByTrapezoidation : IPolygonSplitSink
         {
-            private readonly SortedActiveEdgeList<Trapezoid> activeEdges;
+            private readonly Trapezoidation activeEdges;
             private readonly List<Tuple<int, int>> splits;
             private readonly Polygon polygon;
 
@@ -95,7 +95,7 @@
                 this.splits = new List<Tuple<int, int>>();
                 this.polygon = polygon;
 
-                this.activeEdges = new SortedActiveEdgeList<Trapezoid>(this.polygon.Vertices);
+                this.activeEdges = new Trapezoidation(this.polygon.Vertices, this);
             }
 
             /// <summary>
@@ -115,86 +115,28 @@
             /// </summary>
             public void BuildSplits()
             {
-                foreach (var vertexInfo in this.polygon.OrderedVertexes)
+                foreach (var info in this.polygon.OrderedVertexes)
                 {
-                    this.HandleVertex(vertexInfo);
+                    var (id, prev, next) = (info.Id, info.Prev, info.Next);
+                    if (id < prev && id < next)
+                    {
+                        this.activeEdges.HandleOpeningCusp(id, prev, next);
+                    }
+                    else if (id > prev && id > next)
+                    {
+                        this.activeEdges.HandleClosingCusp(id);
+                    }
+                    else
+                    {
+                        this.activeEdges.HandleTransition(id, prev, next);
+                    }
                 }
             }
 
             /// <inheritdoc/>
-            public void SplitPolygon(int leftVertex, int rightVertex)
+            void IPolygonSplitSink.SplitPolygon(int leftVertex, int rightVertex)
             {
                 this.splits.Add(Tuple.Create(leftVertex, rightVertex));
-            }
-
-            /// <summary>
-            /// Handle a vertex in context of its previous and next vertex
-            /// </summary>
-            /// <param name="vertexId">the id of the vertex</param>
-            /// <param name="next">the next vertex in the polygon</param>
-            /// <param name="prev">the previous vertex in the polygon</param>
-            private void HandleVertex(IPolygonVertexInfo info)
-            {
-                if (info.Id < info.Prev && info.Id < info.Next)
-                {
-                    this.HandleOpeningCusp(info);
-                }
-                else if (info.Id > info.Prev && info.Id > info.Next)
-                {
-                    this.HandleClosingCusp(info);
-                }
-                else
-                {
-                    this.HandleTransition(info);
-                }
-            }
-
-            private void HandleOpeningCusp(IPolygonVertexInfo info)
-            {
-                var (lowerEdge, upperEdge) = this.activeEdges.Begin(info.Id, info.Prev, info.Next);
-                if (lowerEdge.IsRightToLeft)
-                {
-                    Trapezoid.EnterInsideBySplit(info.Id, lowerEdge, upperEdge, this);
-                }
-                else
-                {
-                    var trapezoid = lowerEdge.BelowData;
-                    trapezoid.LeaveInsideBySplit(info.Id, lowerEdge, upperEdge, this);
-                }
-            }
-
-            private void HandleClosingCusp(IPolygonVertexInfo info)
-            {
-                var lowerEdge = this.activeEdges.EdgeForVertex(info.Id);
-
-                var lowerTrapezoid = lowerEdge.Data;
-                if (lowerEdge.IsRightToLeft)
-                {
-                    lowerTrapezoid.LeaveInsideByJoin(info.Id, this);
-                }
-                else
-                {
-                    var upperTrapezoid = lowerEdge.AboveData;
-                    Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, info.Id, this);
-                }
-
-                this.activeEdges.Finish(lowerEdge);
-            }
-
-            private void HandleTransition(IPolygonVertexInfo info)
-            {
-                var oldEdge = this.activeEdges.EdgeForVertex(info.Id);
-                var trapezoid = oldEdge.Data;
-                if (oldEdge.IsRightToLeft)
-                {
-                    var newEdge = this.activeEdges.Transition(oldEdge, info.Prev);
-                    trapezoid.TransitionOnLowerEdge(info.Id, newEdge, this);
-                }
-                else
-                {
-                    var newEdge = this.activeEdges.Transition(oldEdge, info.Next);
-                    trapezoid.TransitionOnUpperEdge(info.Id, newEdge, this);
-                }
             }
         }
 

@@ -57,8 +57,7 @@
     <Compile Include="PolygonTriangulator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RedBlackTree.cs" />
-    <Compile Include="SortedActiveEdgeList.cs" />
-    <Compile Include="Trapezoid.cs" />
+    <Compile Include="Trapezoidation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

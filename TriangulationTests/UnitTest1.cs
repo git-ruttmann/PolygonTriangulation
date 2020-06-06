@@ -37,44 +37,44 @@
                 new Vertex(4, 4), // 12
             };
 
-            var sorted = new SortedActiveEdgeList<int>(vertices);
-            var (b0, b0Upper) = sorted.Begin(0, 5, 6);
+            var sorted = new Trapezoidation(vertices, new SplitCollector());
+            var (b0, b0Upper) = sorted.TestBegin(0, 5, 6);
             Assert.AreEqual("0<5 0>6", string.Join(" ", sorted.Edges));
 
-            var (b1, b1Upper) = sorted.Begin(1, 3, 4);
+            var (b1, b1Upper) = sorted.TestBegin(1, 3, 4);
             Assert.AreEqual("0<5 0>6 1<3 1>4", string.Join(" ", sorted.Edges));
 
-            var (b2, b2Upper) = sorted.Begin(2, 7, 12);
+            var (b2, b2Upper) = sorted.TestBegin(2, 7, 12);
             Assert.AreEqual("0<5 0>6 1<3 2<7 2>12 1>4", string.Join(" ", sorted.Edges));
 
-            var t3 = sorted.Transition(b1, 6);
+            var t3 = sorted.TestTransition(b1, 6);
             Assert.AreEqual("0<5 0>6 3<6 2<7 2>12 1>4", string.Join(" ", sorted.Edges));
 
-            var t4 = sorted.Transition(b1Upper, 12);
+            var t4 = sorted.TestTransition(b1Upper, 12);
             Assert.AreEqual("0<5 0>6 3<6 2<7 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            var t5 = sorted.Transition(b0, 9);
+            var t5 = sorted.TestTransition(b0, 9);
             Assert.AreEqual("5<9 0>6 3<6 2<7 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            sorted.Finish(b0Upper);
+            sorted.TestJoin(b0Upper);
             Assert.AreEqual("5<9 2<7 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            var t7 = sorted.Transition(b2, 11);
+            var t7 = sorted.TestTransition(b2, 11);
             Assert.AreEqual("5<9 7<11 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            var (b8, b8Upper) = sorted.Begin(8, 10, 11);
+            var (b8, b8Upper) = sorted.TestBegin(8, 10, 11);
             Assert.AreEqual("5<9 8<10 8>11 7<11 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            var t9 = sorted.Transition(t5, 10);
+            var t9 = sorted.TestTransition(t5, 10);
             Assert.AreEqual("9<10 8<10 8>11 7<11 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            sorted.Finish(t9);
+            sorted.TestJoin(t9);
             Assert.AreEqual("8>11 7<11 2>12 4>12", string.Join(" ", sorted.Edges));
 
-            sorted.Finish(b8Upper);
+            sorted.TestJoin(b8Upper);
             Assert.AreEqual("2>12 4>12", string.Join(" ", sorted.Edges));
 
-            sorted.Finish(b2Upper);
+            sorted.TestJoin(b2Upper);
             Assert.AreEqual(string.Empty, string.Join(" ", sorted.Edges));
         }
 
@@ -340,6 +340,19 @@
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// a dummy split collector
+        /// </summary>
+        private class SplitCollector : IPolygonSplitSink
+        {
+            public List<Tuple<int, int>> Splits { get; private set; }
+
+            public void SplitPolygon(int leftVertex, int rightVertex)
+            {
+                this.Splits.Add(Tuple.Create(leftVertex, rightVertex));
+            }
         }
     }
 }
