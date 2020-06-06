@@ -1,12 +1,11 @@
 ﻿namespace PolygonTriangulation
 {
-    using System;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using Vertex = System.Numerics.Vector2;
 
     /// <summary>
-    /// An active edge sorted between all other edges. IsNone is set in the lowest and highest edge
+    /// An active edge sorted between all other edges.
     /// </summary>
     /// <typeparam name="TData">the type of the stored data</typeparam>
     public interface IActiveEdge<TData>
@@ -39,10 +38,9 @@
     public class SortedActiveEdgeList<TData>
     {
         const float epsilon = 1.0E-5f;
-        private readonly IReadOnlyList<Vertex> vertices;
-        private readonly Edge upperNone;
-        private readonly Edge lowerNone;
-        private Dictionary<int, Edge> vertexToEdge;
+        private readonly EdgeComparer comparer;
+        private readonly RedBlackTree<Edge> tree;
+        private readonly Dictionary<int, Edge> vertexToEdge;
 
         /// <summary>
         /// Constructor
@@ -50,27 +48,15 @@
         /// <param name="vertices">the coordinates of the vertices</param>
         public SortedActiveEdgeList(IReadOnlyList<Vertex> vertices)
         {
-            this.vertices = vertices;
             this.vertexToEdge = new Dictionary<int, Edge>();
-
-            this.upperNone = new Edge(-1, -1, false);
-            this.lowerNone = new Edge(-1, -1, false);
-            this.lowerNone.Above = this.upperNone;
+            this.comparer = new EdgeComparer(vertices);
+            this.tree = new RedBlackTree<Edge>(this.comparer);
         }
 
         /// <summary>
         /// Gets all edges starting from the lowest
         /// </summary>
-        public IEnumerable<IActiveEdge<TData>> Edges
-        {
-            get
-            {
-                for (var edge = this.lowerNone.Above; !edge.IsNone; edge = edge.Above)
-                {
-                    yield return edge;
-                }
-            }
-        }
+        public IEnumerable<IActiveEdge<TData>> Edges => this.tree.Items;
 
         /// <summary>
         /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
@@ -80,9 +66,11 @@
         public IActiveEdge<TData> EdgeForVertex(int vertexId)
         {
             var edge = this.vertexToEdge[vertexId];
-            if (edge.Below.Right == vertexId)
+
+            var prevEdge = edge.TreeNode.Prev?.Data;
+            if (prevEdge?.Right == edge.Right)
             {
-                return edge.Below;
+                return prevEdge;
             }
 
             return edge;
@@ -94,42 +82,19 @@
         /// <param name="start">the index of the starting vertex</param>
         /// <param name="prev">the end index of the lower edge</param>
         /// <param name="next">the end index of the upper edge </param>
-        /// <param name="reversed">false: the direction is lowerTarget->start->upperTarget</param>
         /// <returns>(lower edge, upper edge)</returns>
         /// <remarks>
         /// There is never a Begin() where the prev or next is left to start or prev is at same X and below start.
         /// </remarks>
         public (IActiveEdge<TData> lower, IActiveEdge<TData> upper) Begin(int start, int prev, int next)
         {
-            var lower = this.CreateAndSortPairOfEdges(start, prev, next);
+            var (lower, upper) = this.CreateAndSortPairOfEdges(start, prev, next);
+            (lower.TreeNode, upper.TreeNode) = this.tree.AddPair(lower, upper);
 
-            var below = this.FindEdgeBelowVertex(start);
-            below.InsertAbove(lower);
-
-            var upper = lower.Above;
             this.vertexToEdge[upper.Right] = upper;
             this.vertexToEdge[lower.Right] = lower;
 
             return (lower, upper);
-        }
-
-        /// <summary>
-        /// Find the edge that is below the vertex. Edge.Above is above the vertex.
-        /// </summary>
-        /// <param name="vertexId">the id of the vertex</param>
-        /// <returns>the edge below the vertex.</returns>
-        private Edge FindEdgeBelowVertex(int vertexId)
-        {
-            // superslow.....
-            for (var candidate = this.upperNone.Below; !candidate.IsNone; candidate = candidate.Below)
-            {
-                if (candidate.IsVertexAbove(vertexId, this.vertices))
-                {
-                    return candidate;
-                }
-            }
-
-            return this.lowerNone;
         }
 
         /// <summary>
@@ -139,20 +104,18 @@
         /// <param name="prev">previous vertex, always > start</param>
         /// <param name="next">next vertex, always > start</param>
         /// <returns>the lower edge</returns>
-        private Edge CreateAndSortPairOfEdges(int start, int prev, int next)
+        private (Edge lower, Edge upper) CreateAndSortPairOfEdges(int start, int prev, int next)
         {
             var prevEdge = new Edge(start, prev, true);
             var nextEdge = new Edge(start, next, false);
 
-            if (prevEdge.IsVertexAbove(next, this.vertices))
+            if (this.comparer.IsVertexAbove(prevEdge.Right, nextEdge))
             {
-                prevEdge.Above = nextEdge;
-                return prevEdge;
+                return (nextEdge, prevEdge);
             }
             else
             {
-                nextEdge.Above = prevEdge;
-                return nextEdge;
+                return (prevEdge, nextEdge);
             }
         }
 
@@ -165,12 +128,19 @@
         /// <returns>the new edge</returns>
         public IActiveEdge<TData> Transition(IActiveEdge<TData> edge, int newTarget)
         {
+            this.tree.Validate();
             var currentEdge = (Edge)edge;
-            var nextEdge = currentEdge.CreateTransition(newTarget);
+            var nextEdge = new Edge(currentEdge.Right, newTarget, currentEdge.IsRightToLeft)
+            {
+                Data = currentEdge.Data,
+            };
+
+            nextEdge.TreeNode = this.tree.ReplaceNode(currentEdge.TreeNode, nextEdge);
 
             this.vertexToEdge.Remove(currentEdge.Right);
             this.vertexToEdge[nextEdge.Right] = nextEdge;
 
+            this.tree.Validate();
             return nextEdge;
         }
 
@@ -181,9 +151,103 @@
         public void Finish(IActiveEdge<TData> lower)
         {
             var lowerEdge = (Edge)lower;
-            lowerEdge.Below.Above = lowerEdge.Above.Above;
+
+            this.tree.Validate();
+            this.tree.RemoveNode(lowerEdge.TreeNode.Next);
+            this.tree.Validate();
+            this.tree.RemoveNode(lowerEdge.TreeNode);
+            this.tree.Validate();
 
             this.vertexToEdge.Remove(lowerEdge.Right);
+        }
+
+        /// <summary>
+        /// Compares two edges
+        /// </summary>
+        private class EdgeComparer : IComparer<Edge>
+        {
+            private readonly IReadOnlyList<Vertex> vertices;
+
+            /// <summary>
+            /// Initializes a new <see cref="EdgeComparer"/>
+            /// </summary>
+            /// <param name="vertices">the real vertices referenced by vertex ids</param>
+            public EdgeComparer(IReadOnlyList<Vertex> vertices)
+            {
+                this.vertices = vertices;
+            }
+
+            /// <summary>
+            /// Test if the left vertex of value is above storage.
+            /// </summary>
+            /// <param name="value">the current added value</param>
+            /// <param name="storage">the edge that is already part of the tree</param>
+            /// <returns>a comparison result</returns>
+            public int Compare(Edge value, Edge storage)
+            {
+                var vertexOfValue = value.Left == storage.Left ? value.Right : value.Left;
+                return this.IsVertexAbove(vertexOfValue, storage) ? 1 : -1;
+            }
+
+            /// <summary>
+            /// Test if the vertex is above the line that is formed by the edge
+            /// </summary>
+            /// <param name="vertexId"></param>
+            /// <param name="edge"></param>
+            /// <returns>true if the vertex is above the edge</returns>
+            /// <remarks>
+            /// This is called only during insert operations, therefore value.left > storage.left.
+            /// Try to find the result without calculation first, then calculate the storage.Y at value.Left.X
+            /// </remarks>
+            public bool IsVertexAbove(int vertexId, Edge edge)
+            {
+                var vertex = vertices[vertexId];
+                var left = vertices[edge.Left];
+                var right = vertices[edge.Right];
+
+                // this is very likely as the points are added in order left to right
+                if (vertex.X >= left.X)
+                {
+                    if (vertex.Y > left.Y)
+                    {
+                        if (left.Y >= right.Y || (vertex.X < right.X && vertex.Y > right.Y))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (left.Y < right.Y || (vertex.X < right.X && vertex.Y < right.Y))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return this.IsVertexAboveSlow(ref vertex, ref left, ref right);
+            }
+
+            /// <summary>
+            /// Test if the vertex is above this edge by calculating the edge.Y at vertex.X
+            /// </summary>
+            /// <param name="vertexId">the id of the vertex</param>
+            /// <param name="vertices">the vertex list</param>
+            /// <returns>true if the verex is above</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private bool IsVertexAboveSlow(ref Vertex vertex, ref Vertex left, ref Vertex right)
+            {
+                var xSpan = right.X - left.X;
+
+                // during a start operation, the start.Y will always be larger than left.Y and right.Y of a vertical edge, 
+                // otherwise start would have been sorted between left and right. So it's no difference to test against left.Y or right.Y
+                if (xSpan < epsilon)
+                {
+                    return vertex.Y > left.Y;
+                }
+
+                var yOfEdgeAtVertex = (vertex.X - left.X) / xSpan * (right.Y - left.Y) + left.Y;
+                return yOfEdgeAtVertex < vertex.Y;
+            }
         }
 
         /// <summary>
@@ -191,8 +255,6 @@
         /// </summary>
         private class Edge : IActiveEdge<TData>
         {
-            private Edge above;
-
             public Edge(int left, int right, bool isRightToLeft)
             {
                 this.IsRightToLeft = isRightToLeft;
@@ -214,117 +276,22 @@
             public bool IsNone { get; }
 
             /// <summary>
-            /// Gets or sets the edge below this edge
+            /// The storage position in the tree
             /// </summary>
-            public Edge Below { get; private set; }
-
-            /// <summary>
-            /// Gets or sets the edge above this edge
-            /// </summary>
-            public Edge Above 
-            { 
-                get => this.above;
-                set
-                {
-                    this.above = value;
-                    value.Below = this;
-                }
-            }
+            public IOrderedNode<Edge> TreeNode { get; set; }
 
             /// <inheritdoc/>
             public TData Data { get; set; }
 
             /// <inheritdoc/>
-            public TData BelowData => this.Below.Data;
+            public TData BelowData => this.TreeNode.Prev.Data.Data;
 
             /// <inheritdoc/>
-            public TData AboveData => this.Above.Data;
-
-            /// <summary>
-            /// Test if the vertex is above this edge.
-            /// </summary>
-            /// <param name="vertexId">the id of the vertex</param>
-            /// <param name="vertices">the vertex list</param>
-            /// <returns>true if the verex is above</returns>
-            public bool IsVertexAbove(int vertexId, IReadOnlyList<Vertex> vertices)
-            {
-                var vertex = vertices[vertexId];
-                var left = vertices[this.Left];
-                var right = vertices[this.Right];
-
-                // this is very likely as the points are added in order left to right
-                if (vertex.X >= left.X)
-                {
-                    if (vertex.Y > left.Y)
-                    {
-                        if (left.Y >= right.Y || (vertex.X < right.X && vertex.Y > right.Y))
-                        {
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        if (left.Y < right.Y || (vertex.X < right.X && vertex.Y < right.Y))
-                        {
-                            return false;
-                        }
-                    }
-                }
-
-                return this.IsVertexAboveSlow(vertexId, vertices);
-            }
-
-            /// <summary>
-            /// Test if the vertex is above this edge by calculating the edge.Y at vertex.X
-            /// </summary>
-            /// <param name="vertexId">the id of the vertex</param>
-            /// <param name="vertices">the vertex list</param>
-            /// <returns>true if the verex is above</returns>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private bool IsVertexAboveSlow(int vertexId, IReadOnlyList<Vertex> vertices)
-            {
-                var vertex = vertices[vertexId];
-
-                var left = vertices[this.Left];
-                var right = vertices[this.Right];
-                var xSpan = right.X - left.X;
-
-                // during a start operation, the start.Y will always be larger than left.Y and right.Y of a vertical edge, 
-                // otherwise start would have been sorted between left and right. So it's no difference to test against left.Y or right.Y
-                if (xSpan < epsilon)
-                {
-                    return vertex.Y > left.Y;
-                }
-
-                var yOfEdgeAtVertex = (vertex.X - left.X) / (xSpan) * (right.Y - left.Y) + left.Y;
-                return yOfEdgeAtVertex < vertex.Y;
-            }
+            public TData AboveData => this.TreeNode.Next.Data.Data;
 
             public override string ToString()
             {
                 return $"{this.Left}{(this.IsRightToLeft ? "<" : ">")}{this.Right}";
-            }
-
-            public Edge CreateTransition(int newTarget)
-            {
-                var nextEdge = new Edge(this.Right, newTarget, this.IsRightToLeft)
-                {
-                    Data = this.Data,
-                    Above = this.Above,
-                };
-
-                this.Below.Above = nextEdge;
-                return nextEdge;
-            }
-
-            /// <summary>
-            /// Insert the new above between this and the current above
-            /// </summary>
-            /// <param name="newAbove">the element that's newly above this edge</param>
-            public void InsertAbove(Edge newAbove)
-            {
-                newAbove.Above.Above = this.Above;
-                this.Above = newAbove;
             }
         }
     }

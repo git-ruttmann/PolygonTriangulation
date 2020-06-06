@@ -166,7 +166,6 @@
             private void HandleClosingCusp(IPolygonVertexInfo info)
             {
                 var lowerEdge = this.activeEdges.EdgeForVertex(info.Id);
-                this.activeEdges.Finish(lowerEdge);
 
                 var lowerTrapezoid = lowerEdge.Data;
                 if (lowerEdge.IsRightToLeft)
@@ -178,6 +177,8 @@
                     var upperTrapezoid = lowerEdge.AboveData;
                     Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, info.Id, this);
                 }
+
+                this.activeEdges.Finish(lowerEdge);
             }
 
             private void HandleTransition(IPolygonVertexInfo info)
