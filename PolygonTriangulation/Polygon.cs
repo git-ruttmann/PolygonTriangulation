@@ -81,38 +81,69 @@
     }
 
     /// <summary>
-    /// Represent a closed polygon.
+    /// Represent a collection of closed polygons.
     /// </summary>
     [DebuggerDisplay("{Debug}")]
     public class Polygon
     {
-        private readonly SharedData data;
-        private int start;
-
-        private Polygon(int start, SharedData sharedData)
-        {
-            this.start = start;
-            this.data = sharedData;
-        }
-
-        public string Debug => string.Join(" ", this.Indices);
 
         /// <summary>
-        /// Gets the vertex ids of the polygon. Doesn't return holes.
+        /// Translate the vertex id to the index in the chain. For collisions look at <see cref="VertexChain.SameVertexChain"/>
         /// </summary>
-        public IEnumerable<int> Indices 
-            => new NextChainEnumerator(this.start, this.data.Chain)
-            .Select(x => this.data.Chain[x].VertexId);
+        private readonly int[] vertexToChain;
+
+        /// <summary>
+        /// The current chain of vertices in the polygon. May contain multiple chains.
+        /// </summary>
+        private readonly VertexChain[] chain;
 
         /// <summary>
         /// Gets the vertex coordinates
         /// </summary>
-        public IReadOnlyList<Vertex> Vertices => Array.AsReadOnly(this.data.VertexCoordinates);
+        public readonly Vertex[] vertexCoordinates;
 
         /// <summary>
-        /// Gets the polygon id
+        /// the start index in <see cref="chain"/> per sub polygon
         /// </summary>
-        public int Id => this.data.Chain[this.start].PolygonId;
+        private readonly int[] polygonStartIndices;
+
+        /// <summary>
+        /// Initializes a new <see cref="Polygon"/>
+        /// </summary>
+        /// <param name="vertexCoordinates">the vertex coordinates</param>
+        /// <param name="chain">the next vertex chain</param>
+        /// <param name="vertexToChain">the translation from vertex id to chain index.</param>
+        /// <param name="polygonStartIndices">the start of the subpolygones</param>
+        private Polygon(Vertex[] vertexCoordinates, VertexChain[] chain, int[] vertexToChain, IEnumerable<int> polygonStartIndices)
+        {
+            this.chain = chain;
+            this.vertexToChain = vertexToChain;
+            this.vertexCoordinates = vertexCoordinates;
+            this.polygonStartIndices = polygonStartIndices.ToArray();
+        }
+
+        public string Debug => string.Join(" || ", this.SubPolygonIds.Select(x => string.Join(" ", this.VertexList(x))));
+
+        /// <summary>
+        /// Gets the vertex ids of a subpolygon
+        /// </summary>
+        /// <param name="subPolygonId">the sub polygon id</param>
+        /// <returns>vertex Ids</returns>
+        public IEnumerable<int> VertexList(int subPolygonId)
+        {
+            return new NextChainEnumerator(this.polygonStartIndices[subPolygonId], this.chain)
+                .Select(x => this.chain[x].VertexId);
+        }
+
+        /// <summary>
+        /// Gets the vertex coordinates
+        /// </summary>
+        public IReadOnlyList<Vertex> Vertices => Array.AsReadOnly(this.vertexCoordinates);
+
+        /// <summary>
+        /// Gets the ids of all available sub polygons. Use <see cref="VertexList"/> to enemerate the other polygons
+        /// </summary>
+        public IEnumerable<int> SubPolygonIds => Enumerable.Range(0, this.polygonStartIndices.Length).Where(x => this.polygonStartIndices[x] >= 0);
 
         /// <summary>
         /// Get id/prev/next info per vertex sorted by vertex id.
@@ -121,8 +152,8 @@
         {
             get
             {
-                var workOrder = Enumerable.Range(0, this.data.Chain.Length).OrderBy(x => this.data.Chain[x].VertexId);
-                return workOrder.Select(x => new VertexInfo(x, this.data.Chain));
+                var workOrder = Enumerable.Range(0, this.chain.Length).OrderBy(x => this.chain[x].VertexId);
+                return workOrder.Select(x => new VertexInfo(x, this.chain));
             }
         }
 
@@ -142,11 +173,14 @@
             var chain = new VertexChain[lines.Sum(x => x.Count)];
             var id = 0;
             var first = id;
-            var polygonId = 1;
             var vertexToChain = new int[vertexCoordinates.Length];
+            var subPolygones = new List<int>();
 
             foreach (var line in lines)
             {
+                var polygonId = subPolygones.Count;
+                subPolygones.Add(id);
+
                 foreach (var vertexId in line)
                 {
                     chain[id].VertexId = vertexId;
@@ -158,11 +192,9 @@
 
                 SetNext(chain, id - 1, first);
                 first = id;
-                polygonId++;
             }
 
-            var data = new SharedData(polygonId - 1, vertexCoordinates, chain, vertexToChain);
-            return new Polygon(0, data);
+            return new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones);
         }
 
         /// <summary>
@@ -178,22 +210,26 @@
             var polygonIdCollection = polygonIds as IList<int> ?? polygonIds.ToArray();
             var vertexToChain = new int[vertexCoordinates.Length];
             var chain = new VertexChain[vertexIdCollection.Count];
+            var polygonStartIndex = new List<int>();
 
             var i = 0;
-            var maxPolygonId = 0;
             foreach (var (vertexId, nextId) in vertexIdCollection.Zip(nextIndices, Tuple.Create))
             {
                 chain[i].VertexId = vertexId;
                 chain[i].SameVertexChain = -1;
                 chain[i].PolygonId = polygonIdCollection[i];
-                SetNext(chain, i, nextId); 
-                maxPolygonId = Math.Max(maxPolygonId, polygonIdCollection[i]);
+                SetNext(chain, i, nextId);
+
+                if (polygonIdCollection[i] >= polygonStartIndex.Count)
+                {
+                    polygonStartIndex.Add(i);
+                }
+
                 vertexToChain[vertexId] = i;
                 i++;
             }
 
-            var data = new SharedData(maxPolygonId, vertexCoordinates, chain, vertexToChain);
-            return new Polygon(0, data);
+            return new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -209,31 +245,31 @@
         /// <param name="splits">the splits as tuples of vertex ids</param>
         /// <param name="triangleCollector">the collector for simple triangles</param>
         /// <returns>(simple triangles, other polygones)</returns>
-        public static Polygon[] Split(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector triangleCollector)
+        public static Polygon Split(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector triangleCollector)
         {
             var splitter = new PolygonSplitter(polygon, splits, triangleCollector);
-            splitter.Execute();
-            return splitter.Result.ToArray();
+            return splitter.Execute();
         }
 
         /// <summary>
         /// Gets an enumerator that starts at startVertex and loops the whole polygon once.
         /// </summary>
-        /// <param name="start">The first vertex id</param>
+        /// <param name="startVertex">The first vertex id</param>
+        /// <param name="subPolygonId">the id of the subpolygon to traverse</param>
         /// <returns>An Enumerable/Enumerator</returns>
-        public IEnumerable<int> IndicesStartingAt(int startVertex)
+        public IEnumerable<int> IndicesStartingAt(int startVertex, int subPolygonId)
         {
-            var startId = this.data.VertexToChain[startVertex];
-            while (this.data.Chain[startId].PolygonId != this.Id)
+            var startId = this.vertexToChain[startVertex];
+            while (this.chain[startId].PolygonId != subPolygonId)
             {
-                startId = this.data.Chain[startId].SameVertexChain;
+                startId = this.chain[startId].SameVertexChain;
                 if (startId < 0)
                 {
-                    throw new InvalidOperationException($"Vertex {startVertex} is not part of polygon {this.Id}");
+                    throw new InvalidOperationException($"Vertex {startVertex} is not part of polygon {subPolygonId}");
                 }
             }
 
-            return new NextChainEnumerator(startId, this.data.Chain).Select(x => this.data.Chain[x].VertexId);
+            return new NextChainEnumerator(startId, this.chain).Select(x => this.chain[x].VertexId);
         }
 
         /// <summary>
@@ -246,7 +282,7 @@
         /// - a polygon has a specific chain element as start index
         /// - a polygon with holes has multiple chain start elements. They are joined via <see cref="PolygonSplitter.JoinHoleIntoPolygon(int, int)"/>
         /// </summary>
-        public struct VertexChain
+        private struct VertexChain
         {
             /// <summary>
             /// the index in <see cref="SharedData.VertexCoordinates"/>
@@ -354,52 +390,6 @@
         }
 
         /// <summary>
-        /// data shared between the splitted polygons - the vertex coordinates, the chain and the mapping
-        /// </summary>
-        private class SharedData
-        {
-            private int polygonId;
-
-            public SharedData(int polygonId, IEnumerable<Vertex> vertexCoordinates, VertexChain[] chain, int[] vertexToChain)
-            {
-                this.polygonId = polygonId;
-                this.VertexCoordinates = vertexCoordinates as Vertex[] ?? vertexCoordinates.ToArray();
-                this.Chain = chain;
-                this.VertexToChain = vertexToChain;
-                this.LastInitialPolygonId = polygonId;
-            }
-
-            /// <summary>
-            /// Get't the number of initial polygon id's. With a single polygon line (no holes), it's 1
-            /// </summary>
-            public int LastInitialPolygonId { get; }
-
-            /// <summary>
-            /// Translate the vertex id to the index in the chain. For collisions look at <see cref="VertexChain.SameVertexChain"/>
-            /// </summary>
-            public int[] VertexToChain { get; }
-
-            /// <summary>
-            /// The current chain of vertices in the polygon. May contain multiple chains.
-            /// </summary>
-            public VertexChain[] Chain { get; }
-
-            /// <summary>
-            /// Gets the vertex coordinates
-            /// </summary>
-            public Vertex[] VertexCoordinates { get; }
-
-            /// <summary>
-            /// Creates a new polygon id
-            /// </summary>
-            /// <returns>the new polygon id</returns>
-            public int NewPolygonId()
-            {
-                return ++this.polygonId;
-            }
-        }
-
-        /// <summary>
         /// Information about an element in the vertex chain.
         /// </summary>
         [DebuggerDisplay("{Prev}>{Id}>{Next}")]
@@ -427,14 +417,15 @@
         private class PolygonSplitter
         {
             /// <summary>
-            /// The polygon id to polygon dictionary
+            /// The original polygon.
             /// </summary>
-            private readonly Dictionary<int, Polygon> polygonDict;
+            private readonly Polygon originalPolygon;
 
             /// <summary>
-            /// The shared data for the created polygons
+            /// The start per polygon id map
             /// </summary>
-            private readonly SharedData data;
+
+            private readonly List<int> polygonStartIndices;
 
             /// <summary>
             /// The splits to process, the tuple contains indexs in the chain - NOT vertex ids
@@ -446,7 +437,9 @@
             /// </summary>
             private readonly VertexChain[] chain;
 
-            // the collector for simple triangles
+            /// <summary>
+            /// the collector for simple triangles
+            /// </summary>
             private readonly ITriangleCollector triangleCollector;
 
             /// <summary>
@@ -464,34 +457,28 @@
                 this.allSplits = splits
                     .Select(x =>
                     {
-                        var chain1 = polygon.data.VertexToChain[x.Item1];
-                        var chain2 = polygon.data.VertexToChain[x.Item2];
+                        var chain1 = polygon.vertexToChain[x.Item1];
+                        var chain2 = polygon.vertexToChain[x.Item2];
                         return chain1 < chain2 ? Tuple.Create(chain1, chain2) : Tuple.Create(chain2, chain1);
                     })
                     .OrderBy(x => x.Item1)
                     .ThenBy(x => x.Item2)
                     .ToArray();
 
-                this.polygonDict = new Dictionary<int, Polygon>();
+                this.originalPolygon = polygon;
+                this.polygonStartIndices = new List<int>(polygon.polygonStartIndices);
 
-                this.chainFreeIndex = polygon.data.Chain.Length;
+                this.chainFreeIndex = polygon.chain.Length;
                 this.chain = new VertexChain[this.chainFreeIndex + this.allSplits.Length * 2];
-                Array.Copy(polygon.data.Chain, this.chain, this.chainFreeIndex);
-                this.data = new SharedData(polygon.data.LastInitialPolygonId, polygon.data.VertexCoordinates, this.chain, polygon.data.VertexToChain);
+                Array.Copy(polygon.chain, this.chain, this.chainFreeIndex);
 
-                this.polygonDict.Add(polygon.Id, new Polygon(polygon.start, this.data));
                 this.triangleCollector = triangleCollector;
             }
 
             /// <summary>
-            /// The resulting polygons with length > 3
-            /// </summary>
-            public IEnumerable<Polygon> Result => this.polygonDict.Values;
-
-            /// <summary>
             /// Process the splits
             /// </summary>
-            public void Execute()
+            public Polygon Execute()
             {
                 var splits = JoinHolesIntoPolygon();
 
@@ -499,6 +486,8 @@
                 {
                     SplitPolygon(split.Item1, split.Item2);
                 }
+
+                return new Polygon(this.originalPolygon.vertexCoordinates, this.chain, this.originalPolygon.vertexToChain, this.polygonStartIndices);
             }
 
             /// <summary>
@@ -507,7 +496,7 @@
             /// <returns>The remaining splits</returns>
             private IEnumerable<Tuple<int, int>> JoinHolesIntoPolygon()
             {
-                if (this.data.LastInitialPolygonId == 1)
+                if (this.polygonStartIndices.Count == 1)
                 {
                     return this.allSplits;
                 }
@@ -540,28 +529,27 @@
             private void SplitPolygon(int from, int to)
             {
                 (from, to) = this.FindCommonChain(from, to);
+                var polygonId = this.chain[from].PolygonId;
 
                 if (this.IsTriangle(from, to))
                 {
                     if (!this.IsTriangle(to, from))
                     {
-                        // only join skip from.Next in the current polygon chain.
-                        var polygon = this.polygonDict[chain[from].PolygonId];
-                        polygon.start = from;
+                        // skip from.Next in the current polygon chain.
+                        this.polygonStartIndices[polygonId] = from;
                         this.chain[this.chain[from].Next].PolygonId = -1;
                         SetNext(this.chain, from, to);
                     }
                     else
                     {
                         // The polygon was split into two triangles. Remove it from the result.
-                        this.polygonDict.Remove(chain[from].PolygonId);
+                        this.polygonStartIndices[polygonId] = -1;
                     }
                 }
                 else if (this.IsTriangle(to, from))
                 {
-                    // only skip to.Next in the current polygon chain.
-                    var polygon = this.polygonDict[chain[from].PolygonId];
-                    polygon.start = from;
+                    // skip to.Next in the current polygon chain.
+                    this.polygonStartIndices[polygonId] = from;
                     this.chain[this.chain[to].Next].PolygonId = -1;
                     SetNext(this.chain, to, from);
                 }
@@ -586,21 +574,19 @@
                 chain[fromCopy] = chain[from];
                 chain[from].SameVertexChain = fromCopy;
 
-                var oldPolygon = this.polygonDict[chain[from].PolygonId];
+                var oldPolygonId = chain[from].PolygonId;
 
                 // already copied: chain[fromCopy].Next = chain[from].Next;
                 SetNext(chain, from, toCopy);
                 SetNext(chain, to, fromCopy);
 
-                var newPolygonId = data.NewPolygonId();
+                var newPolygonId = this.polygonStartIndices.Count;
+                this.polygonStartIndices.Add(fromCopy);
 
                 this.FillPolygonId(fromCopy, newPolygonId);
 
-                // it's inpredictable yet, whether the "from" or the "to" belongs to the old polygon. After filling, the polygon id changes
-                var startId = oldPolygon.Id == chain[fromCopy].PolygonId ? toCopy : fromCopy;
-                var newPolygon = new Polygon(startId, data);
-                this.polygonDict[newPolygon.Id] = newPolygon;
-                this.polygonDict[oldPolygon.Id] = oldPolygon;
+                this.polygonStartIndices[newPolygonId] = fromCopy;
+                this.polygonStartIndices[oldPolygonId] = toCopy;
             }
 
             /// <summary>
@@ -679,6 +665,8 @@
                 var fromCopy = this.chainFreeIndex++;
                 var toCopy = this.chainFreeIndex++;
 
+                var deletedPolygonId = chain[to].PolygonId;
+                this.polygonStartIndices[deletedPolygonId] = -1;
                 var lastVertexInHole = this.FillPolygonId(to, chain[from].PolygonId);
 
                 chain[toCopy] = chain[to];
@@ -712,7 +700,7 @@
                 this.vertexIds = new List<int>();
                 this.nextIndices = new List<int>();
                 this.polygonIds = new List<int>();
-                this.polygonId = 1;
+                this.polygonId = 0;
             }
 
             public Polygon Auto()

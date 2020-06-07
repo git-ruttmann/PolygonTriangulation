@@ -105,7 +105,7 @@
                 .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
                 .Close();
 
-            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", polygon.Indices));
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", polygon.VertexList(0)));
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
@@ -127,7 +127,7 @@
         }
 
         /// <summary>
-        /// Triangluate a polygon with all trapezoid combinations (0,1,2 neighbors)
+        /// Triangluate a polygon with all trapezoid combinations (0,1,2 left neighbors * 0,1,2 right neighbors)
         /// </summary>
         [TestMethod]
         public void TriangulateForm2()
@@ -166,6 +166,39 @@
             Assert.AreEqual("0-2 2-3 3-8 8-9 9-10 10-11 11-12 11-15 12-17 15-16 16-19", splits);
             var triangles = triangluator.BuildTriangles();
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+        }
+
+        /// <summary>
+        /// Triangluate two separate polygons at once
+        /// </summary>
+        [TestMethod]
+        public void TriangluateDualPolygones()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(1.0f, 1.0f),
+                new Vertex(1.0f, 1.3f),
+                new Vertex(1.0f, 2.8f),
+                new Vertex(1.0f, 3.0f),
+                new Vertex(2.0f, 1.0f),
+                new Vertex(2.0f, 3.0f),
+                new Vertex(3.0f, 1.0f),
+                new Vertex(3.0f, 1.3f),
+                new Vertex(3.0f, 2.8f),
+                new Vertex(3.0f, 3.0f),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 1, 7, 6, 4)
+                .ClosePartialPolygon()
+                .AddVertices(2, 3, 5, 9, 8)
+                .Close();
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("1-4 5-8", splits);
+            var triangles = triangluator.BuildTriangles();
+            Assert.AreEqual((sortedVertices.Length - 2 - 2) * 3, triangles.Length);
         }
 
         [TestMethod]
@@ -254,7 +287,7 @@
             }
 
             var result = builder.BuildPolygon();
-            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", String.Join(" ", result.Polygon.Indices));
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", String.Join(" ", result.Polygon.VertexList(0)));
         }
 
         /// <summary>

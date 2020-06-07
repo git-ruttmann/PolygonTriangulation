@@ -64,10 +64,10 @@
         public void BuildTriangles(ITriangleCollector collector)
         {
             var splits = ScanSplitByTrapezoidation.BuildSplits(this.polygon);
-            var monotones = Polygon.Split(this.polygon, splits, collector);
-            foreach (var monotonPolygon in monotones)
+            var polygonWithMonotones = Polygon.Split(this.polygon, splits, collector);
+            foreach (var subPolygonId in polygonWithMonotones.SubPolygonIds)
             {
-                var triangluator = new MonotonePolygonTriangulator(monotonPolygon);
+                var triangluator = new MonotonePolygonTriangulator(polygonWithMonotones, subPolygonId);
                 triangluator.Build(collector);
             }
         }
@@ -174,10 +174,12 @@
             private int second;
             private int current;
             private IEnumerator<int> iterator;
+            private int subPolygonId;
 
-            public MonotonePolygonTriangulator(Polygon polygon)
+            public MonotonePolygonTriangulator(Polygon polygon, int subPolygonId)
             {
                 this.polygon = polygon;
+                this.subPolygonId = subPolygonId;
                 this.vertices = polygon.Vertices;
                 this.vertexStack = new Stack<int>();
             }
@@ -195,7 +197,7 @@
                 }
                 else
                 {
-                    var vertices = this.polygon.Indices.ToArray();
+                    var vertices = this.polygon.VertexList(this.subPolygonId).ToArray();
                     collector.AddTriangle(vertices[0], vertices[1], vertices[2]);
                 }
             }
@@ -232,7 +234,7 @@
             /// <param name="startPoint"></param>
             private void PullFirstTriangle(int startPoint)
             {
-                this.iterator = this.polygon.IndicesStartingAt(startPoint).GetEnumerator();
+                this.iterator = this.polygon.IndicesStartingAt(startPoint, this.subPolygonId).GetEnumerator();
                 this.iterator.MoveNext();
                 this.third = this.iterator.Current;
                 this.iterator.MoveNext();
@@ -301,7 +303,7 @@
             /// <returns>highest/lowest point in the polygon, depending if itss left hand or right hand. -1 if its a triangle.</returns>
             private int FindStartOfMonotonePolygon()
             {
-                var iterator = this.polygon.Indices.GetEnumerator();
+                var iterator = this.polygon.VertexList(this.subPolygonId).GetEnumerator();
                 iterator.MoveNext();
                 var first = iterator.Current;
                 var posmax = first;
