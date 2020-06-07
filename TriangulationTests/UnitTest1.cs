@@ -258,6 +258,72 @@
         }
 
         /// <summary>
+        /// Join edges with bad directions to multiple polygons
+        /// </summary>
+        [TestMethod]
+        public void PolygonJoinSegmentsTest()
+        {
+            var edges = new List<int>
+            {
+                // first - close 
+                00 + 1, 00 + 2,
+                00 + 3, 00 + 4,
+                00 + 2, 00 + 3, // join to 1 2 3 4 with [2 3]
+                00 + 4, 00 + 1, // close with [41]
+                // same
+                10 + 1, 10 + 2,
+                10 + 3, 10 + 4,
+                10 + 2, 10 + 3, // join to 1 2 3 4
+                10 + 1, 10 + 4, // close with [14]
+                // second
+                20 + 1, 20 + 2,
+                20 + 3, 20 + 4,
+                20 + 1, 20 + 3, // join to 2 1 3 4 with [1 3]
+                20 + 2, 20 + 4, // close
+                // same
+                30 + 1, 30 + 2,
+                30 + 3, 30 + 4,
+                30 + 3, 30 + 1, // join to 2 1 3 4 with [3 1]
+                30 + 2, 30 + 4, // close
+                // third
+                40 + 1, 40 + 2,
+                40 + 3, 40 + 4,
+                40 + 1, 40 + 4, // join to 3 4 1 2 with [1 4]
+                40 + 2, 40 + 3, // close
+                // same
+                50 + 1, 50 + 2,
+                50 + 3, 50 + 4,
+                50 + 1, 50 + 4, // join to 3 4 1 2 with [4 1]
+                50 + 2, 50 + 3, // close
+                // fourth
+                60 + 1, 60 + 2,
+                60 + 3, 60 + 4,
+                60 + 2, 60 + 4, // join to 1 2 4 3 with [2 4]
+                60 + 1, 60 + 3, // close
+                // same
+                70 + 1, 70 + 2,
+                70 + 3, 70 + 4,
+                70 + 2, 70 + 4, // join to 1 2 4 3 with [4 2]
+                70 + 1, 70 + 3, // close
+            };
+
+            var builder = PlanePolygonBuilder.CreatePolygonLineDetector();
+            builder.JoinEdgesToPolygones(edges);
+            var result = builder.ClosedPolygons.ToArray();
+
+            Assert.AreEqual(0, builder.UnclosedPolygons.Count());
+            Assert.AreEqual(8, result.Length);
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[0].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[0]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[1].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[1]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[2].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[2]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 3, 4, 2 }, result[3].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[3]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[4].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[4]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[5].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[5]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[6].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[6]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[7].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[7]) }");
+        }
+
+        /// <summary>
         /// Three concav segments on left side
         /// </summary>
         [TestMethod]
@@ -353,6 +419,34 @@
             {
                 this.Splits.Add(Tuple.Create(leftVertex, rightVertex));
             }
+        }
+
+        /// <summary>
+        /// Compare a polygon, start index is irrelevant. Reverse is not tolerated.
+        /// </summary>
+        /// <param name="expected">the expected array</param>
+        /// <param name="actual">the effective array</param>
+        /// <returns>true if sequence matches</returns>
+        private static bool ComparePolygon(IEnumerable<int> expected, IEnumerable<int> actual)
+        {
+            var expectedArray = expected.ToArray();
+            var actualArray = actual.ToArray();
+            if (expectedArray.Length != actualArray.Length)
+            {
+                return false;
+            }
+
+            var firstValue = actualArray[0];
+            var offset = expectedArray.TakeWhile(x => x != firstValue).Count();
+            for (int i = 0; i < actualArray.Length; i++)
+            {
+                if (expectedArray[(i + offset) % expectedArray.Length] != actualArray[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

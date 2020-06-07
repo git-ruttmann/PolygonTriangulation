@@ -62,6 +62,28 @@
     }
 
     /// <summary>
+    /// Test interface for the polygon line detector (join edges to polygon lines)
+    /// </summary>
+    public interface IPolygonLineDetector
+    {
+        /// <summary>
+        /// Get the closed polygons
+        /// </summary>
+        IEnumerable<IReadOnlyCollection<int>> ClosedPolygons { get; }
+
+        /// <summary>
+        /// Get the unclosed polygons
+        /// </summary>
+        IEnumerable<IReadOnlyCollection<int>> UnclosedPolygons { get; }
+
+        /// <summary>
+        /// Add multiple edges
+        /// </summary>
+        /// <param name="edges">pairs of vertex ids</param>
+        void JoinEdgesToPolygones(IEnumerable<int> edges);
+    }
+
+    /// <summary>
     /// Build a list of triangles from polygon edges
     /// </summary>
     public class PlanePolygonBuilder
@@ -84,6 +106,12 @@
         /// </summary>
         /// <returns></returns>
         internal static IEdgesToPolygonBuilder CreatePolygonBuilder() => new EdgesToPolygonBuilder(Quaternion.Identity);
+
+        /// <summary>
+        /// Create a polygon from edges detector. The edge is defined by the vertex ids
+        /// </summary>
+        /// <returns>the detector</returns>
+        internal static IPolygonLineDetector CreatePolygonLineDetector() => new PolygonLineDetector();
 
         /// <summary>
         public void AddEdge(Vector3 p0, Vector3 p1)
@@ -183,7 +211,7 @@
         /// <summary>
         /// Detect closed polygon lines
         /// </summary>
-        private class PolygonLineDetector
+        private class PolygonLineDetector : IPolygonLineDetector
         {
             /// <summary>
             /// Mapping from start/end of polygon line to the line instance.
@@ -214,6 +242,12 @@
             /// Get the closed polygones.
             /// </summary>
             public IReadOnlyList<PolygonLine> Lines => this.closedPolygones;
+
+            /// <inheritdoc/>
+            public IEnumerable<IReadOnlyCollection<int>> ClosedPolygons => this.closedPolygones.Select(x => x.ToIndexes());
+
+            /// <inheritdoc/>
+            public IEnumerable<IReadOnlyCollection<int>> UnclosedPolygons => this.unclosedPolygones.Select(x => x.ToIndexes());
 
             /// <summary>
             /// find continous combination of edges
@@ -522,7 +556,7 @@
                 if (CompareEdgeToKeys(edgeStart, edgeEnd, this.StartKey, other.EndKey))
                 {
                     this.Dirty = true;
-                    this.InsertRange(other.vertexIds, other.StartKey);
+                    return this.InsertRange(other.vertexIds, other.StartKey);
                 }
 
                 return null;
@@ -543,7 +577,7 @@
                 if (CompareEdgeToKeysOrSwappedKeys(edgeStart, edgeEnd, this.StartKey, other.StartKey))
                 {
                     this.Dirty = true;
-                    this.InsertRange(reversedOther, other.EndKey);
+                    return this.InsertRange(reversedOther, other.EndKey);
                 }
 
                 if (CompareEdgeToKeysOrSwappedKeys(edgeStart, edgeEnd, this.EndKey, other.EndKey))
