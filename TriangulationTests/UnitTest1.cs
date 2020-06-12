@@ -127,6 +127,57 @@
         }
 
         /// <summary>
+        /// Join a hole into the polygon and then split at the same point.
+        /// Tests the collision detection in <see cref="Polygon.Split"/>
+        /// </summary>
+        [TestMethod]
+        public void SplitAtJoin2()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0.0f, 0.0f), // 0 0
+                new Vertex(1.0f, 0.5f), // 6 1
+                new Vertex(1.5f, 1.0f), // 7 2
+                new Vertex(2.0f, 0.0f), // 4 3
+                new Vertex(3.0f, 0.5f), // 5 4
+                new Vertex(3.5f, 0.0f), // 3 5
+                new Vertex(4.0f, 4.0f), // 1 6
+                new Vertex(5.0f, 0.0f), // 2 7
+            };
+
+            var polygon1 = Polygon.Build(sortedVertices)
+                .AddVertices(3, 0, 6, 7, 5)
+                .ClosePartialPolygon()
+                .AddVertices(4, 2, 1)
+                .Close();
+
+            var triangleCollector = PolygonTriangulator.CreateTriangleCollector();
+
+            var triangluator = new PolygonTriangulator(polygon1);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("0-1 1-3 3-4 4-5 5-6", splits);
+
+            var specialSplits = new[] { (4, 5), (3, 4), (0, 1), (1, 3), (5, 6) }
+                .Select(x => x.ToTuple()).ToArray();
+
+            var splittedPolygon = Polygon.Split(polygon1, specialSplits, triangleCollector);
+
+            var polygon2 = Polygon.Build(sortedVertices)
+                .AddVertices(5, 3, 0, 6, 7)
+                .ClosePartialPolygon()
+                .AddVertices(4, 2, 1)
+                .Close();
+            splittedPolygon = Polygon.Split(polygon2, specialSplits, triangleCollector);
+
+            var polygon3 = Polygon.Build(sortedVertices)
+                .AddVertices(7, 5, 3, 0, 6)
+                .ClosePartialPolygon()
+                .AddVertices(4, 2, 1)
+                .Close();
+            splittedPolygon = Polygon.Split(polygon3, specialSplits, triangleCollector);
+        }
+
+        /// <summary>
         /// Triangluate a polygon with all trapezoid combinations (0,1,2 left neighbors * 0,1,2 right neighbors)
         /// </summary>
         [TestMethod]
@@ -287,7 +338,7 @@
             }
 
             var result = builder.BuildPolygon();
-            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", String.Join(" ", result.Polygon.VertexList(0)));
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", result.Polygon.VertexList(0)));
         }
 
         /// <summary>

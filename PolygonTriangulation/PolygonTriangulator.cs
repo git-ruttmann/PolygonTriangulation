@@ -47,6 +47,15 @@
         }
 
         /// <summary>
+        /// Create a triangle collector
+        /// </summary>
+        /// <returns>a triangle collector</returns>
+        public static IArrayTriangleCollector CreateTriangleCollector()
+        {
+            return new TriangleCollector();
+        }
+
+        /// <summary>
         /// Finally, build the triangles
         /// </summary>
         /// <returns>the triangles to represent the polygon</returns>

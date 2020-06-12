@@ -478,6 +478,7 @@
             /// <summary>
             /// Process the splits
             /// </summary>
+            /// <returns>a polygon with multiple montone subpolygons</returns>
             public Polygon Execute()
             {
                 var splits = JoinHolesIntoPolygon();
@@ -623,12 +624,76 @@
                     {
                         if (this.chain[from].PolygonId == this.chain[currentTo].PolygonId)
                         {
+                            from = this.ShortestPathToChainEnd(from, currentTo);
+                            currentTo = this.ShortestPathToChainEnd(currentTo, from);
+
                             return (from, currentTo);
                         }
                     }
                 }
 
                 throw new InvalidOperationException("No vertex chain found");
+            }
+
+            /// <summary>
+            /// Get the entry in the polygon chain with the same vertex id and the shortest path to chainEnd
+            /// </summary>
+            /// <param name="chainIndex">the chain entry with the other end of the split</param>
+            /// <param name="chainEnd">the chain index of the other end of the split</param>
+            /// <returns>the chain index with the shortest path</returns>
+            /// <remarks>
+            /// This is for the situation after a polygon join:
+            /// - The same vertex is in the polygon 2 times.
+            /// - If we use the wrong vertex, there we introduce invalid splits
+            /// - We're searching for the shorter chain to the target vertex.
+            /// - For all non-joining splits, there is no same vertex in two polygons, so the overhead is minimal
+            /// </remarks>
+            private int ShortestPathToChainEnd(int chainIndex, int chainEnd)
+            {
+                var polygonId = this.chain[chainIndex].PolygonId;
+                for (var next = this.chain[chainIndex].SameVertexChain; next >= 0; next = this.chain[next].SameVertexChain)
+                {
+                    if (this.chain[next].PolygonId == polygonId)
+                    {
+                        if (this.IsVertexDistanceShorter(chainIndex, next, chainEnd))
+                        {
+                            chainIndex = next;
+                        }
+                    }
+                }
+
+                return chainIndex;
+            }
+
+            /// <summary>
+            /// Tests if the distance to chainEnd is shorter from chainStart or from otherChainStart
+            /// </summary>
+            /// <param name="chainStart">the start of the chain</param>
+            /// <param name="otherChainStart">the start of the other chain</param>
+            /// <param name="chainEnd">the chain id of the other end of the split</param>
+            /// <returns>true if otherChainId has a shorter chain to targetVertex</returns>
+            private bool IsVertexDistanceShorter(int chainStart, int otherChainStart, int chainEnd)
+            {
+                var chainId = this.chain[chainStart].Next;
+                var otherChainId = this.chain[otherChainStart].Next;
+                var endId = this.chain[chainEnd].Next;
+
+                while (true)
+                {
+                    if (chainId == chainEnd || endId == chainStart)
+                    {
+                        return false;
+                    }
+
+                    if (otherChainId == chainEnd || endId == otherChainStart)
+                    {
+                        return true;
+                    }
+
+                    chainId = this.chain[chainId].Next;
+                    otherChainId = this.chain[otherChainId].Next;
+                    endId = this.chain[endId].Next;
+                }
             }
 
             /// <summary>
