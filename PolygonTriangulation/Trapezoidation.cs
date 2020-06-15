@@ -95,6 +95,12 @@
         {
             var lowerEdge = this.EdgeForVertex(id);
 
+            var upperEdge = lowerEdge.TreeNode.Next?.Data;
+            if (lowerEdge.Right != upperEdge?.Right)
+            {
+                throw new InvalidOperationException($"Invalid join of edges lower: {lowerEdge} and upper: {upperEdge}");
+            }
+
             var lowerTrapezoid = lowerEdge.Data;
             if (lowerEdge.IsRightToLeft)
             {
@@ -182,7 +188,7 @@
             var lower = new TrapezoidEdge(start, prev, true);
             var upper = new TrapezoidEdge(start, next, false);
 
-            if (this.comparer.IsVertexAbove(lower.Right, upper))
+            if (!this.comparer.EdgeOrderingWithCommonLeftIsCorrect(lower, upper))
             {
                 (lower, upper) = (upper, lower);
             }
@@ -276,6 +282,46 @@
             }
 
             /// <summary>
+            /// Test if the ordering of the edges is correct, both edges have a common point on the left
+            /// </summary>
+            /// <param name="lower">the lower edge</param>
+            /// <param name="upper">the upper edge</param>
+            /// <returns>true if upper is above lower</returns>
+            /// <remarks>
+            /// take the wider edge (larger X span) to avoid a large slope.
+            /// </remarks>
+            public bool EdgeOrderingWithCommonLeftIsCorrect(TrapezoidEdge lower, TrapezoidEdge upper)
+            {
+                var left = this.vertices[upper.Left];
+                var upperRight = this.vertices[upper.Right];
+                var lowerRight = this.vertices[lower.Right];
+
+                if ((upperRight.Y > left.Y) != (lowerRight.Y > left.Y))
+                {
+                    return upperRight.Y > lowerRight.Y;
+                }
+
+                if (upperRight.X > lowerRight.X)
+                {
+                    if (upperRight.Y > left.Y && upperRight.Y < lowerRight.Y)
+                    {
+                        return false;
+                    }
+
+                    return !this.IsVertexAboveSlow(ref lowerRight, ref left, ref upperRight);
+                }
+                else
+                {
+                    if (lowerRight.Y < left.Y && lowerRight.Y < upperRight.Y)
+                    {
+                        return true;
+                    }
+
+                    return this.IsVertexAboveSlow(ref upperRight, ref left, ref lowerRight);
+                }
+            }
+
+            /// <summary>
             /// Test if the vertex is above the line that is formed by the edge
             /// </summary>
             /// <param name="vertexId"></param>
@@ -285,7 +331,7 @@
             /// This is called only during insert operations, therefore value.left > storage.left.
             /// Try to find the result without calculation first, then calculate the storage.Y at value.Left.X
             /// </remarks>
-            public bool IsVertexAbove(int vertexId, TrapezoidEdge edge)
+            private bool IsVertexAbove(int vertexId, TrapezoidEdge edge)
             {
                 var vertex = vertices[vertexId];
                 var left = vertices[edge.Left];
@@ -324,9 +370,7 @@
             {
                 var xSpan = right.X - left.X;
 
-                // during a start operation, the start.Y will always be larger than left.Y and right.Y of a vertical edge, 
-                // otherwise start would have been sorted between left and right. So it's no difference to test against left.Y or right.Y
-                if (xSpan < epsilon)
+                if (xSpan < epsilon * epsilon)
                 {
                     return vertex.Y > left.Y;
                 }
