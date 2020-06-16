@@ -50,6 +50,8 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EdgesToPolygonTests.cs" />
+    <Compile Include="PolygonSplittingTests.cs" />
     <Compile Include="RedBlackTreeTests.cs" />
     <Compile Include="Seidel.cs" />
     <Compile Include="UnitTest1.cs" />
