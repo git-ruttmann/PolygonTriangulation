@@ -179,8 +179,7 @@
         }
 
         /// <summary>
-        /// Join a hole into the polygon and then split at the same point.
-        /// Tests the collision detection in <see cref="Polygon.Split"/>
+        /// Use the same vertex id (4) in multiple sub-polygons
         /// </summary>
         [TestMethod]
         public void InnerPolygonTouchesOuterPolygon()
@@ -209,13 +208,289 @@
                 .AddVertices(12, 15, 14, 8, 3, 0, 1, 2, 4, 9)
                 .ClosePartialPolygon()
                 .AddVertices(7, 13, 11, 10, 4, 5, 6)
-                .Close();
+                .Close(4);
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("2-3 3-4 4-4 4-9 7-8 8-13 9-10 11-12 12-13 13-14", splits);
             var triangles = triangluator.BuildTriangles();
-            Assert.AreEqual("0-2 2-3 3-8 8-9 9-10 10-11 11-12 11-15 12-17 15-16 16-19", splits);
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+        }
+
+        /// <summary>
+        /// Join inner polygon at the same point. Conected in the middle of the inner polygon. (transition on outer and transition on inner)
+        /// </summary>
+        /// <remarks>
+        /// This in an existing problem
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void PointFusionWithInnerPolygonOnMiddle()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(3, 3),  // 4
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 7
+                new Vertex(6, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 4, 7, 8)
+                .ClosePartialPolygon()
+                .AddVertices(4, 3, 5)
+                .Close(4);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("3-3", splits);
+        }
+
+        /// <summary>
+        /// Join inner polygon at the same point. Conected in on the left of the inner polygon. (first transition, then opening cusp)
+        /// </summary>
+        [TestMethod]
+        public void PointFusionWithInnerPolygonOnLeft()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(3, 3),  // 4
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 7
+                new Vertex(6, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 4, 7, 8)
+                .ClosePartialPolygon()
+                .AddVertices(4, 5, 6)
+                .Close(4);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("4-4 6-7", splits);
+
+            var triangles = triangluator.BuildTriangles();
+            Assert.IsTrue(VerifyTriangle(triangles, 6, 4, 7));
+            Assert.IsTrue(VerifyTriangle(triangles, 4, 0, 2));
+            Assert.IsTrue(VerifyTriangle(triangles, 5, 0, 4));
+            Assert.IsTrue(VerifyTriangle(triangles, 6, 0, 5));
+            Assert.IsTrue(VerifyTriangle(triangles, 8, 6, 7));
+            Assert.IsTrue(VerifyTriangle(triangles, 8, 0, 6));
+            Assert.AreEqual(3 * 6, triangles.Length);
+        }
+
+        /// <summary>
+        /// Join inner polygon at the same point. Conected in on the elft of the inner polygon. (closing cusp, then transition)
+        /// </summary>
+        /// <remarks>
+        /// This is still a problem
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void PointFusionWithInnerPolygonOnRight()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(3, 3),  // 4
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 7
+                new Vertex(6, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 4, 7, 8)
+                .ClosePartialPolygon()
+                .AddVertices(4, 1, 3)
+                .Close(4);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("3-3", splits);
+        }
+
+        /// <summary>
+        /// Join three inner polygon at the same point. One on the left, one on the middle, on on the right.
+        /// </summary>
+        /// <remarks>
+        /// this is still a problem
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void PointFusionWithInnerPolygonLeftMiddleRight()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(2.5f, 2),
+                new Vertex(3, 3),  // 5
+                new Vertex(3.5f, 2),
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 9
+                new Vertex(6, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 5, 9, 10)
+                .ClosePartialPolygon()
+                .AddVertices(5, 1, 3)
+                .ClosePartialPolygon()
+                .AddVertices(5, 4, 6)
+                .ClosePartialPolygon()
+                .AddVertices(5, 7, 8)
+                .Close(5);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("5-5 6-7", splits);
+
+            var _ = triangluator.BuildTriangles();
+        }
+
+        /// <summary>
+        /// Join two polygons at a center vertex, one polygon is left, the other is on the right of the joining point.
+        /// </summary>
+        /// <remarks>
+        /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
+        /// </remarks>
+        [TestMethod]
+        public void PointFusionLeftToRight()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(0, 2),
+                new Vertex(1, 1),
+                new Vertex(2, 0),
+                new Vertex(2, 2),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(2, 0, 1)
+                .ClosePartialPolygon()
+                .AddVertices(2, 4, 3)
+                .Close(2);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual(string.Empty, splits);
+        }
+
+        /// <summary>
+        /// Join two polygons at a center vertex, one polygon is about the other.
+        /// </summary>
+        /// <remarks>
+        /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void PointFusionTopAndBottom()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(0, 2),
+                new Vertex(1, 1),
+                new Vertex(2, 0),
+                new Vertex(2, 2),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(2, 1, 4)
+                .ClosePartialPolygon()
+                .AddVertices(2, 3, 0)
+                .Close(2);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("1-1", splits);
+        }
+
+        /// <summary>
+        /// Join three polygons at the same left and the same right vertex.
+        /// </summary>
+        /// <remarks>
+        /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void TripleFusionSinglePoint()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(0, 2),
+                new Vertex(0, 3),
+                new Vertex(1, 2),
+                new Vertex(2, 3),
+                new Vertex(2, 4),
+                new Vertex(3, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(3, 0, 1)
+                .ClosePartialPolygon()
+                .AddVertices(3, 2, 5)
+                .ClosePartialPolygon()
+                .AddVertices(3, 4, 6)
+                .Close(3);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("3-3 3-3", splits);
+        }
+
+        /// <summary>
+        /// Join three polygons at the same left and the same right vertex.
+        /// </summary>
+        /// <remarks>
+        /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
+        /// </remarks>
+        [TestMethod]
+        [ExpectedException(typeof(KeyNotFoundException))]
+        public void TripleFusionLeftAndRight()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 2),
+                new Vertex(1, 0),
+                new Vertex(1, 1),
+                new Vertex(1, 2),
+                new Vertex(1, 3),
+                new Vertex(1, 4),
+                new Vertex(1, 5),
+                new Vertex(2, 3),
+            };
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 7, 1)
+                .ClosePartialPolygon()
+                .AddVertices(0, 4, 7, 3)
+                .ClosePartialPolygon()
+                .AddVertices(0, 6, 7, 5)
+                .Close(0);
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("0-0 0-0", splits);
         }
 
         /// <summary>

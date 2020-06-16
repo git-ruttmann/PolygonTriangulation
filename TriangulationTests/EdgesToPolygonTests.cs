@@ -49,7 +49,7 @@ namespace TriangulationTests
             var triangulator = new PolygonTriangulator(polygon);
             var splits = triangulator.GetSplits();
 
-            Assert.AreEqual(1, splits.Count(x => x.Item1 == x.Item2), "sub polygons must connect at vertex 4");
+            Assert.AreEqual(1, splits.Count(x => x.Item1 == 4 && x.Item2 == 4), "sub polygons must connect at vertex 4");
 
             var triangles = triangulator.BuildTriangles();
         }
