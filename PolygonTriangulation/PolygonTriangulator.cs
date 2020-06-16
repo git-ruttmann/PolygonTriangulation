@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     /// <summary>
     /// Receive triangles
@@ -177,13 +177,13 @@
         private class MonotonePolygonTriangulator
         {
             private readonly Polygon polygon;
-            private readonly IReadOnlyList<Vector2> vertices;
+            private readonly int subPolygonId;
+            private readonly IReadOnlyList<Vertex> vertices;
             private readonly Stack<int> vertexStack;
             private int third;
             private int second;
             private int current;
             private IEnumerator<int> iterator;
-            private int subPolygonId;
 
             public MonotonePolygonTriangulator(Polygon polygon, int subPolygonId)
             {
