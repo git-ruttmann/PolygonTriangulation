@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriangulationTests", "Trian
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seidel", "Seidel\Seidel.csproj", "{B5E105B1-6ACE-4F92-BE6B-7B7E0127CE33}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonDisplay", "PolygonDisplay\PolygonDisplay.csproj", "{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{B5E105B1-6ACE-4F92-BE6B-7B7E0127CE33}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B5E105B1-6ACE-4F92-BE6B-7B7E0127CE33}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5E105B1-6ACE-4F92-BE6B-7B7E0127CE33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
