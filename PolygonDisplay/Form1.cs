@@ -1,6 +1,8 @@
 ﻿namespace PolygonDisplay
 {
+    using PolygonTriangulation;
     using System;
+    using System.Collections.Generic;
     using System.Data;
     using System.Drawing;
     using System.Linq;
@@ -28,6 +30,11 @@
         {
             this.controller.ActivateStorage(id);
             this.polygonPanel.Polygon = this.controller.Polygon;
+            this.polygonPanel.Splits = this.controller.Splits;
+            this.vertexText.Text = String.Join(Environment.NewLine,
+                this.controller.Polygon.OrderedVertexes
+                .Select(x => $"{x.Prev}>{x.Id}>{x.Next}")
+                .ToArray());
 
             if ((Control.ModifierKeys & Keys.Shift) == 0)
             {
@@ -44,7 +51,7 @@
 
         private void button1_Click(object sender, EventArgs e)
         {
-
+            this.vertexText.Lines = this.controller.BuildTrapezoidationDebug();
         }
 
         public void RefreshState()
@@ -62,7 +69,7 @@
                 .Where(x => Regex.Match(x.Name, "^s[0-9*]$").Success);
             foreach (var button in buttons)
             {
-                button.FlatStyle = IdOfStorageButton(button) == this.controller.ActiveStorageId ? FlatStyle.Popup : FlatStyle.Flat;
+                button.BackColor = IdOfStorageButton(button) == this.controller.ActiveStorageId ? SystemColors.MenuHighlight : this.debugButton.BackColor;
             }
         }
 
@@ -80,6 +87,45 @@
             }
 
             this.vertexIdLabel.Text = this.vertexIdSelector.Value.ToString();
+        }
+
+        private void splitButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                this.polygonPanel.Splits =
+                    new PolygonTriangulator(this.controller.Polygon).GetSplits().ToArray();
+            }
+            catch (Exception ex)
+            {
+                this.vertexText.Text = ex.ToString();
+            }
+
+            this.polygonPanel.AutoScale();
+        }
+
+        private void triangulateButton_Click(object sender, EventArgs e)
+        {
+            this.vertexText.Text = string.Empty;
+            var collector = PolygonTriangulator.CreateTriangleCollector();
+            try
+            {
+                new PolygonTriangulator(this.controller.Polygon).BuildTriangles(collector);
+            }
+            catch (Exception ex)
+            {
+                this.vertexText.Text = ex.ToString();
+            }
+
+            var lines = new List<string>();
+            var triangles = collector.Triangles;
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                lines.Add($"{triangles[i + 0]} {triangles[i + 1]} {triangles[i + 2]} ");
+            }
+
+            this.vertexText.Text += string.Join(Environment.NewLine, lines);
+            this.polygonPanel.AutoScale();
         }
     }
 }

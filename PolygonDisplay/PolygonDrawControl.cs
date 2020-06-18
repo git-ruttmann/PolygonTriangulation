@@ -4,6 +4,7 @@
     using System;
     using System.Collections.Generic;
     using System.Drawing;
+    using System.Drawing.Drawing2D;
     using System.Linq;
     using System.Windows.Forms;
 
@@ -28,11 +29,6 @@
         /// the center point in control coordinates
         /// </summary>
         private PointF centerPoint;
-
-        /// <summary>
-        /// Pen for polygon lines
-        /// </summary>
-        private Pen linePen;
 
         /// <summary>
         /// the center point in polygon coordinates
@@ -72,6 +68,7 @@
             this.zoom = 1;
             this.polygon = SamplePolygon();
             this.InitializeComponent();
+            this.DoubleBuffered = true;
             this.AutoScale(true);
         }
 
@@ -100,6 +97,11 @@
                 this.Invalidate();
             }
         }
+
+        /// <summary>
+        /// Gets or sets the splits
+        /// </summary>
+        public IReadOnlyCollection<Tuple<int, int>> Splits { get; set; }
 
         /// <summary>
         /// Center on the highlighted position
@@ -213,33 +215,108 @@
                 return;
             }
 
+            var scaledVertices = this.ScaleVertices(this.polygon.Vertices);
             var g = e.Graphics;
-            this.linePen = Pens.Black;
-            this.DrawPolygon(g);
 
-            this.linePen = new Pen(Color.Turquoise);
-            this.linePen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-            this.linePen.DashPattern = new[] { 5f, 15f, 5f, 15f };
+            if ((this.Splits?.Count ?? -1) >= 0)
+            {
+                DrawTriangles(g, scaledVertices);
+            }
+
+            this.DrawPolygon(g, scaledVertices);
+
+            if (this.Splits != null)
+            {
+                this.DrawSplits(g, scaledVertices);
+            }
+        }
+
+        /// <summary>
+        /// Draw the triangles and monotones
+        /// </summary>
+        /// <param name="g">the GDI graphics context</param>
+        /// <param name="scaledVertices">the vertices, scaled to points</param>
+        private void DrawTriangles(Graphics g, PointF[] scaledVertices)
+        {
+            var triangleCollector = PolygonTriangulator.CreateTriangleCollector();
+            var montonizedPolygon = Polygon.Split(this.Polygon, this.Splits, triangleCollector);
+
+            var colorIndex = 0;
+            var colors = new[]
+            {
+                    Color.LightGoldenrodYellow,
+                    Color.LightGreen,
+                    Color.LightBlue,
+                    Color.LightCoral,
+                };
+
+            foreach (var polygonId in montonizedPolygon.SubPolygonIds)
+            {
+                var brushColor = Color.FromArgb(127, colors[colorIndex]);
+                colorIndex = (colorIndex + 1) % colors.Length;
+                var brush = new SolidBrush(brushColor);
+
+                var vertices = montonizedPolygon.SubPolygonVertices(polygonId).Select(x => scaledVertices[x]).ToArray();
+                g.FillPolygon(brush, vertices);
+            }
+
+            var triangles = triangleCollector.Triangles;
+            var greyBrush = new SolidBrush(Color.FromArgb(47, Color.LightGray));
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                var vertices = triangles.Skip(i).Take(3).Select(x => scaledVertices[x]).ToArray();
+                g.FillPolygon(greyBrush, vertices);
+            }
         }
 
         /// <summary>
         /// Draw the polygon
         /// </summary>
         /// <param name="g">the GDI graphics context</param>
-        private void DrawPolygon(Graphics g)
+        /// <param name="scaledVertices">the vertices, scaled to points</param>
+        private void DrawPolygon(Graphics g, PointF[] scaledVertices)
         {
-            var scaledVertices = this.ScaleVertices(this.polygon.Vertices);
+            var pen = new Pen(Color.Black);
+            pen.Width = this.LogicalToDeviceUnits(1);
+            pen.SetLineCap(LineCap.Flat, LineCap.ArrowAnchor, DashCap.Flat);
 
             foreach (var subPolygonId in this.polygon.SubPolygonIds)
             {
-                var lastVertex = this.polygon.VertexList(subPolygonId).Last();
+                var lastVertex = this.polygon.SubPolygonVertices(subPolygonId).Last();
                 var lastPoint = scaledVertices[lastVertex];
-                foreach (var vertexId in this.polygon.VertexList(subPolygonId))
+                foreach (var vertexId in this.polygon.SubPolygonVertices(subPolygonId))
                 {
                     var point = scaledVertices[vertexId];
-                    g.DrawLine(this.linePen, lastPoint, point);
+                    g.DrawLine(pen, lastPoint, point);
                     this.DrawVertexInformation(g, vertexId, point);
                     lastPoint = point;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draw the splits
+        /// </summary>
+        /// <param name="g">the GDI graphics context</param>
+        /// <param name="scaledVertices">the vertices, scaled to points</param>
+        private void DrawSplits(Graphics g, PointF[] scaledVertices)
+        {
+            var pen = new Pen(Color.IndianRed);
+            pen.Width = this.LogicalToDeviceUnits(2);
+            pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Custom;
+            pen.DashPattern = new[] { 4f, 4f, 4f, 4f };
+
+            foreach (var split in this.Splits)
+            {
+                if (split.Item1 != split.Item2)
+                {
+                    g.DrawLine(pen, scaledVertices[split.Item1], scaledVertices[split.Item2]);
+                }
+                else
+                {
+                    var radius = this.LogicalToDeviceUnits(5);
+                    var point = scaledVertices[split.Item1];
+                    g.DrawEllipse(pen, point.X - radius, point.Y - radius, 2 * radius, 2 * radius);
                 }
             }
         }

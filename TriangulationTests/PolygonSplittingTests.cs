@@ -212,9 +212,9 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("2-3 3-4 4-4 4-9 7-8 8-13 9-10 11-12 12-13 13-14", splits);
+            Assert.AreEqual("2-3 3-4 7-8 8-13 9-10 11-12 12-13 13-14", splits);
             var triangles = triangluator.BuildTriangles();
-            Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+            Assert.AreEqual((sortedVertices.Length - 2 + 1) * 3, triangles.Length);
         }
 
         /// <summary>
