@@ -16,16 +16,6 @@
         /// Gets the data of the node
         /// </summary>
         T Data { get; }
-
-        /// <summary>
-        /// Gets the next higher item
-        /// </summary>
-        IOrderedNode<T> Next { get; }
-
-        /// <summary>
-        /// Gets the next lower item
-        /// </summary>
-        IOrderedNode<T> Prev { get; }
     };
 
     /// <summary>
@@ -131,6 +121,18 @@
         {
             var levelSet = new HashSet<int>(blackLevels);
             MarkLevelRecursive(this.root, 0, levelSet);
+        }
+
+        /// <inheritdoc/>
+        public IOrderedNode<T> Next(IOrderedNode<T> treeNode)
+        {
+            return (treeNode as Node)?.Next;
+        }
+
+        /// <inheritdoc/>
+        public IOrderedNode<T> Prev(IOrderedNode<T> treeNode)
+        {
+            return (treeNode as Node)?.Prev;
         }
 
         /// <summary>

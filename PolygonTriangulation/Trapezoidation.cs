@@ -82,7 +82,8 @@
             }
             else
             {
-                var trapezoid = lowerEdge.BelowData;
+                var belowEdge = this.activeEdges.Prev(lowerEdge.TreeNode).Data;
+                var trapezoid = belowEdge.Trapezoid;
                 trapezoid.LeaveInsideBySplit(id, lowerEdge, upperEdge, this.splitSink);
             }
         }
@@ -95,20 +96,21 @@
         {
             var lowerEdge = this.EdgeForVertex(id);
 
-            var upperEdge = lowerEdge.TreeNode.Next?.Data;
+            var upperEdge = this.activeEdges.Next(lowerEdge.TreeNode)?.Data;
             if (lowerEdge.Right != upperEdge?.Right)
             {
                 throw new InvalidOperationException($"Invalid join of edges lower: {lowerEdge} and upper: {upperEdge}");
             }
 
-            var lowerTrapezoid = lowerEdge.Data;
+            var lowerTrapezoid = lowerEdge.Trapezoid;
             if (lowerEdge.IsRightToLeft)
             {
                 lowerTrapezoid.LeaveInsideByJoin(id, this.splitSink);
             }
             else
             {
-                var upperTrapezoid = lowerEdge.AboveData;
+                var upperEdge2 = this.activeEdges.Next(lowerEdge.TreeNode).Data;
+                var upperTrapezoid = upperEdge2.Trapezoid;
                 Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, id, this.splitSink);
             }
 
@@ -124,7 +126,7 @@
         public void HandleTransition(int id, int prev, int next)
         {
             var oldEdge = this.EdgeForVertex(id);
-            var trapezoid = oldEdge.Data;
+            var trapezoid = oldEdge.Trapezoid;
             if (oldEdge.IsRightToLeft)
             {
                 var newEdge = this.Transition(oldEdge, prev);
@@ -212,7 +214,7 @@
         {
             var nextEdge = new TrapezoidEdge(edge.Right, newTarget, edge.IsRightToLeft)
             {
-                Data = edge.Data,
+                Trapezoid = edge.Trapezoid,
             };
 
             nextEdge.TreeNode = this.activeEdges.ReplaceNode(edge.TreeNode, nextEdge);
@@ -229,7 +231,8 @@
         /// <param name="lowerEdge">the lower edge</param>
         private void JoinTrapezoidEdges(TrapezoidEdge lowerEdge)
         {
-            this.activeEdges.RemoveNode(lowerEdge.TreeNode.Next);
+            var nextNode = this.activeEdges.Next(lowerEdge.TreeNode);
+            this.activeEdges.RemoveNode(nextNode);
             this.activeEdges.RemoveNode(lowerEdge.TreeNode);
 
             this.vertexToEdge.Remove(lowerEdge.Right);
@@ -244,7 +247,7 @@
         {
             var edge = this.vertexToEdge[vertexId];
 
-            var prevEdge = edge.TreeNode.Prev?.Data;
+            var prevEdge = this.activeEdges.Prev(edge.TreeNode)?.Data;
             if (prevEdge?.Right == edge.Right)
             {
                 return prevEdge;
@@ -413,18 +416,9 @@
             /// <summary>
             /// Gets or sets the current associated trapezoid.
             /// </summary>
-            public Trapezoid Data { get; set; }
+            public Trapezoid Trapezoid { get; set; }
 
-            /// <summary>
-            /// Gets the trapezoid of the edge below
-            /// </summary>
-            public Trapezoid BelowData => this.TreeNode.Prev.Data.Data;
-
-            /// <summary>
-            /// Gets the trapezoid of the edge above
-            /// </summary>
-            public Trapezoid AboveData => this.TreeNode.Next.Data.Data;
-
+            /// <inheritdoc/>
             public override string ToString()
             {
                 return $"{this.Left}{(this.IsRightToLeft ? "<" : ">")}{this.Right}";
@@ -503,8 +497,8 @@
 
                 this.lowerEdge = lowerEdge;
                 this.upperEdge = upperEdge;
-                this.lowerEdge.Data = this;
-                this.upperEdge.Data = this;
+                this.lowerEdge.Trapezoid = this;
+                this.upperEdge.Trapezoid = this;
             }
 
             /// <summary>
