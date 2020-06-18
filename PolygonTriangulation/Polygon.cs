@@ -206,7 +206,96 @@
                 first = id;
             }
 
-            return new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones, fusionVertices);
+            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones, fusionVertices);
+            polygon.FusionVerticesIntoChain();
+            return polygon;
+        }
+
+        /// <summary>
+        /// Calculates an angle that grows counter clockwise from 0 to 4
+        /// </summary>
+        /// <param name="dx">delta in x direction</param>
+        /// <param name="dy">delta in y direction</param>
+        /// <returns>a float representing the angle</returns>
+        private static float DiamondAngle(float dx, float dy)
+        {
+            if (dy >= 0)
+            {
+                return (dx >= 0 ? dy / (dx + dy) : 1 - dx / (-dx + dy));
+            }
+            else
+            {
+                return (dx < 0 ? 2 - dy / (-dx - dy) : 3 + dx / (dx - dy));
+            }
+        }
+
+        /// <summary>
+        /// Iterate all fusion points and join the chain
+        /// </summary>
+        private void FusionVerticesIntoChain()
+        {
+            if (this.fusionVertices == null)
+            {
+                return;
+            }
+
+            foreach (var fusionVertexId in this.fusionVertices)
+            {
+                var latestChain = vertexToChain[fusionVertexId];
+                var olderChain = this.chain[latestChain].SameVertexChain;
+                if (this.chain[olderChain].SameVertexChain == -1)
+                {
+                    this.FusionChainAtVertex(olderChain, latestChain);
+                }
+                else
+                {
+                    var overlayingVertexInstances = new List<int>(3);
+                    for (int next = latestChain; next >= 0; next = this.chain[next].SameVertexChain)
+                    {
+                        overlayingVertexInstances.Add(next);
+                    }
+
+                    var vertex = this.vertexCoordinates[fusionVertexId];
+                    var sortedByAngle = overlayingVertexInstances
+                        .OrderBy(x =>
+                        {
+                            var nextVertexId = this.chain[this.chain[x].Next].VertexId;
+                            ref var peer = ref this.vertexCoordinates[nextVertexId];
+                            return DiamondAngle(peer.X - vertex.X, peer.Y - vertex.Y);
+                        })
+                        .ToArray();
+
+                    var first = sortedByAngle[0];
+                    foreach (var peer in sortedByAngle.Skip(1))
+                    {
+                        this.FusionChainAtVertex(first, peer);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fusion the chain at a common vertex.
+        /// </summary>
+        /// <param name="chain">the chain</param>
+        /// <param name="outerChain">index in the chain of the outer polygon</param>
+        /// <param name="innerChain">inded in the chain of the innner polygon</param>
+        /// <remarks>
+        /// Never fusion a polygon into itself, even if it touches itself
+        /// </remarks>
+        private void FusionChainAtVertex(int outerChain, int innerChain)
+        {
+            if (this.chain[outerChain].PolygonId == this.chain[innerChain].PolygonId)
+            {
+                return;
+            }
+
+            this.polygonStartIndices[chain[innerChain].PolygonId] = -1;
+            PolygonSplitter.FillPolygonId(this.chain, innerChain, chain[outerChain].PolygonId);
+
+            var innerNext = this.chain[innerChain].Next;
+            SetNext(this.chain, innerChain, this.chain[outerChain].Next);
+            SetNext(this.chain, outerChain, innerNext);
         }
 
         /// <summary>
@@ -242,7 +331,9 @@
                 i++;
             }
 
-            return new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex, fusionVertices);
+            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex, fusionVertices);
+            polygon.FusionVerticesIntoChain();
+            return polygon;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -501,6 +592,29 @@
             }
 
             /// <summary>
+            /// Change the polygon id for the complete chain
+            /// </summary>
+            /// <param name="start">start at that polygon index</param>
+            /// <param name="polygonId"></param>
+            /// <returns>the chain index that points back to the start</returns>
+            public static int FillPolygonId(VertexChain[] chain, int start, int polygonId)
+            {
+                var i = start;
+                while (true)
+                {
+                    chain[i].PolygonId = polygonId;
+
+                    var result = i;
+                    i = chain[i].Next;
+
+                    if (i == start)
+                    {
+                        return result;
+                    }
+                }
+            }
+
+            /// <summary>
             /// Process the splits
             /// </summary>
             /// <returns>a polygon with multiple montone subpolygons</returns>
@@ -566,7 +680,7 @@
                     if (this.chain[i].PolygonId != firstPolygonId)
                     {
                         var otherPolygonId = this.chain[i].PolygonId;
-                        this.FillPolygonId(i, firstPolygonId);
+                        FillPolygonId(chain, i, firstPolygonId);
                         this.polygonStartIndices[otherPolygonId] = -1;
 
                         var chainNext = this.chain[chainStart].Next;
@@ -641,7 +755,7 @@
                 var newPolygonId = this.polygonStartIndices.Count;
                 this.polygonStartIndices.Add(fromCopy);
 
-                this.FillPolygonId(fromCopy, newPolygonId);
+                FillPolygonId(chain, fromCopy, newPolygonId);
 
                 this.polygonStartIndices[newPolygonId] = fromCopy;
                 this.polygonStartIndices[oldPolygonId] = toCopy;
@@ -754,29 +868,6 @@
             }
 
             /// <summary>
-            /// Change the polygon id for the complete chain
-            /// </summary>
-            /// <param name="start">start at that polygon index</param>
-            /// <param name="polygonId"></param>
-            /// <returns>the chain index that points back to the start</returns>
-            private int FillPolygonId(int start, int polygonId)
-            {
-                var i = start;
-                while (true)
-                {
-                    this.chain[i].PolygonId = polygonId;
-
-                    var result = i;
-                    i = chain[i].Next;
-
-                    if (i == start)
-                    {
-                        return result;
-                    }
-                }
-            }
-
-            /// <summary>
             /// Join two polygons. Effectively joins a hole into the outer polygon.
             /// </summary>
             /// <param name="data">the shared data</param>
@@ -789,7 +880,7 @@
 
                 var deletedPolygonId = chain[to].PolygonId;
                 this.polygonStartIndices[deletedPolygonId] = -1;
-                var lastVertexInHole = this.FillPolygonId(to, chain[from].PolygonId);
+                var lastVertexInHole = FillPolygonId(chain, to, chain[from].PolygonId);
 
                 chain[toCopy] = chain[to];
                 chain[to].SameVertexChain = toCopy;

@@ -44,7 +44,7 @@ namespace TriangulationTests
             builder.AddEdge(new Vector3(-0.070607f, 0.460440f, 0), new Vector3(0.449942f, 0.415320f, 0));
 
             var polygon = builder.BuildPolygon().Polygon;
-            Assert.AreEqual(2, polygon.SubPolygonIds.Count());
+            Assert.AreEqual(1, polygon.SubPolygonIds.Count());
 
             var triangulator = new PolygonTriangulator(polygon);
             var splits = triangulator.GetSplits();
