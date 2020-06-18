@@ -384,11 +384,6 @@
             }
         }
 
-        public static object Build(object vertices)
-        {
-            throw new NotImplementedException();
-        }
-
         /// <summary>
         /// Information about an element in the vertex chain.
         /// </summary>
