@@ -5,6 +5,7 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Net.NetworkInformation;
     using System.Runtime.CompilerServices;
 
     using Vertex = System.Numerics.Vector2;
@@ -28,6 +29,21 @@
         /// Gets the id of the previous vertex
         /// </summary>
         int Prev { get; }
+
+        /// <summary>
+        /// Gets a unique identifier for overlaying vertexes
+        /// </summary>
+        int Unique { get; }
+
+        /// <summary>
+        /// Gets the <see cref="Unique"/> for the next vertex
+        /// </summary>
+        int NextUnique { get; }
+
+        /// <summary>
+        /// Gets the <see cref="Unique"/> for the prev vertex
+        /// </summary>
+        int PrevUnique { get; }
     }
 
 
@@ -344,7 +360,7 @@
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SetNext(VertexChain[] chain, int current, int next)
         {
-            chain[current].SetNext(next, ref chain[next]);
+            chain[current].SetNext(current, next, ref chain[next]);
         }
 
         /// <summary>
@@ -406,7 +422,7 @@
             /// <summary>
             /// The previous vertex id (not chain index)
             /// </summary>
-            public int PrevVertexId { get; private set; }
+            public int Prev { get; private set; }
 
             /// <summary>
             /// The next chain index in the polygon (same polygon id)
@@ -419,10 +435,10 @@
             /// <param name="currentChain">the id of the current item</param>
             /// <param name="nextChain">the id of the next item</param>
             /// <param name="nextItem">the data of the next item</param>
-            public void SetNext(int nextChain, ref VertexChain nextItem)
+            public void SetNext(int current, int nextChain, ref VertexChain nextItem)
             {
                 this.Next = nextChain;
-                nextItem.PrevVertexId = this.VertexId;
+                nextItem.Prev = current;
             }
 
             /// <summary>
@@ -524,7 +540,13 @@
 
             public int Next => this.chain[this.chain[this.element].Next].VertexId;
 
-            public int Prev => this.chain[this.element].PrevVertexId;
+            public int Prev => this.chain[this.chain[this.element].Prev].VertexId;
+
+            public int Unique => this.element;
+
+            public int NextUnique => this.chain[this.element].Next;
+
+            public int PrevUnique => this.chain[this.element].Prev;
         }
 
         /// <summary>

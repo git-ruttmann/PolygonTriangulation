@@ -129,15 +129,15 @@
                     var (id, prev, next) = (info.Id, info.Prev, info.Next);
                     if (id < prev && id < next)
                     {
-                        this.activeEdges.HandleOpeningCusp(id, prev, next);
+                        this.activeEdges.HandleOpeningCusp(info);
                     }
                     else if (id > prev && id > next)
                     {
-                        this.activeEdges.HandleClosingCusp(id, prev, next);
+                        this.activeEdges.HandleClosingCusp(info);
                     }
                     else
                     {
-                        this.activeEdges.HandleTransition(id, prev, next);
+                        this.activeEdges.HandleTransition(info);
                     }
                 }
             }

@@ -73,18 +73,23 @@
         /// <param name="id">the id of the cusp vertex</param>
         /// <param name="prev">the id of previous polygon vertex</param>
         /// <param name="next">the id of the next polygon vertex</param>
-        public void HandleOpeningCusp(int id, int prev, int next)
+        public void HandleOpeningCusp(IPolygonVertexInfo info)
         {
-            var (lowerEdge, upperEdge) = this.StartNewTrapezoidEdges(id, prev, next);
+            var (lowerEdge, upperEdge) = this.StartNewTrapezoidEdges(
+                info.Id,
+                info.Prev,
+                info.PrevUnique,
+                info.Next,
+                info.NextUnique);
             if (lowerEdge.IsRightToLeft)
             {
-                Trapezoid.EnterInsideBySplit(id, lowerEdge, upperEdge, this.splitSink);
+                Trapezoid.EnterInsideBySplit(info.Id, lowerEdge, upperEdge, this.splitSink);
             }
             else
             {
                 var belowEdge = this.activeEdges.Prev(lowerEdge.TreeNode).Data;
                 var trapezoid = belowEdge.Trapezoid;
-                trapezoid.LeaveInsideBySplit(id, lowerEdge, upperEdge, this.splitSink);
+                trapezoid.LeaveInsideBySplit(info.Id, lowerEdge, upperEdge, this.splitSink);
             }
         }
 
@@ -94,9 +99,9 @@
         /// <param name="id">the id of the cusp vertex</param>
         /// <param name="prev">the id of previous polygon vertex</param>
         /// <param name="next">the id of the next polygon vertex</param>
-        public void HandleClosingCusp(int id, int prev, int next)
+        public void HandleClosingCusp(IPolygonVertexInfo info)
         {
-            var lowerEdge = this.EdgeForVertex(id);
+            var lowerEdge = this.EdgeForVertex(info.Id, info.Unique);
             TrapezoidEdge upperEdge;
 
             var prevEdge = this.activeEdges.Prev(lowerEdge.TreeNode)?.Data;
@@ -118,13 +123,13 @@
             var lowerTrapezoid = lowerEdge.Trapezoid;
             if (lowerEdge.IsRightToLeft)
             {
-                lowerTrapezoid.LeaveInsideByJoin(id, this.splitSink);
+                lowerTrapezoid.LeaveInsideByJoin(info.Id, this.splitSink);
             }
             else
             {
                 var upperEdge2 = this.activeEdges.Next(lowerEdge.TreeNode).Data;
                 var upperTrapezoid = upperEdge2.Trapezoid;
-                Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, id, this.splitSink);
+                Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, info.Id, this.splitSink);
             }
 
             this.JoinTrapezoidEdges(lowerEdge);
@@ -136,19 +141,19 @@
         /// <param name="id">the id of the current vertex</param>
         /// <param name="prev">the id of previous polygon vertex</param>
         /// <param name="next">the id of the next polygon vertex</param>
-        public void HandleTransition(int id, int prev, int next)
+        public void HandleTransition(IPolygonVertexInfo info)
         {
-            var oldEdge = this.EdgeForVertex(id);
+            var oldEdge = this.EdgeForVertex(info.Id, info.Unique);
             var trapezoid = oldEdge.Trapezoid;
             if (oldEdge.IsRightToLeft)
             {
-                var newEdge = this.Transition(oldEdge, prev);
-                trapezoid.TransitionOnLowerEdge(id, newEdge, this.splitSink);
+                var newEdge = this.Transition(oldEdge, info.Prev, info.PrevUnique);
+                trapezoid.TransitionOnLowerEdge(info.Id, newEdge, this.splitSink);
             }
             else
             {
-                var newEdge = this.Transition(oldEdge, next);
-                trapezoid.TransitionOnUpperEdge(id, newEdge, this.splitSink);
+                var newEdge = this.Transition(oldEdge, info.Next, info.NextUnique);
+                trapezoid.TransitionOnUpperEdge(info.Id, newEdge, this.splitSink);
             }
         }
 
@@ -164,7 +169,7 @@
         /// </remarks>
         internal (ITestingTrapezoidEdge lower, ITestingTrapezoidEdge upper) TestBegin(int start, int prev, int next)
         {
-            return this.StartNewTrapezoidEdges(start, prev, next);
+            return this.StartNewTrapezoidEdges(start, prev, prev, next, next);
         }
 
         /// <summary>
@@ -176,7 +181,7 @@
         /// <returns>the new edge</returns>
         internal ITestingTrapezoidEdge TestTransition(ITestingTrapezoidEdge edge, int newTarget)
         {
-            return this.Transition((TrapezoidEdge)edge, newTarget);
+            return this.Transition((TrapezoidEdge)edge, newTarget, newTarget);
         }
 
         /// <summary>
@@ -198,10 +203,10 @@
         /// <remarks>
         /// There is never a Begin() where the prev or next is left to start or prev is at same X and below start.
         /// </remarks>
-        private (TrapezoidEdge lower, TrapezoidEdge upper) StartNewTrapezoidEdges(int start, int prev, int next)
+        private (TrapezoidEdge lower, TrapezoidEdge upper) StartNewTrapezoidEdges(int start, int prev, int prevUnique, int next, int nextUnique)
         {
-            var lower = new TrapezoidEdge(start, prev, true);
-            var upper = new TrapezoidEdge(start, next, false);
+            var lower = new TrapezoidEdge(start, prev, prevUnique, true);
+            var upper = new TrapezoidEdge(start, next, nextUnique, false);
 
             if (!this.comparer.EdgeOrderingWithCommonLeftIsCorrect(lower, upper))
             {
@@ -210,8 +215,8 @@
 
             (lower.TreeNode, upper.TreeNode) = this.activeEdges.AddPair(lower, upper);
 
-            this.StoreEdge(upper);
             this.StoreEdge(lower);
+            this.StoreEdge(upper);
 
             return (lower, upper);
         }
@@ -223,16 +228,16 @@
         /// <param name="start"></param>
         /// <param name="target"></param>
         /// <returns>the new edge</returns>
-        private TrapezoidEdge Transition(TrapezoidEdge edge, int newTarget)
+        private TrapezoidEdge Transition(TrapezoidEdge edge, int newTarget, int targetUnique)
         {
-            var nextEdge = new TrapezoidEdge(edge.Right, newTarget, edge.IsRightToLeft)
+            var nextEdge = new TrapezoidEdge(edge.Right, newTarget, targetUnique, edge.IsRightToLeft)
             {
                 Trapezoid = edge.Trapezoid,
             };
 
             nextEdge.TreeNode = this.activeEdges.ReplaceNode(edge.TreeNode, nextEdge);
 
-            this.vertexToEdge.Remove(edge.Right);
+            this.vertexToEdge.Remove(edge.RightUnique);
             this.StoreEdge(nextEdge);
 
             return nextEdge;
@@ -248,7 +253,7 @@
             this.activeEdges.RemoveNode(nextNode);
             this.activeEdges.RemoveNode(lowerEdge.TreeNode);
 
-            this.vertexToEdge.Remove(lowerEdge.Right);
+            this.vertexToEdge.Remove(lowerEdge.RightUnique);
         }
 
         /// <summary>
@@ -257,19 +262,19 @@
         /// <param name="edge">the edge</param>
         private void StoreEdge(TrapezoidEdge edge)
         {
-            this.vertexToEdge[edge.Right] = edge;
+            this.vertexToEdge[edge.RightUnique] = edge;
         }
 
         /// <summary>
         /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
         /// </summary>
-        /// <param name="vertexId">the vertex id</param>
+        /// <param name="vertexUniqe">the vertex id</param>
         /// <returns>the edge</returns>
-        private TrapezoidEdge EdgeForVertex(int vertexId)
+        private TrapezoidEdge EdgeForVertex(int vertexId, int vertexUniqe)
         {
-            if (!this.vertexToEdge.TryGetValue(vertexId, out var edge))
+            if (!this.vertexToEdge.TryGetValue(vertexUniqe, out var edge))
             {
-                throw new InvalidOperationException($"Can't find edge for vertex {vertexId}");
+                throw new InvalidOperationException($"Can't find edge for vertex {vertexId} at {vertexUniqe}");
             }
 
             return edge;
@@ -407,12 +412,12 @@
         /// </summary>
         private class TrapezoidEdge : ITestingTrapezoidEdge
         {
-            public TrapezoidEdge(int left, int right, bool isRightToLeft)
+            public TrapezoidEdge(int left, int right, int rightUnique, bool isRightToLeft)
             {
                 this.IsRightToLeft = isRightToLeft;
                 this.Left = left;
                 this.Right = right;
-                this.IsNone = left < 0 && right < 0;
+                this.RightUnique = rightUnique;
             }
 
             /// <inheritdoc/>
@@ -424,8 +429,10 @@
             /// <inheritdoc/>
             public int Right { get; }
 
-            /// <inheritdoc/>
-            public bool IsNone { get; }
+            /// <summary>
+            /// The unique id of the right vertex
+            /// </summary>
+            public int RightUnique { get; }
 
             /// <summary>
             /// The storage position in the tree
