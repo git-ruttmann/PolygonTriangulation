@@ -42,7 +42,7 @@
                 .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
                 .Close();
 
-            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", polygon.VertexList(0)));
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", polygon.SubPolygonVertices(0)));
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
@@ -218,120 +218,12 @@
         }
 
         /// <summary>
-        /// Join inner polygon at the same point. Conected in the middle of the inner polygon. (transition on outer and transition on inner)
-        /// </summary>
-        /// <remarks>
-        /// This in an existing problem
-        /// </remarks>
-        [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
-        public void PointFusionWithInnerPolygonOnMiddle()
-        {
-            var sortedVertices = new[]
-            {
-                new Vertex(0, 0),
-                new Vertex(1, 2),
-                new Vertex(1, 3),  // 2
-                new Vertex(2, 2),
-                new Vertex(3, 3),  // 4
-                new Vertex(4, 2),
-                new Vertex(5, 2),
-                new Vertex(5, 3),  // 7
-                new Vertex(6, 1),
-            };
-
-            var polygon = Polygon.Build(sortedVertices)
-                .AddVertices(0, 2, 4, 7, 8)
-                .ClosePartialPolygon()
-                .AddVertices(4, 3, 5)
-                .Close(4);
-
-            var triangluator = new PolygonTriangulator(polygon);
-            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("3-3", splits);
-        }
-
-        /// <summary>
-        /// Join inner polygon at the same point. Conected in on the left of the inner polygon. (first transition, then opening cusp)
-        /// </summary>
-        [TestMethod]
-        public void PointFusionWithInnerPolygonOnLeft()
-        {
-            var sortedVertices = new[]
-            {
-                new Vertex(0, 0),
-                new Vertex(1, 2),
-                new Vertex(1, 3),  // 2
-                new Vertex(2, 2),
-                new Vertex(3, 3),  // 4
-                new Vertex(4, 2),
-                new Vertex(5, 2),
-                new Vertex(5, 3),  // 7
-                new Vertex(6, 1),
-            };
-
-            var polygon = Polygon.Build(sortedVertices)
-                .AddVertices(0, 2, 4, 7, 8)
-                .ClosePartialPolygon()
-                .AddVertices(4, 5, 6)
-                .Close(4);
-
-            var triangluator = new PolygonTriangulator(polygon);
-            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("4-4 6-7", splits);
-
-            var triangles = triangluator.BuildTriangles();
-            Assert.IsTrue(VerifyTriangle(triangles, 6, 4, 7));
-            Assert.IsTrue(VerifyTriangle(triangles, 4, 0, 2));
-            Assert.IsTrue(VerifyTriangle(triangles, 5, 0, 4));
-            Assert.IsTrue(VerifyTriangle(triangles, 6, 0, 5));
-            Assert.IsTrue(VerifyTriangle(triangles, 8, 6, 7));
-            Assert.IsTrue(VerifyTriangle(triangles, 8, 0, 6));
-            Assert.AreEqual(3 * 6, triangles.Length);
-        }
-
-        /// <summary>
-        /// Join inner polygon at the same point. Conected in on the elft of the inner polygon. (closing cusp, then transition)
-        /// </summary>
-        /// <remarks>
-        /// This is still a problem
-        /// </remarks>
-        [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
-        public void PointFusionWithInnerPolygonOnRight()
-        {
-            var sortedVertices = new[]
-            {
-                new Vertex(0, 0),
-                new Vertex(1, 2),
-                new Vertex(1, 3),  // 2
-                new Vertex(2, 2),
-                new Vertex(3, 3),  // 4
-                new Vertex(4, 2),
-                new Vertex(5, 2),
-                new Vertex(5, 3),  // 7
-                new Vertex(6, 1),
-            };
-
-            var polygon = Polygon.Build(sortedVertices)
-                .AddVertices(0, 2, 4, 7, 8)
-                .ClosePartialPolygon()
-                .AddVertices(4, 1, 3)
-                .Close(4);
-
-            var triangluator = new PolygonTriangulator(polygon);
-            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("3-3", splits);
-        }
-
-        /// <summary>
         /// Join three inner polygon at the same point. One on the left, one on the middle, on on the right.
         /// </summary>
         /// <remarks>
         /// this is still a problem
         /// </remarks>
         [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
         public void PointFusionWithInnerPolygonLeftMiddleRight()
         {
             var sortedVertices = new[]
@@ -359,9 +251,11 @@
                 .AddVertices(5, 7, 8)
                 .Close(5);
 
+            Assert.AreEqual(1, polygon.SubPolygonIds.Count());
+            Assert.IsTrue(PolygonFusionTests.SubPolygonExists(polygon, 5, 1, 3, 5, 4, 6, 5, 7, 8, 5, 9, 10, 0, 2), "All three inner poygons must be fusioned in one polygon");
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("5-5 6-7", splits);
+            Assert.AreEqual("0-1 1-2 3-4 6-7 8-9", splits);
 
             var _ = triangluator.BuildTriangles();
         }
@@ -393,6 +287,7 @@
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             Assert.AreEqual(string.Empty, splits);
+            Assert.AreEqual(2, polygon.SubPolygonIds.Count());
         }
 
         /// <summary>
@@ -402,7 +297,6 @@
         /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
         /// </remarks>
         [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
         public void PointFusionTopAndBottom()
         {
             var sortedVertices = new[]
@@ -422,7 +316,6 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("1-1", splits);
         }
 
         /// <summary>
@@ -432,7 +325,6 @@
         /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
         /// </remarks>
         [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
         public void TripleFusionSinglePoint()
         {
             var sortedVertices = new[]
@@ -456,7 +348,7 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("3-3 3-3", splits);
+            Assert.AreEqual(string.Empty, splits);
         }
 
         /// <summary>
@@ -466,7 +358,6 @@
         /// Problem: The "Trapezoidation.vertexToEdge" won't find the edge on the second close as there is no collision list.
         /// </remarks>
         [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
         public void TripleFusionLeftAndRight()
         {
             var sortedVertices = new[]
@@ -490,7 +381,7 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("0-0 0-0", splits);
+            Assert.AreEqual("1-2 3-4 5-6", splits);
         }
 
         /// <summary>
