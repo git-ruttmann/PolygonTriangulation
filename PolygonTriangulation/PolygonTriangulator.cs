@@ -133,7 +133,7 @@
                     }
                     else if (id > prev && id > next)
                     {
-                        this.activeEdges.HandleClosingCusp(id);
+                        this.activeEdges.HandleClosingCusp(id, prev, next);
                     }
                     else
                     {

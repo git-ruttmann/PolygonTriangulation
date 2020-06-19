@@ -109,11 +109,6 @@
         private readonly int[] polygonStartIndices;
 
         /// <summary>
-        /// vertices that are used by more than one subpolygon
-        /// </summary>
-        private readonly IReadOnlyList<int> fusionVertices;
-
-        /// <summary>
         /// Initializes a new <see cref="Polygon"/>
         /// </summary>
         /// <param name="vertexCoordinates">the vertex coordinates</param>
@@ -125,7 +120,7 @@
         {
             this.chain = chain;
             this.vertexToChain = vertexToChain;
-            this.fusionVertices = fusionVertices;
+            this.FusionVertices = fusionVertices;
             this.vertexCoordinates = vertexCoordinates;
             this.polygonStartIndices = polygonStartIndices.ToArray();
         }
@@ -165,6 +160,16 @@
             }
         }
 
+        /// <summary>
+        /// Gets vertices that are used by more than one subpolygon
+        /// </summary>
+        public IReadOnlyList<int> FusionVertices { get; }
+
+        /// <summary>
+        /// Create a polygon builder
+        /// </summary>
+        /// <param name="vertices">the vertices of the polygon</param>
+        /// <returns>A builder to define vertex order and sub-polygons</returns>
         public static IPolygonBuilder Build(Vertex[] vertices)
         {
             return new PolygonBuilder(vertices);
@@ -234,12 +239,12 @@
         /// </summary>
         private void FusionVerticesIntoChain()
         {
-            if (this.fusionVertices == null)
+            if (this.FusionVertices == null)
             {
                 return;
             }
 
-            foreach (var fusionVertexId in this.fusionVertices)
+            foreach (var fusionVertexId in this.FusionVertices)
             {
                 var latestChain = vertexToChain[fusionVertexId];
                 var olderChain = this.chain[latestChain].SameVertexChain;
@@ -622,7 +627,7 @@
                     SplitPolygon(split.Item1, split.Item2);
                 }
 
-                return new Polygon(this.originalPolygon.vertexCoordinates, this.chain, this.originalPolygon.vertexToChain, this.polygonStartIndices, this.originalPolygon.fusionVertices);
+                return new Polygon(this.originalPolygon.vertexCoordinates, this.chain, this.originalPolygon.vertexToChain, this.polygonStartIndices, this.originalPolygon.FusionVertices);
             }
 
             /// <summary>
@@ -636,7 +641,7 @@
                     return this.allSplits;
                 }
 
-                if (this.originalPolygon.fusionVertices?.Count > 0)
+                if (this.originalPolygon.FusionVertices?.Count > 0)
                 {
                     var fusionSplits = this.allSplits.Where(x => x.Item1 == x.Item2).Select(x => x.Item1).ToArray();
                     foreach (var fusionVertexId in fusionSplits)

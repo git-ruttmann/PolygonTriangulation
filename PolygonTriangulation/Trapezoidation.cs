@@ -92,11 +92,24 @@
         /// Handle a closing cusp. i.e. joins two edges
         /// </summary>
         /// <param name="id">the id of the cusp vertex</param>
-        public void HandleClosingCusp(int id)
+        /// <param name="prev">the id of previous polygon vertex</param>
+        /// <param name="next">the id of the next polygon vertex</param>
+        public void HandleClosingCusp(int id, int prev, int next)
         {
             var lowerEdge = this.EdgeForVertex(id);
+            TrapezoidEdge upperEdge;
 
-            var upperEdge = this.activeEdges.Next(lowerEdge.TreeNode)?.Data;
+            var prevEdge = this.activeEdges.Prev(lowerEdge.TreeNode)?.Data;
+            if (prevEdge?.Right == lowerEdge.Right)
+            {
+                upperEdge = lowerEdge;
+                lowerEdge = prevEdge;
+            }
+            else
+            {
+                upperEdge = this.activeEdges.Next(lowerEdge.TreeNode)?.Data;
+            }
+
             if (lowerEdge.Right != upperEdge?.Right)
             {
                 throw new InvalidOperationException($"Invalid join of edges lower: {lowerEdge} and upper: {upperEdge}");
@@ -197,8 +210,8 @@
 
             (lower.TreeNode, upper.TreeNode) = this.activeEdges.AddPair(lower, upper);
 
-            this.vertexToEdge[upper.Right] = upper;
-            this.vertexToEdge[lower.Right] = lower;
+            this.StoreEdge(upper);
+            this.StoreEdge(lower);
 
             return (lower, upper);
         }
@@ -220,7 +233,7 @@
             nextEdge.TreeNode = this.activeEdges.ReplaceNode(edge.TreeNode, nextEdge);
 
             this.vertexToEdge.Remove(edge.Right);
-            this.vertexToEdge[nextEdge.Right] = nextEdge;
+            this.StoreEdge(nextEdge);
 
             return nextEdge;
         }
@@ -239,18 +252,24 @@
         }
 
         /// <summary>
+        /// Store the edge for direct lookup
+        /// </summary>
+        /// <param name="edge">the edge</param>
+        private void StoreEdge(TrapezoidEdge edge)
+        {
+            this.vertexToEdge[edge.Right] = edge;
+        }
+
+        /// <summary>
         /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
         /// </summary>
         /// <param name="vertexId">the vertex id</param>
         /// <returns>the edge</returns>
         private TrapezoidEdge EdgeForVertex(int vertexId)
         {
-            var edge = this.vertexToEdge[vertexId];
-
-            var prevEdge = this.activeEdges.Prev(edge.TreeNode)?.Data;
-            if (prevEdge?.Right == edge.Right)
+            if (!this.vertexToEdge.TryGetValue(vertexId, out var edge))
             {
-                return prevEdge;
+                throw new InvalidOperationException($"Can't find edge for vertex {vertexId}");
             }
 
             return edge;
