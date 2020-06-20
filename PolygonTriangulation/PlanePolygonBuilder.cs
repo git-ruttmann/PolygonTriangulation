@@ -188,7 +188,14 @@
                     {
                         return 0;
                     }
-                    else if (x.Y < y.Y)
+
+                    var xCompare = x.X.CompareTo(y.X);
+                    if (xCompare != 0)
+                    {
+                        return xCompare;
+                    }
+
+                    if (x.Y < y.Y)
                     {
                         return -1;
                     }
