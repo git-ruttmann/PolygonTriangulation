@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Numerics;
+    using Vertex = System.Numerics.Vector2;
 
     /// <summary>
     /// Receive triangles
@@ -91,6 +91,15 @@
         }
 
         /// <summary>
+        /// Iterates over the first n vertices and reports the active edges and the sort order after that step.
+        /// </summary>
+        /// <returns>sorted active edges</returns>
+        internal IEnumerable<string> GetEdgesAfterPartialTrapezoidation(int depth)
+        {
+            return ScanSplitByTrapezoidation.GetEdgesAfterPartialTrapezoidation(this.polygon, depth);
+        }
+
+        /// <summary>
         /// Traverse the polygon, build trapezoids and collect possible splits
         /// </summary>
         private class ScanSplitByTrapezoidation : IPolygonSplitSink
@@ -115,29 +124,59 @@
             public static IEnumerable<Tuple<int, int>> BuildSplits(Polygon polygon)
             {
                 var splitter = new ScanSplitByTrapezoidation(polygon);
-                splitter.BuildSplits();
+                splitter.BuildSplits(-1);
                 return splitter.splits;
+            }
+
+            /// <summary>
+            /// Run n steps and return the edges after that step
+            /// </summary>
+            /// <param name="polygon">the polygon</param>
+            /// <param name="depth">the number of steps to run</param>
+            /// <returns>The edges sorted from High to Low</returns>
+            internal static IEnumerable<string> GetEdgesAfterPartialTrapezoidation(Polygon polygon, int depth)
+            {
+                var splitter = new ScanSplitByTrapezoidation(polygon);
+                splitter.BuildSplits(depth);
+                return splitter.activeEdges.Edges.Reverse().Select(x => x.ToString());
             }
 
             /// <summary>
             /// Traverse the polygon and build all splits
             /// </summary>
-            public void BuildSplits()
+            /// <param name="stepCount">number of steps during debugging. Use -1 for all</param>
+            public void BuildSplits(int stepCount)
             {
-                foreach (var info in this.polygon.OrderedVertexes)
+                foreach (var group in this.polygon.OrderedVertexes.GroupBy(x => x.Id))
                 {
-                    var (id, prev, next) = (info.Id, info.Prev, info.Next);
-                    if (id < prev && id < next)
+                    var actions = group.ToArray();
+                    if (actions.Count() > 1)
                     {
-                        this.activeEdges.HandleOpeningCusp(id, prev, next);
+                        actions = actions.OrderBy(x => x.Action).ToArray();
                     }
-                    else if (id > prev && id > next)
+
+                    foreach (var info in actions)
                     {
-                        this.activeEdges.HandleClosingCusp(id);
-                    }
-                    else
-                    {
-                        this.activeEdges.HandleTransition(id, prev, next);
+                        if (stepCount >= 0)
+                        {
+                            if (--stepCount < 0)
+                            {
+                                return;
+                            }
+                        }
+
+                        switch (info.Action)
+                        {
+                            case VertexAction.ClosingCusp:
+                                this.activeEdges.HandleClosingCusp(info);
+                                break;
+                            case VertexAction.Transition:
+                                this.activeEdges.HandleTransition(info);
+                                break;
+                            case VertexAction.OpeningCusp:
+                                this.activeEdges.HandleOpeningCusp(info);
+                                break;
+                        }
                     }
                 }
             }
@@ -177,13 +216,13 @@
         private class MonotonePolygonTriangulator
         {
             private readonly Polygon polygon;
-            private readonly IReadOnlyList<Vector2> vertices;
+            private readonly int subPolygonId;
+            private readonly IReadOnlyList<Vertex> vertices;
             private readonly Stack<int> vertexStack;
             private int third;
             private int second;
             private int current;
             private IEnumerator<int> iterator;
-            private int subPolygonId;
 
             public MonotonePolygonTriangulator(Polygon polygon, int subPolygonId)
             {
@@ -206,7 +245,7 @@
                 }
                 else
                 {
-                    var vertices = this.polygon.VertexList(this.subPolygonId).ToArray();
+                    var vertices = this.polygon.SubPolygonVertices(this.subPolygonId).ToArray();
                     collector.AddTriangle(vertices[0], vertices[1], vertices[2]);
                 }
             }
@@ -312,7 +351,7 @@
             /// <returns>highest/lowest point in the polygon, depending if itss left hand or right hand. -1 if its a triangle.</returns>
             private int FindStartOfMonotonePolygon()
             {
-                var iterator = this.polygon.VertexList(this.subPolygonId).GetEnumerator();
+                var iterator = this.polygon.SubPolygonVertices(this.subPolygonId).GetEnumerator();
                 iterator.MoveNext();
                 var first = iterator.Current;
                 var posmax = first;

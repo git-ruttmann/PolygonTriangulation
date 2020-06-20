@@ -111,14 +111,14 @@
         /// Create a polygon from edges detector. The edge is defined by the vertex ids
         /// </summary>
         /// <returns>the detector</returns>
-        internal static IPolygonLineDetector CreatePolygonLineDetector() => new PolygonLineDetector();
+        internal static IPolygonLineDetector CreatePolygonLineDetector(params int[] fusionVertices) => new PolygonLineDetector(fusionVertices);
 
         /// <summary>
-        public void AddEdge(Vector3 p0, Vector3 p1)
         /// Add an edge
         /// </summary>
         /// <param name="p0">start point</param>
         /// <param name="p1">end point</param>
+        public void AddEdge(Vector3 p0, Vector3 p1)
         {
             this.edgesToPolygon.AddEdge(p0, p1);
         }
@@ -229,10 +229,17 @@
             private readonly List<PolygonLine> unclosedPolygones;
 
             /// <summary>
+            /// vertices that are part of more than 2 polygon edges
+            /// </summary>
+            private readonly IReadOnlyList<int> fusionVertices;
+
+            /// <summary>
             /// Constructor
             /// </summary>
-            public PolygonLineDetector()
+            /// <param name="fusionVertices">Vertices that are used by more than two edges</param>
+            public PolygonLineDetector(IReadOnlyList<int> fusionVertices)
             {
+                this.fusionVertices = fusionVertices;
                 this.openPolygones = new Dictionary<int, PolygonLine>();
                 this.closedPolygones = new List<PolygonLine>();
                 this.unclosedPolygones = new List<PolygonLine>();
@@ -671,34 +678,44 @@
                 var sorted2D = this.vertices2D.ToArray();
                 var sortedIndizes = Enumerable.Range(0, sorted2D.Length).ToArray();
                 var comparer = new ClusterVertexComparer();
+                List<int> fusionedVertices = null;
                 Array.Sort(sorted2D, sortedIndizes, comparer);
 
                 var translation = new int[sorted2D.Length];
                 var writeIndex = 0;
+                var sameVertexCount = 0;
                 for (int i = 1; i < sorted2D.Length; i++)
                 {
                     if (comparer.Compare(sorted2D[writeIndex], sorted2D[i]) != 0)
                     {
                         sorted2D[++writeIndex] = sorted2D[i];
+                        sameVertexCount = 0;
+                    }
+                    else
+                    {
+                        if (++sameVertexCount == 2)
+                        {
+                            fusionedVertices = fusionedVertices ?? new List<int>();
+                            fusionedVertices.Add(writeIndex);
+                        }
                     }
 
                     translation[sortedIndizes[i]] = writeIndex;
                 }
 
                 var count = writeIndex + 1;
-                var compressed2D = new Vertex[count];
-                Array.Copy(sorted2D, compressed2D, count);
+                Array.Resize(ref sorted2D, count);
 
-                var compresed3D = new Vector3[compressed2D.Length];
+                var compresed3D = new Vector3[sorted2D.Length];
                 for (int i = 0; i < translation.Length; i++)
                 {
                     compresed3D[translation[i]] = this.vertices3D[i];
                 }
 
-                var lineDetector = new PolygonLineDetector();
+                var lineDetector = new PolygonLineDetector(fusionedVertices);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
 
-                var polygon = Polygon.FromPolygonLines(compressed2D, lineDetector.Lines.Select(x => x.ToIndexes()).ToArray());
+                var polygon = Polygon.FromPolygonLines(sorted2D, lineDetector.Lines.Select(x => x.ToIndexes()).ToArray(), fusionedVertices);
                 return new PlanePolygonData(compresed3D, polygon);
             }
         }

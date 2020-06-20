@@ -10,10 +10,37 @@
     using Vertex = System.Numerics.Vector2;
 
     /// <summary>
+    /// The action necessary for the vertex transition.
+    /// Ordering is important, because for the same vertex id, we need to process closing before transition before opening
+    /// </summary>
+    public enum VertexAction
+    {
+        /// <summary>
+        /// Prev and next are left of the vertex. => This is a closing cusp.
+        /// </summary>
+        ClosingCusp,
+
+        /// <summary>
+        /// Transition from one vertex to the net. No cusp.
+        /// </summary>
+        Transition,
+
+        /// <summary>
+        /// Prev and next are right of the vertex. => This is an opening cusp.
+        /// </summary>
+        OpeningCusp,
+    }
+
+    /// <summary>
     /// Information about an element in the vertex chain of a polygon.
     /// </summary>
     public interface IPolygonVertexInfo
     {
+        /// <summary>
+        /// Gets the action necessary to process the triple
+        /// </summary>
+        VertexAction Action { get; }
+
         /// <summary>
         /// Gets the id of the current vertex
         /// </summary>
@@ -28,6 +55,21 @@
         /// Gets the id of the previous vertex
         /// </summary>
         int Prev { get; }
+
+        /// <summary>
+        /// Gets a unique identifier for overlaying vertexes
+        /// </summary>
+        int Unique { get; }
+
+        /// <summary>
+        /// Gets the <see cref="Unique"/> for the next vertex
+        /// </summary>
+        int NextUnique { get; }
+
+        /// <summary>
+        /// Gets the <see cref="Unique"/> for the prev vertex
+        /// </summary>
+        int PrevUnique { get; }
     }
 
 
@@ -59,8 +101,9 @@
         /// <summary>
         /// Close the polygon. Do not use the builder after closing it.
         /// </summary>
+        /// <param name="fusionVertices">vertices that are used in more than one subpolygon</param>
         /// <returns>a polygon</returns>
-        Polygon Close();
+        Polygon Close(params int[] fusionVertices);
 
         /// <summary>
         /// Create one polygon that includes all vertices in the builder.
@@ -105,7 +148,7 @@
         /// <summary>
         /// the start index in <see cref="chain"/> per sub polygon
         /// </summary>
-        private readonly int[] polygonStartIndices;
+        private readonly List<int> polygonStartIndices;
 
         /// <summary>
         /// Initializes a new <see cref="Polygon"/>
@@ -119,17 +162,17 @@
             this.chain = chain;
             this.vertexToChain = vertexToChain;
             this.vertexCoordinates = vertexCoordinates;
-            this.polygonStartIndices = polygonStartIndices.ToArray();
+            this.polygonStartIndices = polygonStartIndices.ToList();
         }
 
-        public string Debug => string.Join(" || ", this.SubPolygonIds.Select(x => string.Join(" ", this.VertexList(x))));
+        public string Debug => string.Join(" || ", this.SubPolygonIds.Select(x => string.Join(" ", this.SubPolygonVertices(x))));
 
         /// <summary>
         /// Gets the vertex ids of a subpolygon
         /// </summary>
         /// <param name="subPolygonId">the sub polygon id</param>
         /// <returns>vertex Ids</returns>
-        public IEnumerable<int> VertexList(int subPolygonId)
+        public IEnumerable<int> SubPolygonVertices(int subPolygonId)
         {
             return new NextChainEnumerator(this.polygonStartIndices[subPolygonId], this.chain)
                 .Select(x => this.chain[x].VertexId);
@@ -141,9 +184,9 @@
         public IReadOnlyList<Vertex> Vertices => Array.AsReadOnly(this.vertexCoordinates);
 
         /// <summary>
-        /// Gets the ids of all available sub polygons. Use <see cref="VertexList"/> to enemerate the other polygons
+        /// Gets the ids of all available sub polygons. Use <see cref="SubPolygonVertices"/> to enemerate the other polygons
         /// </summary>
-        public IEnumerable<int> SubPolygonIds => Enumerable.Range(0, this.polygonStartIndices.Length).Where(x => this.polygonStartIndices[x] >= 0);
+        public IEnumerable<int> SubPolygonIds => Enumerable.Range(0, this.polygonStartIndices.Count).Where(x => this.polygonStartIndices[x] >= 0);
 
         /// <summary>
         /// Get id/prev/next info per vertex sorted by vertex id.
@@ -157,6 +200,11 @@
             }
         }
 
+        /// <summary>
+        /// Create a polygon builder
+        /// </summary>
+        /// <param name="vertices">the vertices of the polygon</param>
+        /// <returns>A builder to define vertex order and sub-polygons</returns>
         public static IPolygonBuilder Build(Vertex[] vertices)
         {
             return new PolygonBuilder(vertices);
@@ -166,14 +214,15 @@
         /// create a polygon from multiple polygon lines
         /// </summary>
         /// <param name="vertexCoordinates">the vertex coordinates</param>
-        /// <param name="lines">the polygon lines.</param>
+        /// <param name="lines">The polygon lines. Each vertex Id must be unique inside a polygon line.</param>
+        /// <param name="fusionVertices">vertices that are used in more than one subpolygon</param>
         /// <returns>a polygon</returns>
-        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines)
+        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines, IReadOnlyList<int> fusionVertices)
         {
             var chain = new VertexChain[lines.Sum(x => x.Count)];
             var id = 0;
             var first = id;
-            var vertexToChain = new int[vertexCoordinates.Length];
+            var vertexToChain = Enumerable.Repeat(-1, vertexCoordinates.Length).ToArray();
             var subPolygones = new List<int>();
 
             foreach (var line in lines)
@@ -185,16 +234,131 @@
                 {
                     chain[id].VertexId = vertexId;
                     chain[id].PolygonId = polygonId;
-                    chain[id].SameVertexChain = -1;
+
+                    chain[id].SameVertexChain = vertexToChain[vertexId];
+                    vertexToChain[vertexId] = id;
+
                     SetNext(chain, id, id == chain.Length - 1 ? first : id + 1);
-                    vertexToChain[vertexId] = id++;
+                    id++;
                 }
 
                 SetNext(chain, id - 1, first);
                 first = id;
             }
 
-            return new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones);
+            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones);
+            polygon.FusionVerticesIntoChain(fusionVertices);
+            return polygon;
+        }
+
+        /// <summary>
+        /// Calculates an angle that grows counter clockwise from 0 to 4
+        /// </summary>
+        /// <param name="dx">delta in x direction</param>
+        /// <param name="dy">delta in y direction</param>
+        /// <returns>a float representing the angle</returns>
+        private static float DiamondAngle(float dx, float dy)
+        {
+            if (dy >= 0)
+            {
+                return (dx >= 0 ? dy / (dx + dy) : 1 - dx / (-dx + dy));
+            }
+            else
+            {
+                return (dx < 0 ? 2 - dy / (-dx - dy) : 3 + dx / (dx - dy));
+            }
+        }
+
+        /// <summary>
+        /// Iterate all fusion points and join the chain
+        /// </summary>
+        private void FusionVerticesIntoChain(IEnumerable<int> fusionVertices)
+        {
+            if (fusionVertices == null)
+            {
+                return;
+            }
+
+            foreach (var fusionVertexId in fusionVertices)
+            {
+                var jobList = CreateVertexFusionJobs(fusionVertexId);
+
+                var first = true;
+                var newSubPolygons = new List<int>();
+                foreach (var (prev, next, samePolygon) in jobList)
+                {
+                    if (this.chain[prev].Next == next)
+                    {
+                        continue;
+                    }
+
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else if (!samePolygon)
+                    {
+                        this.polygonStartIndices[chain[prev].PolygonId] = -1;
+                        PolygonSplitter.FillPolygonId(this.chain, prev, chain[next].PolygonId);
+                    }
+                    else
+                    {
+                        newSubPolygons.Add(prev);
+                    }
+
+                    SetNext(this.chain, prev, next);
+                }
+
+                // During the split, the chain may contain loops, so FillPolygonId might hang. Update the polygon id in the end.
+                foreach (var polygonStart in newSubPolygons)
+                {
+                    PolygonSplitter.FillPolygonId(this.chain, polygonStart, this.polygonStartIndices.Count);
+                    this.polygonStartIndices.Add(polygonStart);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a list of jobs to reorder all edges of a vertex.
+        /// </summary>
+        /// <param name="fusionVertexId">the central vertex id</param>
+        /// <returns>tuples of prev/next and polygon split</returns>
+        /// <remarks>
+        /// After all jobs are completed, the polygon will leave the vertex with the next counter-clock-wise edge, that has reached the vertex.
+        /// Hence there are no implizit crossings.
+        /// As the eecution of the job manipulates the chain, it's required to collect all data before.
+        /// </remarks>
+        private (int prev, int next, bool samePolygon)[] CreateVertexFusionJobs(int fusionVertexId)
+        {
+            var vertex = this.vertexCoordinates[fusionVertexId];
+            var vertexInstances = new List<(int chain, bool outgoing)>(8);
+            for (int chain = vertexToChain[fusionVertexId]; chain >= 0; chain = this.chain[chain].SameVertexChain)
+            {
+                vertexInstances.Add((chain, true));
+                vertexInstances.Add((chain, false));
+            }
+
+            var sortedByAngle = vertexInstances
+                .OrderBy(x =>
+                {
+                    var peerId = x.outgoing ? this.chain[x.chain].Next : this.chain[x.chain].Prev;
+                    ref var peer = ref this.vertexCoordinates[this.chain[peerId].VertexId];
+                    return 4.0f - DiamondAngle(peer.X - vertex.X, peer.Y - vertex.Y);
+                })
+                .ToArray();
+
+            var jobList = new (int prev, int next, bool samePolygon)[sortedByAngle.Length / 2];
+            var start = sortedByAngle[0].outgoing ? 0 : 1;
+            for (int i = 0; i < jobList.Length; i++)
+            {
+                var outgoing = i * 2 + start;
+                var incoming = outgoing + 2 == jobList.Length ? 0 : outgoing + 1;
+                var prev = this.chain[sortedByAngle[incoming].chain].Prev;
+                var startOfEdge = sortedByAngle[outgoing].chain;
+                jobList[i] = (prev, startOfEdge, this.chain[prev].PolygonId == this.chain[startOfEdge].PolygonId);
+            }
+
+            return jobList;
         }
 
         /// <summary>
@@ -203,12 +367,13 @@
         /// <param name="vertexCoordinates">the coordinates</param>
         /// <param name="vertexIds">the vertex ids</param>
         /// <param name="nextIndices">the next index in vertexIds. Must be same length as vertexIds</param>
+        /// <param name="fusionVertices">Vertices that are used in more than one subpolygon. Can be null.</param>
         /// <returns>a polygon</returns>
-        public static Polygon FromVertexList(Vertex[] vertexCoordinates, IEnumerable<int> vertexIds, IEnumerable<int> nextIndices, IEnumerable<int> polygonIds)
+        public static Polygon FromVertexList(Vertex[] vertexCoordinates, IEnumerable<int> vertexIds, IEnumerable<int> nextIndices, IEnumerable<int> polygonIds, IReadOnlyList<int> fusionVertices)
         {
             var vertexIdCollection = vertexIds as IReadOnlyCollection<int> ?? vertexIds.ToArray();
             var polygonIdCollection = polygonIds as IList<int> ?? polygonIds.ToArray();
-            var vertexToChain = new int[vertexCoordinates.Length];
+            var vertexToChain = Enumerable.Repeat(-1, vertexCoordinates.Length).ToArray();
             var chain = new VertexChain[vertexIdCollection.Count];
             var polygonStartIndex = new List<int>();
 
@@ -216,7 +381,7 @@
             foreach (var (vertexId, nextId) in vertexIdCollection.Zip(nextIndices, Tuple.Create))
             {
                 chain[i].VertexId = vertexId;
-                chain[i].SameVertexChain = -1;
+                chain[i].SameVertexChain = vertexToChain[vertexId];
                 chain[i].PolygonId = polygonIdCollection[i];
                 SetNext(chain, i, nextId);
 
@@ -229,13 +394,15 @@
                 i++;
             }
 
-            return new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex);
+            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex);
+            polygon.FusionVerticesIntoChain(fusionVertices);
+            return polygon;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SetNext(VertexChain[] chain, int current, int next)
         {
-            chain[current].SetNext(next, ref chain[next]);
+            chain[current].SetNext(current, next, ref chain[next]);
         }
 
         /// <summary>
@@ -297,7 +464,7 @@
             /// <summary>
             /// The previous vertex id (not chain index)
             /// </summary>
-            public int PrevVertexId { get; private set; }
+            public int Prev { get; private set; }
 
             /// <summary>
             /// The next chain index in the polygon (same polygon id)
@@ -310,10 +477,10 @@
             /// <param name="currentChain">the id of the current item</param>
             /// <param name="nextChain">the id of the next item</param>
             /// <param name="nextItem">the data of the next item</param>
-            public void SetNext(int nextChain, ref VertexChain nextItem)
+            public void SetNext(int current, int nextChain, ref VertexChain nextItem)
             {
                 this.Next = nextChain;
-                nextItem.PrevVertexId = this.VertexId;
+                nextItem.Prev = current;
             }
 
             /// <summary>
@@ -330,18 +497,24 @@
             private readonly int start;
             private readonly IList<VertexChain> chain;
             private bool reset;
+#if DEBUG
+            private int maxIteratorCount;
+#endif
 
             public NextChainEnumerator(int start, IList<VertexChain> chain)
             {
                 this.start = start;
                 this.chain = chain;
                 this.reset = true;
-            }
+#if DEBUG
+                this.maxIteratorCount = chain.Count();
+#endif
+        }
 
-            /// <summary>
-            /// The current chain index
-            /// </summary>
-            public int Current { get; private set; }
+        /// <summary>
+        /// The current chain index
+        /// </summary>
+        public int Current { get; private set; }
 
             object IEnumerator.Current => this.Current;
 
@@ -368,6 +541,12 @@
                     {
                         return false;
                     }
+#if DEBUG
+                    if (--this.maxIteratorCount < 0)
+                    {
+                        throw new InvalidOperationException("Chain is damaged");
+                    }
+#endif
                 }
 
                 return true;
@@ -397,13 +576,44 @@
             {
                 this.element = element;
                 this.chain = chain;
+
+                var id = this.Id;
+                var prev = this.Prev;
+                var next = this.Next;
+                if (prev < id && next < id)
+                {
+                    this.Action = VertexAction.ClosingCusp;
+                }
+                else if (prev > id && next > id)
+                {
+                    this.Action = VertexAction.OpeningCusp;
+                }
+                else
+                {
+                    this.Action = VertexAction.Transition;
+                }
             }
 
+            /// <inheritdoc/>
+            public VertexAction Action { get; }
+
+            /// <inheritdoc/>
             public int Id => this.chain[this.element].VertexId;
 
+            /// <inheritdoc/>
             public int Next => this.chain[this.chain[this.element].Next].VertexId;
 
-            public int Prev => this.chain[this.element].PrevVertexId;
+            /// <inheritdoc/>
+            public int Prev => this.chain[this.chain[this.element].Prev].VertexId;
+
+            /// <inheritdoc/>
+            public int Unique => this.element;
+
+            /// <inheritdoc/>
+            public int NextUnique => this.chain[this.element].Next;
+
+            /// <inheritdoc/>
+            public int PrevUnique => this.chain[this.element].Prev;
         }
 
         /// <summary>
@@ -471,6 +681,29 @@
             }
 
             /// <summary>
+            /// Change the polygon id for the complete chain
+            /// </summary>
+            /// <param name="start">start at that polygon index</param>
+            /// <param name="polygonId"></param>
+            /// <returns>the chain index that points back to the start</returns>
+            public static int FillPolygonId(VertexChain[] chain, int start, int polygonId)
+            {
+                var i = start;
+                while (true)
+                {
+                    chain[i].PolygonId = polygonId;
+
+                    var result = i;
+                    i = chain[i].Next;
+
+                    if (i == start)
+                    {
+                        return result;
+                    }
+                }
+            }
+
+            /// <summary>
             /// Process the splits
             /// </summary>
             /// <returns>a polygon with multiple montone subpolygons</returns>
@@ -506,7 +739,7 @@
                     {
                         this.JoinHoleIntoPolygon(from, to);
                     }
-                    else
+                    else if (from != to)
                     {
                         remaining.Add(split);
                     }
@@ -579,7 +812,7 @@
                 var newPolygonId = this.polygonStartIndices.Count;
                 this.polygonStartIndices.Add(fromCopy);
 
-                this.FillPolygonId(fromCopy, newPolygonId);
+                FillPolygonId(chain, fromCopy, newPolygonId);
 
                 this.polygonStartIndices[newPolygonId] = fromCopy;
                 this.polygonStartIndices[oldPolygonId] = toCopy;
@@ -692,29 +925,6 @@
             }
 
             /// <summary>
-            /// Change the polygon id for the complete chain
-            /// </summary>
-            /// <param name="start">start at that polygon index</param>
-            /// <param name="polygonId"></param>
-            /// <returns>the chain index that points back to the start</returns>
-            private int FillPolygonId(int start, int polygonId)
-            {
-                var i = start;
-                while (true)
-                {
-                    this.chain[i].PolygonId = polygonId;
-
-                    var result = i;
-                    i = chain[i].Next;
-
-                    if (i == start)
-                    {
-                        return result;
-                    }
-                }
-            }
-
-            /// <summary>
             /// Join two polygons. Effectively joins a hole into the outer polygon.
             /// </summary>
             /// <param name="data">the shared data</param>
@@ -727,7 +937,7 @@
 
                 var deletedPolygonId = chain[to].PolygonId;
                 this.polygonStartIndices[deletedPolygonId] = -1;
-                var lastVertexInHole = this.FillPolygonId(to, chain[from].PolygonId);
+                var lastVertexInHole = FillPolygonId(chain, to, chain[from].PolygonId);
 
                 chain[toCopy] = chain[to];
                 chain[to].SameVertexChain = toCopy;
@@ -769,7 +979,8 @@
                     this.vertices,
                     Enumerable.Range(0, this.vertices.Length),
                     Enumerable.Range(1, this.vertices.Length - 1).Concat(Enumerable.Range(0, 1)),
-                    Enumerable.Repeat(0, this.vertices.Length));
+                    Enumerable.Repeat(0, this.vertices.Length),
+                    null);
             }
 
             public IPolygonBuilder Add(int vertex)
@@ -804,10 +1015,10 @@
                 return this;
             }
 
-            public Polygon Close()
+            public Polygon Close(params int[] fusionVertices)
             {
                 this.ClosePartialPolygon();
-                return Polygon.FromVertexList(this.vertices, this.vertexIds, this.nextIndices, this.polygonIds);
+                return Polygon.FromVertexList(this.vertices, this.vertexIds, this.nextIndices, this.polygonIds, fusionVertices);
             }
         }
     }
