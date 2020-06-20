@@ -352,7 +352,7 @@
             for (int i = 0; i < jobList.Length; i++)
             {
                 var outgoing = i * 2 + start;
-                var incoming = outgoing + 2 == jobList.Length ? 0 : outgoing + 1;
+                var incoming = outgoing + 1 == sortedByAngle.Length ? 0 : outgoing + 1;
                 var prev = this.chain[sortedByAngle[incoming].chain].Prev;
                 var startOfEdge = sortedByAngle[outgoing].chain;
                 jobList[i] = (prev, startOfEdge, this.chain[prev].PolygonId == this.chain[startOfEdge].PolygonId);
