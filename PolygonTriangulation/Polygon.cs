@@ -348,6 +348,11 @@
                 .ToArray();
 
             var jobList = new (int prev, int next, bool samePolygon)[sortedByAngle.Length / 2];
+            if (sortedByAngle.Length == 0)
+            {
+                return jobList;
+            }
+
             var start = sortedByAngle[0].outgoing ? 0 : 1;
             for (int i = 0; i < jobList.Length; i++)
             {
@@ -509,12 +514,12 @@
 #if DEBUG
                 this.maxIteratorCount = chain.Count();
 #endif
-        }
+            }
 
-        /// <summary>
-        /// The current chain index
-        /// </summary>
-        public int Current { get; private set; }
+            /// <summary>
+            /// The current chain index
+            /// </summary>
+            public int Current { get; private set; }
 
             object IEnumerator.Current => this.Current;
 

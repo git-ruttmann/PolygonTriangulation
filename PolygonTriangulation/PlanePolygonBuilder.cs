@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Text;
 
     using Vertex = System.Numerics.Vector2;
     using Vector3 = System.Numerics.Vector3;
@@ -27,6 +28,28 @@
         /// </summary>
         /// <returns></returns>
         IPlanePolygon BuildPolygon();
+    }
+
+    /// <summary>
+    /// Test interface for the polygon line detector (join edges to polygon lines)
+    /// </summary>
+    public interface IPolygonLineDetector
+    {
+        /// <summary>
+        /// Get the closed polygons
+        /// </summary>
+        IEnumerable<IReadOnlyCollection<int>> ClosedPolygons { get; }
+
+        /// <summary>
+        /// Get the unclosed polygons
+        /// </summary>
+        IEnumerable<IReadOnlyCollection<int>> UnclosedPolygons { get; }
+
+        /// <summary>
+        /// Add multiple edges
+        /// </summary>
+        /// <param name="edges">pairs of vertex ids</param>
+        void JoinEdgesToPolygones(IEnumerable<int> edges);
     }
 
     /// <summary>
@@ -62,42 +85,38 @@
     }
 
     /// <summary>
-    /// Test interface for the polygon line detector (join edges to polygon lines)
+    /// Collect the edges for a plane polygon
     /// </summary>
-    public interface IPolygonLineDetector
+    public interface IPlanePolygonEdgeCollector
     {
         /// <summary>
-        /// Get the closed polygons
+        /// Add an edge
         /// </summary>
-        IEnumerable<IReadOnlyCollection<int>> ClosedPolygons { get; }
+        /// <param name="p0">start point</param>
+        /// <param name="p1">end point</param>
+        void AddEdge(Vector3 p0, Vector3 p1);
 
         /// <summary>
-        /// Get the unclosed polygons
+        /// Dump the collected edges
         /// </summary>
-        IEnumerable<IReadOnlyCollection<int>> UnclosedPolygons { get; }
-
-        /// <summary>
-        /// Add multiple edges
-        /// </summary>
-        /// <param name="edges">pairs of vertex ids</param>
-        void JoinEdgesToPolygones(IEnumerable<int> edges);
+        /// <returns>dump the collected edges for debug</returns>
+        string Dump();
     }
 
     /// <summary>
     /// Build a list of triangles from polygon edges
     /// </summary>
-    public class PlanePolygonBuilder
+    public class PlanePolygonBuilder : IPlanePolygonEdgeCollector
     {
         const float epsilon = 1.1E-5f;
 
-        private readonly Plane plane;
         private readonly EdgesToPolygonBuilder edgesToPolygon;
 
         public PlanePolygonBuilder(Plane plane)
         {
-            this.plane = plane;
-            var rotation = Quaternion.Identity;
-            // .FromToRotation(this.plane.Normal, new Vector3(0, 0, -1));
+            var rotation = Quaternion
+                .Identity;
+            // .FromToRotation(plane.normal, new Vector3(0, 0, -1));
             this.edgesToPolygon = new EdgesToPolygonBuilder(rotation);
         }
 
@@ -113,14 +132,16 @@
         /// <returns>the detector</returns>
         internal static IPolygonLineDetector CreatePolygonLineDetector(params int[] fusionVertices) => new PolygonLineDetector(fusionVertices);
 
-        /// <summary>
-        /// Add an edge
-        /// </summary>
-        /// <param name="p0">start point</param>
-        /// <param name="p1">end point</param>
+        /// <inheritdoc/>
         public void AddEdge(Vector3 p0, Vector3 p1)
         {
             this.edgesToPolygon.AddEdge(p0, p1);
+        }
+
+        /// <inheritdoc/>
+        public string Dump()
+        {
+            return this.edgesToPolygon.Dump();
         }
 
         /// <summary>
@@ -128,11 +149,18 @@
         /// </summary>
         public ITriangulatedPlanePolygon Build()
         {
-            var polygonResult = this.edgesToPolygon.BuildPolygon();
-            var triangulator = new PolygonTriangulator(polygonResult.Polygon);
-            var triangles = triangulator.BuildTriangles();
-
-            return new TriangulatedPlanePolygon(polygonResult.Vertices, triangles);
+            IPlanePolygon polygonResult = null;
+            try
+            {
+                polygonResult = this.edgesToPolygon.BuildPolygon();
+                var triangulator = new PolygonTriangulator(polygonResult.Polygon);
+                var triangles = triangulator.BuildTriangles();
+                return new TriangulatedPlanePolygon(polygonResult.Vertices, triangles);
+            }
+            catch (Exception e)
+            {
+                throw new TriangulationException(polygonResult?.Polygon, this.edgesToPolygon.Dump(), e);
+            }
         }
 
         /// <summary>
@@ -266,7 +294,7 @@
             /// <summary>
             /// find continous combination of edges
             /// </summary>
-            /// <param name="triangles">triangle data, the relevant edges are from vertex0 to vertex1. vertex2 is ignored</param>
+            /// <param name="edges">triangle data, the relevant edges are from vertex0 to vertex1. vertex2 is ignored</param>
             /// <returns>the list of closed polygones and the unclosed polygones </returns>
             public void JoinEdgesToPolygones(IEnumerable<int> edges)
             {
@@ -657,6 +685,28 @@
             public static IComparer<Vertex> VertexComparer => new ClusterVertexComparer();
 
             /// <summary>
+            /// Dump the edges during debugging
+            /// </summary>
+            public string Dump()
+            {
+#if DEBUG
+                var sb = new StringBuilder();
+                
+                sb.AppendLine("var builder = PlanePolygonBuilder.CreatePolygonBuilder();");
+                for (int i = 0; i < this.vertices2D.Count - 1; i += 2)
+                {
+                    sb.AppendLine($"builder.AddEdge(new Vector3({this.vertices2D[i].X:0.00000000}f, {this.vertices2D[i].Y:0.00000000}f, 0), new Vector3({this.vertices2D[i + 1].X:0.00000000}f, {this.vertices2D[i + 1].Y:0.00000000}f, 0));");
+                }
+
+                sb.AppendLine("builder.BuildPolygon();");
+
+                return sb.ToString();
+#else
+                return string.Empty;
+#endif
+            }
+
+            /// <summary>
             /// Add an edge
             /// </summary>
             /// <param name="p0">start point</param>
@@ -713,17 +763,17 @@
                 var count = writeIndex + 1;
                 Array.Resize(ref sorted2D, count);
 
-                var compresed3D = new Vector3[sorted2D.Length];
+                var compressed3D = new Vector3[sorted2D.Length];
                 for (int i = 0; i < translation.Length; i++)
                 {
-                    compresed3D[translation[i]] = this.vertices3D[i];
+                    compressed3D[translation[i]] = this.vertices3D[i];
                 }
 
                 var lineDetector = new PolygonLineDetector(fusionedVertices);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
 
                 var polygon = Polygon.FromPolygonLines(sorted2D, lineDetector.Lines.Select(x => x.ToIndexes()).ToArray(), fusionedVertices);
-                return new PlanePolygonData(compresed3D, polygon);
+                return new PlanePolygonData(compressed3D, polygon);
             }
         }
     }

@@ -10,6 +10,7 @@
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
+    using System.Security.Cryptography.X509Certificates;
 
     [TestClass]
     public class UnitTest1
@@ -76,6 +77,76 @@
 
             sorted.TestJoin(b2Upper);
             Assert.AreEqual(string.Empty, string.Join(" ", sorted.Edges));
+        }
+
+        /// <summary>
+        /// Create a polygon and then create the code for the polygon
+        /// </summary>
+        [TestMethod]
+        public void CreatePolygonCode()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(3, 3),  // 4
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 7
+                new Vertex(6, 1),
+            };
+
+            var sourcePolygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 4, 7, 8)
+                .ClosePartialPolygon()
+                .AddVertices(4, 5, 6)
+                .Close(4);
+
+            var code = TriangulationException.BuildPolygonCode(sourcePolygon);
+
+            // ------ pasted result of sourcePolygon.BuildPolygonCode()
+            var vertices = new[]
+            {
+                new Vertex(0.0000000f, 0.0000000f),
+                new Vertex(1.0000000f, 2.0000000f),
+                new Vertex(1.0000000f, 3.0000000f),
+                new Vertex(2.0000000f, 2.0000000f),
+                new Vertex(3.0000000f, 3.0000000f),
+                new Vertex(4.0000000f, 2.0000000f),
+                new Vertex(5.0000000f, 2.0000000f),
+                new Vertex(5.0000000f, 3.0000000f),
+                new Vertex(6.0000000f, 1.0000000f),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
+                .ClosePartialPolygon()
+                .Close(4);
+            // ------ end of pasted code
+
+            var expected = @"var vertices = new[]
+                {
+                new Vertex(0.0000000f, 0.0000000f),
+                new Vertex(1.0000000f, 2.0000000f),
+                new Vertex(1.0000000f, 3.0000000f),
+                new Vertex(2.0000000f, 2.0000000f),
+                new Vertex(3.0000000f, 3.0000000f),
+                new Vertex(4.0000000f, 2.0000000f),
+                new Vertex(5.0000000f, 2.0000000f),
+                new Vertex(5.0000000f, 3.0000000f),
+                new Vertex(6.0000000f, 1.0000000f),
+                };
+
+                var polygon = Polygon.Build(vertices)
+                .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
+                .ClosePartialPolygon()
+                .Close(4);";
+
+            var lines = code.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim());
+            var expectedLines = expected.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim());
+            CollectionAssert.AreEqual(lines.ToArray(), expectedLines.ToArray());
         }
 
         /// <summary>
