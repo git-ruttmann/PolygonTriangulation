@@ -367,7 +367,7 @@
         }
 
         /// <summary>
-        /// Creat a polygon with vertex id's and next chain. Can contain holes.
+        /// Create a polygon with vertex id's and next chain. Can contain holes.
         /// </summary>
         /// <param name="vertexCoordinates">the coordinates</param>
         /// <param name="vertexIds">the vertex ids</param>

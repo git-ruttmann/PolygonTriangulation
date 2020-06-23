@@ -54,7 +54,6 @@
     <Compile Include="PolygonFusionTests.cs" />
     <Compile Include="PolygonSplittingTests.cs" />
     <Compile Include="RedBlackTreeTests.cs" />
-    <Compile Include="Seidel.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -65,10 +64,6 @@
     <ProjectReference Include="..\PolygonTriangulation\PolygonTriangulation.csproj">
       <Project>{250832d7-a812-4b2a-9ef7-f1791ec657ff}</Project>
       <Name>PolygonTriangulation</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Seidel\Seidel.csproj">
-      <Project>{b5e105b1-6ace-4f92-be6b-7b7e0127ce33}</Project>
-      <Name>Seidel</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
