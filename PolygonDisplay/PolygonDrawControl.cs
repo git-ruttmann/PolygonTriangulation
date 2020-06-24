@@ -239,7 +239,16 @@
         private void DrawTriangles(Graphics g, PointF[] scaledVertices)
         {
             var triangleCollector = PolygonTriangulator.CreateTriangleCollector();
-            var montonizedPolygon = Polygon.Split(this.Polygon, this.Splits, triangleCollector);
+
+            Polygon montonizedPolygon;
+            try
+            {
+                montonizedPolygon = Polygon.Split(this.Polygon, this.Splits, triangleCollector);
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
 
             var colorIndex = 0;
             var colors = new[]
