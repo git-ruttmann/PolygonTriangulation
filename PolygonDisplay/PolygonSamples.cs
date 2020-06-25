@@ -137,7 +137,7 @@
                 case 5:
                     return UnityError2();
                 case 6:
-                    return UnityError3();
+                    return GenerateDataTwo();
                 default:
                     return null;
             }
@@ -147,23 +147,23 @@
         {
             var vertices = new[]
             {
-    new Vertex(0.9657705f, 2.9951100f),
-    new Vertex(1.0356860f, 1.1592050f),
-    new Vertex(1.0419350f, 0.9951099f),
-    new Vertex(1.0669380f, 2.9987030f),
-    new Vertex(1.2249190f, 1.0016080f),
-    new Vertex(1.2542640f, 2.0040030f),
-    new Vertex(1.3087590f, 2.0625700f),
-    new Vertex(1.9484140f, 1.3601270f),
-    new Vertex(1.9769380f, 2.7806830f),
-    new Vertex(2.0340610f, 1.2806830f),
-    new Vertex(2.0464590f, 2.7161960f),
-    new Vertex(2.6672220f, 1.9611600f),
-    new Vertex(2.7567350f, 2.0573620f),
-    new Vertex(2.9690640f, 3.0662550f),
-    new Vertex(2.9781410f, 2.8279110f),
-    new Vertex(3.0452290f, 1.0662550f),
-};
+                new Vertex(0.9657705f, 2.9951100f),
+                new Vertex(1.0356860f, 1.1592050f),
+                new Vertex(1.0419350f, 0.9951099f),
+                new Vertex(1.0669380f, 2.9987030f),
+                new Vertex(1.2249190f, 1.0016080f),
+                new Vertex(1.2542640f, 2.0040030f),
+                new Vertex(1.3087590f, 2.0625700f),
+                new Vertex(1.9484140f, 1.3601270f),
+                new Vertex(1.9769380f, 2.7806830f),
+                new Vertex(2.0340610f, 1.2806830f),
+                new Vertex(2.0464590f, 2.7161960f),
+                new Vertex(2.6672220f, 1.9611600f),
+                new Vertex(2.7567350f, 2.0573620f),
+                new Vertex(2.9690640f, 3.0662550f),
+                new Vertex(2.9781410f, 2.8279110f),
+                new Vertex(3.0452290f, 1.0662550f),
+            };
 
             var polygon = Polygon.Build(vertices)
                 .AddVertices(15, 4, 2, 1, 0, 3, 13, 14)
@@ -178,32 +178,21 @@
         {
             var vertices = new[]
             {
-                new Vertex(1.2521620f, 1.2521620f),
-                new Vertex(1.2522520f, 1.2522520f),
-                new Vertex(1.2523110f, 1.2523110f),
-                new Vertex(1.2523170f, 1.2523170f),
-                new Vertex(1.5384280f, 1.5384280f),
-                new Vertex(1.5863010f, 1.5863010f),
-                new Vertex(1.7588980f, 1.7588980f),
-                new Vertex(2.0071460f, 2.0071460f),
-                new Vertex(2.4098160f, 2.4098160f),
-                new Vertex(2.6529650f, 2.6529650f),
-                new Vertex(2.9038150f, 2.9038150f),
-                new Vertex(3.1768640f, 3.1768640f),
-                new Vertex(3.5878900f, 3.5878900f),
-                new Vertex(3.7978810f, 3.7978810f),
-                new Vertex(3.9704790f, 3.9704790f),
-                new Vertex(4.0380160f, 4.0380160f),
-                new Vertex(4.0417210f, 4.0417210f),
-                new Vertex(4.0739550f, 4.0739550f),
-                new Vertex(4.1235760f, 4.1235760f),
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(2, 3),
+                new Vertex(3, 0),
+                new Vertex(4, 1),
+                new Vertex(5, 2),
+                new Vertex(6, 2),
+                new Vertex(8, 4),
+                new Vertex(9, 0),
             };
 
             var polygon = Polygon.Build(vertices)
-                .AddVertices(3, 14, 18, 17, 16, 15, 5, 4, 0, 1, 2)
+                .AddVertices(0, 1, 2, 7, 8, 3)
                 .ClosePartialPolygon()
-                .AddVertices(3, 14, 18, 17, 16, 15, 5, 4, 0, 1, 2)
-                .ClosePartialPolygon()
+                .AddVertices(4, 6, 5)
                 .Close();
 
             return polygon;

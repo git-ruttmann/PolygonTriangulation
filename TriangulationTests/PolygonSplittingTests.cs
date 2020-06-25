@@ -115,6 +115,44 @@
         }
 
         /// <summary>
+        /// Join a hole into the polygon and then split at the same point.
+        /// Tests the collision detection in PolygonSplitter.ChooseInstanceForSplit
+        /// </summary>
+        [TestMethod]
+        public void SplitAtJoin3()
+        {
+            var vertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(2, 3),
+                new Vertex(3, 0),
+                new Vertex(4, 1),
+                new Vertex(5, 2),
+                new Vertex(6, 2),
+                new Vertex(8, 4),
+                new Vertex(9, 0),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(0, 1, 2, 7, 8, 3)
+                .ClosePartialPolygon()
+                .AddVertices(4, 6, 5)
+                .Close();
+
+            var triangleCollector = PolygonTriangulator.CreateTriangleCollector();
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual("2-3 3-4 6-7", splits);
+
+            var splittedPolygon = Polygon.Split(polygon, triangluator.GetSplits(), triangleCollector);
+            Assert.IsTrue(PolygonFusionTests.SubPolygonExists(splittedPolygon, 0, 1, 2, 3));
+            Assert.IsTrue(PolygonFusionTests.SubPolygonExists(splittedPolygon, 3, 2, 7, 6, 5, 4));
+            Assert.IsTrue(PolygonFusionTests.SubPolygonExists(splittedPolygon, 8, 3, 4, 6, 7));
+        }
+
+        /// <summary>
         /// An opening cusp with one steep edge. Should use the other edge to detect the IsVertexAbove.
         /// </summary>
         [TestMethod]

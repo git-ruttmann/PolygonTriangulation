@@ -325,8 +325,8 @@
         /// <returns>tuples of prev/next and polygon split</returns>
         /// <remarks>
         /// After all jobs are completed, the polygon will leave the vertex with the next counter-clock-wise edge, that has reached the vertex.
-        /// Hence there are no implizit crossings.
-        /// As the eecution of the job manipulates the chain, it's required to collect all data before.
+        /// Hence there are no implicit crossings.
+        /// As the execution of the job manipulates the chain, it's required to collect all data before.
         /// </remarks>
         private (int prev, int next, bool samePolygon)[] CreateVertexFusionJobs(int fusionVertexId)
         {
@@ -664,17 +664,7 @@
             /// <param name="splits">tuples of vertex ids, where to split</param>
             public PolygonSplitter(Polygon polygon, IEnumerable<Tuple<int, int>> splits, ITriangleCollector triangleCollector)
             {
-                this.allSplits = splits
-                    .Select(x =>
-                    {
-                        var chain1 = polygon.vertexToChain[x.Item1];
-                        var chain2 = polygon.vertexToChain[x.Item2];
-                        return chain1 < chain2 ? Tuple.Create(chain1, chain2) : Tuple.Create(chain2, chain1);
-                    })
-                    .OrderBy(x => x.Item1)
-                    .ThenBy(x => x.Item2)
-                    .ToArray();
-
+                this.allSplits = splits.ToArray();
                 this.originalPolygon = polygon;
                 this.polygonStartIndices = new List<int>(polygon.polygonStartIndices);
 
@@ -718,7 +708,8 @@
 
                 foreach (var split in splits)
                 {
-                    SplitPolygon(split.Item1, split.Item2);
+                    var (from, to) = this.FindCommonChain(split.Item1, split.Item2);
+                    SplitPolygon(from, to);
                 }
 
                 return new Polygon(this.originalPolygon.vertexCoordinates, this.chain, this.originalPolygon.vertexToChain, this.polygonStartIndices);
@@ -738,8 +729,8 @@
                 var remaining = new List<Tuple<int, int>>();
                 foreach (var split in this.allSplits)
                 {
-                    var from = split.Item1;
-                    var to = split.Item2;
+                    var from = this.originalPolygon.vertexToChain[split.Item1];
+                    var to = this.originalPolygon.vertexToChain[split.Item2];
                     if (this.chain[from].PolygonId != this.chain[to].PolygonId)
                     {
                         this.JoinHoleIntoPolygon(from, to);
@@ -762,7 +753,6 @@
             /// <returns>the splitted polygon</returns>
             private void SplitPolygon(int from, int to)
             {
-                (from, to) = this.FindCommonChain(from, to);
                 var polygonId = this.chain[from].PolygonId;
 
                 if (this.IsTriangle(from, to))
@@ -844,23 +834,24 @@
             }
 
             /// <summary>
-            /// Find the chain that contains the vertices of from and to
+            /// Find the subpolygon that contains both vertices
             /// </summary>
             /// <param name="from">the from index in the chain</param>
             /// <param name="to">the to index in the chain</param>
             /// <returns>the from and to of one polygon that belongs to the very same polygon id</returns>
-            private (int, int) FindCommonChain(int from, int to)
+            private (int, int) FindCommonChain(int fromVertex, int toVertex)
             {
+                var from = this.originalPolygon.vertexToChain[fromVertex];
+                var firstTo = this.originalPolygon.vertexToChain[toVertex];
                 for (/**/; from >= 0; from = this.chain[from].SameVertexChain)
                 {
-                    for (var currentTo = to; currentTo >= 0; currentTo = this.chain[currentTo].SameVertexChain)
+                    for (var to = firstTo; to >= 0; to = this.chain[to].SameVertexChain)
                     {
-                        if (this.chain[from].PolygonId == this.chain[currentTo].PolygonId)
+                        if (this.chain[from].PolygonId == this.chain[to].PolygonId)
                         {
-                            from = this.ShortestPathToChainEnd(from, currentTo);
-                            currentTo = this.ShortestPathToChainEnd(currentTo, from);
-
-                            return (from, currentTo);
+                            from = this.ChooseInstanceForSplit(from, to);
+                            to = this.ChooseInstanceForSplit(to, from);
+                            return (from, to);
                         }
                     }
                 }
@@ -869,33 +860,45 @@
             }
 
             /// <summary>
-            /// Get the entry in the polygon chain with the same vertex id and the shortest path to chainEnd
+            /// Get the entry with the same vertex id that is on the same polygon.
             /// </summary>
-            /// <param name="chainIndex">the chain entry with the other end of the split</param>
-            /// <param name="chainEnd">the chain index of the other end of the split</param>
-            /// <returns>the chain index with the shortest path</returns>
+            /// <param name="chainId"></param>
+            /// <param name="peer"></param>
+            /// <returns></returns>
             /// <remarks>
             /// This is for the situation after a polygon join:
             /// - The same vertex is in the polygon 2 times.
-            /// - If we use the wrong vertex, there we introduce invalid splits
-            /// - We're searching for the shorter chain to the target vertex.
-            /// - For all non-joining splits, there is no same vertex in two polygons, so the overhead is minimal
+            /// - Using the wrong vertex causes cross-over subpolygons.
+            /// - The duplicate vertex (created by <see cref="JoinHoleIntoPolygon"/>) is always the next in the SameVertexChain
             /// </remarks>
-            private int ShortestPathToChainEnd(int chainIndex, int chainEnd)
+            private int ChooseInstanceForSplit(int chainId, int peer)
             {
-                var polygonId = this.chain[chainIndex].PolygonId;
-                for (var next = this.chain[chainIndex].SameVertexChain; next >= 0; next = this.chain[next].SameVertexChain)
+                var sameVertexChain = this.chain[chainId].SameVertexChain;
+                if (sameVertexChain < 0 || this.chain[chainId].PolygonId != this.chain[sameVertexChain].PolygonId)
                 {
-                    if (this.chain[next].PolygonId == polygonId)
-                    {
-                        if (this.IsVertexDistanceShorter(chainIndex, next, chainEnd))
-                        {
-                            chainIndex = next;
-                        }
-                    }
+                    return chainId;
                 }
 
-                return chainIndex;
+                ref var vertex = ref this.originalPolygon.vertexCoordinates[this.chain[chainId].VertexId];
+                ref var peerVertex = ref this.originalPolygon.vertexCoordinates[this.chain[peer].VertexId];
+                var peerAngle = DiamondAngle(peerVertex.X - vertex.X, peerVertex.Y - vertex.Y);
+
+                ref var prevVertex = ref this.originalPolygon.vertexCoordinates[this.chain[this.chain[chainId].Prev].VertexId];
+                ref var nextVertex = ref this.originalPolygon.vertexCoordinates[this.chain[this.chain[chainId].Next].VertexId];
+                var prevAngle = DiamondAngle(prevVertex.X - vertex.X, prevVertex.Y - vertex.Y);
+                var nextAngle = DiamondAngle(nextVertex.X - vertex.X, nextVertex.Y - vertex.Y);
+
+                nextAngle += nextAngle < prevAngle ? 4 : 0;
+                peerAngle += peerAngle < prevAngle ? 4 : 0;
+                if (prevAngle < peerAngle && nextAngle > peerAngle)
+                {
+                    // prev, peer and next are sorted in counter-clock-wise order => peer is inside the polygon
+                    return chainId;
+                }
+                else
+                {
+                    return sameVertexChain;
+                }
             }
 
             /// <summary>
