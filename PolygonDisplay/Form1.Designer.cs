@@ -58,7 +58,7 @@
             // 
             this.zoomSlider.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.zoomSlider.Location = new System.Drawing.Point(0, 1116);
-            this.zoomSlider.Maximum = 60;
+            this.zoomSlider.Maximum = 55;
             this.zoomSlider.Name = "zoomSlider";
             this.zoomSlider.Size = new System.Drawing.Size(1352, 69);
             this.zoomSlider.TabIndex = 0;
@@ -124,7 +124,7 @@
             this.polygonPanel.BackColor = System.Drawing.Color.White;
             this.polygonPanel.HighlightIndex = 0;
             this.polygonPanel.Location = new System.Drawing.Point(0, 0);
-            this.polygonPanel.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.polygonPanel.Margin = new System.Windows.Forms.Padding(4);
             this.polygonPanel.Name = "polygonPanel";
             this.polygonPanel.Polygon = null;
             this.polygonPanel.Size = new System.Drawing.Size(1349, 1016);

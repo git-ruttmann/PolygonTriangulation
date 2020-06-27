@@ -21,6 +21,11 @@
         private double zoom;
 
         /// <summary>
+        /// zoom as integer factor
+        /// </summary>
+        private int zoomAsInt;
+
+        /// <summary>
         /// scale for zoom level 1 to fully fill the paint area
         /// </summary>
         private double fullScale;
@@ -66,6 +71,7 @@
         public PolygonDrawControl()
         {
             this.zoom = 1;
+            this.zoomAsInt = 0;
             this.polygon = SamplePolygon();
             this.InitializeComponent();
             this.DoubleBuffered = true;
@@ -99,6 +105,20 @@
         }
 
         /// <summary>
+        /// Get's or sets a zoom identifier
+        /// </summary>
+        public int Zoom
+        {
+            get => this.zoomAsInt;
+            set
+            {
+                this.zoomAsInt = Math.Min(55, Math.Max(0, value));
+                this.zoom = Math.Pow(1.2, this.zoomAsInt);
+                this.Invalidate();
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the splits
         /// </summary>
         public IReadOnlyCollection<Tuple<int, int>> Splits { get; set; }
@@ -127,15 +147,6 @@
         }
 
         /// <summary>
-        /// Set a zoom factor
-        /// </summary>
-        public void SetZoom(int zoomValue)
-        {
-            this.zoom = Math.Pow(1.2, zoomValue);
-            this.Invalidate();
-        }
-
-        /// <summary>
         /// Handle control resizing
         /// </summary>
         /// <param name="e">event args</param>
@@ -146,10 +157,7 @@
             this.Invalidate();
         }
 
-        /// <summary>
-        /// Begin mouse dragging
-        /// </summary>
-        /// <param name="e">the drag event</param>
+        /// <inheritdoc/>
         protected override void OnMouseDown(MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
@@ -163,10 +171,7 @@
             base.OnMouseDown(e);
         }
 
-        /// <summary>
-        /// Update during mouse drag
-        /// </summary>
-        /// <param name="e">the drag event</param>
+        /// <inheritdoc/>
         protected override void OnMouseMove(MouseEventArgs e)
         {
             if (this.dragging)
@@ -177,10 +182,7 @@
             }
         }
 
-        /// <summary>
-        /// End of mouse drag
-        /// </summary>
-        /// <param name="e">the drag event</param>
+        /// <inheritdoc/>
         protected override void OnMouseUp(MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left && this.dragging)
@@ -200,6 +202,13 @@
             }
 
             base.OnMouseUp(e);
+        }
+
+        /// <inheritdoc/>
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            this.Zoom = this.zoomAsInt + e.Delta / SystemInformation.MouseWheelScrollDelta;
+            base.OnMouseWheel(e);
         }
 
         /// <summary>
@@ -224,6 +233,11 @@
             }
 
             this.DrawPolygon(g, scaledVertices);
+
+            for (int i = 0; i < scaledVertices.Length; i++)
+            {
+                this.DrawVertexInformation(g, i, scaledVertices[i]);
+            }
 
             if (this.Splits != null)
             {
@@ -297,7 +311,6 @@
                 {
                     var point = scaledVertices[vertexId];
                     g.DrawLine(pen, lastPoint, point);
-                    this.DrawVertexInformation(g, vertexId, point);
                     lastPoint = point;
                 }
             }

@@ -58,7 +58,7 @@
         {
             this.UpdateSelectedBufferState();
             this.polygonOrderLabel.Text = string.Join(" ", this.controller.Polygon.Debug);
-            this.vertexIdSelector.Maximum = this.controller.Polygon.OrderedVertexes.Count();
+            this.vertexIdSelector.Maximum = this.controller.Polygon.Vertices.Count() - 1;
             this.vertexIdSelector.Value = Math.Max(0, Math.Min(this.vertexIdSelector.Maximum, this.polygonPanel.HighlightIndex));
         }
 
@@ -75,7 +75,7 @@
 
         private void zoomSlider_Scroll(object sender, EventArgs e)
         {
-            this.polygonPanel.SetZoom(this.zoomSlider.Value);
+            this.polygonPanel.Zoom = this.zoomSlider.Value;
         }
 
         private void vertexIdSelector_Scroll(object sender, EventArgs e)
