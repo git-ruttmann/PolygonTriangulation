@@ -731,7 +731,7 @@
                 {
                     var from = this.originalPolygon.vertexToChain[split.Item1];
                     var to = this.originalPolygon.vertexToChain[split.Item2];
-                    if (this.chain[from].PolygonId != this.chain[to].PolygonId)
+                    if (this.IsDifferentPolygon(from, to))
                     {
                         this.JoinHoleIntoPolygon(from, to);
                     }
@@ -742,6 +742,31 @@
                 }
 
                 return remaining;
+            }
+
+            /// <summary>
+            /// Verifies that the chain elements from and to have no vertex instance that are on the same polygon
+            /// </summary>
+            /// <param name="from"></param>
+            /// <param name="to"></param>
+            /// <returns>true if vertices at from and to are always on different polygons</returns>
+            /// <remarks>
+            /// As a side effect of vertex fustion, there might be the same vertex on different polygons
+            /// </remarks>
+            private bool IsDifferentPolygon(int from, int to)
+            {
+                for (/* */; from >= 0; from = this.chain[from].SameVertexChain)
+                {
+                    for (var i = to; i >= 0; i = this.chain[i].SameVertexChain)
+                    {
+                        if (this.chain[from].PolygonId == this.chain[i].PolygonId)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
             }
 
             /// <summary>
