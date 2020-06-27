@@ -137,7 +137,7 @@
                 case 5:
                     return UnityError2();
                 case 6:
-                    return GenerateDataTwo();
+                    return UnityError3();
                 default:
                     return null;
             }
@@ -202,29 +202,34 @@
         {
             var vertices = new[]
             {
-                new Vertex(1.2631010f, 1.2631010f),
-                new Vertex(1.5473290f, 1.5473290f),
-                new Vertex(1.5511220f, 1.5511220f),
-                new Vertex(1.5975680f, 1.5975680f),
-                new Vertex(1.7701650f, 1.7701650f),
-                new Vertex(2.0287180f, 2.0287180f),
-                new Vertex(2.4143740f, 2.4143740f),
-                new Vertex(2.6642320f, 2.6642320f),
-                new Vertex(2.9150820f, 2.9150820f),
-                new Vertex(3.1823800f, 3.1823800f),
-                new Vertex(3.6151540f, 3.6151540f),
-                new Vertex(3.8091480f, 3.8091480f),
-                new Vertex(3.9817450f, 3.9817450f),
-                new Vertex(4.0249810f, 4.0249810f),
-                new Vertex(4.0290230f, 4.0290230f),
-                new Vertex(4.0641910f, 4.0641910f),
-                new Vertex(4.1183300f, 4.1183300f),
+                new Vertex(-2.6894240f, -1.6565340f),
+                new Vertex(-2.6589240f, -1.6194120f),
+                new Vertex(-2.2095760f, -1.0725000f),
+                new Vertex(-1.9794070f, -0.9460075f),
+                new Vertex(-1.9501140f, -1.0369280f),
+                new Vertex(-1.8938890f, -0.6882691f),
+                new Vertex(-1.5807920f, -2.5727720f),
+                new Vertex(-1.5521560f, -2.2721070f),
+                new Vertex(-1.4488940f, -0.1466549f),
+                new Vertex(-1.4197660f, -0.1112021f),
+                new Vertex(-1.0620060f, -1.0609700f),
+                new Vertex(-0.6894242f, -3.3094500f),
+                new Vertex(-0.6648459f, -3.2795350f),
+                new Vertex(-0.5916843f, -1.1199080f),
+                new Vertex(-0.4425835f, -1.5826870f),
+                new Vertex(-0.4251233f, -0.9332325f),
+                new Vertex(-0.3044788f, -2.4284580f),
+                new Vertex(-0.2893631f, -2.8225260f),
+                new Vertex(-0.1644333f, -2.4460070f),
+                new Vertex(0.1718097f, -2.2612210f),
+                new Vertex(0.5542740f, -1.7957150f),
+                new Vertex(0.5802340f, -1.7641180f),
             };
 
             var polygon = Polygon.Build(vertices)
-                .AddVertices(16, 15, 14, 13, 3, 1, 0, 2, 12)
+                .AddVertices(1, 2, 5, 8, 9, 15, 21, 20, 19, 17, 12, 11, 6, 0)
                 .ClosePartialPolygon()
-                .AddVertices(16, 15, 14, 13, 3, 1, 0, 2, 12)
+                .AddVertices(13, 10, 3, 4, 7, 16, 18, 14)
                 .ClosePartialPolygon()
                 .Close();
 

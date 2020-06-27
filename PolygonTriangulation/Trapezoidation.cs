@@ -330,21 +330,33 @@
 
                 if (upperRight.X > lowerRight.X)
                 {
-                    if (upperRight.Y > left.Y && upperRight.Y < lowerRight.Y)
-                    {
-                        return false;
-                    }
-
-                    return !this.IsVertexAboveSlow(ref lowerRight, ref left, ref upperRight);
-                }
-                else
-                {
-                    if (lowerRight.Y < left.Y && lowerRight.Y < upperRight.Y)
+                    if (upperRight.Y < left.Y && upperRight.Y > lowerRight.Y)
                     {
                         return true;
                     }
-
-                    return this.IsVertexAboveSlow(ref upperRight, ref left, ref lowerRight);
+                    else if (upperRight.Y > left.Y && upperRight.Y < lowerRight.Y)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return !this.IsVertexAboveSlow(ref lowerRight, ref left, ref upperRight);
+                    }
+                }
+                else
+                {
+                    if (lowerRight.Y > left.Y && upperRight.Y > lowerRight.Y)
+                    {
+                        return true;
+                    }
+                    else if (lowerRight.Y < left.Y && upperRight.Y < lowerRight.Y)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return this.IsVertexAboveSlow(ref upperRight, ref left, ref lowerRight);
+                    }
                 }
             }
 

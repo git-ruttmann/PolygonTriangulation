@@ -80,6 +80,61 @@
         }
 
         /// <summary>
+        /// Test the sorting of edges with quickpath
+        /// </summary>
+        [TestMethod]
+        public void OpeningCuspEdgeSorting()
+        {
+            var vertices = new[]
+            {
+                new Vertex(0, 0),   // 0
+                new Vertex(2, -2),
+                new Vertex(2, 2),   // 2
+                new Vertex(3, -6),
+                new Vertex(3, 6),   // 4
+                new Vertex(6, -3),
+                new Vertex(6, -1),  // 6
+                new Vertex(6, 1),
+                new Vertex(6, 3),
+            };
+
+            var tests = new[]
+            {
+                (3, 1, true),
+                (1, 5, true),
+                (1, 6, true),
+                (6, 7, true),
+                (7, 2, true),
+                (8, 2, true),
+                (8, 4, true),
+                (2, 4, true),
+
+                (1, 3, false),
+                (5, 1, false),
+                (6, 1, false),
+                (7, 6, false),
+                (2, 8, false),
+                (2, 7, false),
+                (4, 8, false),
+                (4, 2, false),
+            };
+
+            foreach (var (prev, next, orderIsCorrect) in tests)
+            {
+                var trapezoidation = new Trapezoidation(vertices, new SplitCollector());
+                trapezoidation.TestBegin(0, prev, next);
+                if (orderIsCorrect)
+                {
+                    Assert.AreEqual($"0<{prev} 0>{next}", string.Join(" ", trapezoidation.Edges), $"Bad order after {prev}>0>{next}");
+                }
+                else
+                {
+                    Assert.AreEqual($"0>{next} 0<{prev}", string.Join(" ", trapezoidation.Edges), $"Bad reordering after {prev}>0>{next}");
+                }
+            }
+        }
+
+        /// <summary>
         /// Create a polygon and then create the code for the polygon
         /// </summary>
         [TestMethod]
