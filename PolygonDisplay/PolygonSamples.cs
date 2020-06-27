@@ -135,7 +135,7 @@
                 case 4:
                     return UnityError1();
                 case 5:
-                    return UnityError2();
+                    return ReclusterUnclosedPolygons();
                 case 6:
                     return UnityError3();
                 default:
@@ -230,6 +230,42 @@
                 .AddVertices(1, 2, 5, 8, 9, 15, 21, 20, 19, 17, 12, 11, 6, 0)
                 .ClosePartialPolygon()
                 .AddVertices(13, 10, 3, 4, 7, 16, 18, 14)
+                .ClosePartialPolygon()
+                .Close();
+
+            return polygon;
+        }
+
+        public static Polygon ReclusterUnclosedPolygons()
+        {
+            var vertices = new[]
+            {
+                new Vertex(1.0162740f, 1.0038640f),
+                new Vertex(1.0201770f, 2.9980340f),
+                new Vertex(1.0201890f, 3.0038640f),
+                new Vertex(1.2682340f, 2.0033770f),
+                new Vertex(1.2706930f, 2.0009080f),
+                new Vertex(2.0167730f, 1.2519160f),
+                new Vertex(2.0184410f, 1.2535790f),
+                new Vertex(2.0191380f, 2.7513470f),
+                new Vertex(2.0197090f, 2.7519160f),
+                new Vertex(2.2345460f, 3.0014980f),
+                new Vertex(2.2345840f, 3.0014980f),
+                new Vertex(2.3070080f, 2.8231450f),
+                new Vertex(2.3070400f, 2.8231530f),
+                new Vertex(2.5538380f, 2.2157020f),
+                new Vertex(2.6778460f, 1.9104070f),
+                new Vertex(2.6778650f, 1.9104250f),
+                new Vertex(2.9670200f, 1.1987120f),
+                new Vertex(2.9670540f, 1.1985730f),
+                new Vertex(3.0161410f, 0.9999681f),
+                new Vertex(3.0162930f, 0.9999678f),
+                new Vertex(3.0162930f, 1.0001180f),
+                new Vertex(3.0164440f, 1.0770620f),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(13, 8, 7, 3, 4, 5, 6, 15, 16, 21, 20, 19, 18, 0, 1, 2, 9, 11)
                 .ClosePartialPolygon()
                 .Close();
 

@@ -135,7 +135,59 @@ namespace TriangulationTests
         }
 
         /// <summary>
-        /// Three concav segments on left side
+        /// Cluster some very close vertices, which are not clustered by PlanePolygonBuilder.ClusterVertexComparer
+        /// </summary>
+        /// <remarks>
+        /// Situation like that happen for large rounding issues.
+        /// </remarks>
+        [TestMethod]
+        public void ClosePolygonByClustering()
+        {
+            // the unclustered vertices are marked by a comma
+            var vertices = new[]
+            {
+                new Vertex(1.01627400f, 1.00386400f),
+                new Vertex(1.02017700f, 2.99803400f),
+                new Vertex(1.02018900f, 3.00386400f),
+                new Vertex(1.26823400f, 2.00337700f),
+                new Vertex(1.27069300f, 2.00090800f),
+                new Vertex(2.01677300f, 1.25191600f),
+                new Vertex(2.01844100f, 1.25357900f),
+                new Vertex(2.01913800f, 2.75134700f),
+                new Vertex(2.01970900f, 2.75191600f),
+                new Vertex(2.23454600f, 3.00149800f), // 9
+                new Vertex(2.23458400f, 3.00149800f), // 10
+                new Vertex(2.30700800f, 2.82314500f), // 11
+                new Vertex(2.30704000f, 2.82315300f), // 12
+                new Vertex(2.55383800f, 2.21570200f),
+                new Vertex(2.67784600f, 1.91040700f), // 14
+                new Vertex(2.67786500f, 1.91042500f), // 15
+                new Vertex(2.96702000f, 1.19871200f), // 16
+                new Vertex(2.96705400f, 1.19857300f), // 17
+                new Vertex(3.01614100f, 0.99996810f),
+                new Vertex(3.01629300f, 0.99996780f),
+                new Vertex(3.01629300f, 1.00011800f),
+                new Vertex(3.01644400f, 1.07706200f),
+            };
+
+            var lineDetector = PlanePolygonBuilder.CreatePolygonLineDetector();
+            lineDetector.JoinEdgesToPolygones(new[] { 18, 0, 19, 18, 2, 10, 1, 2, 0, 1, 14, 17, 16, 21, 12, 13, 9, 11, 21, 20, 20, 19, 6, 15, 5, 6, 13, 8, 7, 3, 8, 7, 4, 5, 3, 4 });
+
+            Assert.AreNotEqual(0, lineDetector.UnclosedPolygons.Count());
+
+            lineDetector.TryClusteringUnclosedEnds(vertices, 0.001f);
+
+            Assert.AreEqual(1, lineDetector.ClosedPolygons.Count());
+            Assert.AreEqual(0, lineDetector.UnclosedPolygons.Count());
+
+            Assert.AreEqual(1, lineDetector.ClosedPolygons.First().Count(x => x == 9 || x == 10));
+            Assert.AreEqual(1, lineDetector.ClosedPolygons.First().Count(x => x == 11 || x == 12));
+            Assert.AreEqual(1, lineDetector.ClosedPolygons.First().Count(x => x == 14 || x == 15));
+            Assert.AreEqual(1, lineDetector.ClosedPolygons.First().Count(x => x == 16 || x == 17));
+        }
+
+        /// <summary>
+        /// Three concave segments on left side
         /// </summary>
         [TestMethod]
         public void PolygonizeTripleOutsideToInsideFinish()

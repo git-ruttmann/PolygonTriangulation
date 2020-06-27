@@ -50,6 +50,13 @@
         /// </summary>
         /// <param name="edges">pairs of vertex ids</param>
         void JoinEdgesToPolygones(IEnumerable<int> edges);
+
+        /// <summary>
+        /// Try to close unclosed polygons by connecting close vertices.
+        /// </summary>
+        /// <param name="vertices">the vertices</param>
+        /// <param name="maxDistance">the maximum distance between vertices</param>
+        void TryClusteringUnclosedEnds(Vertex[] vertices, float maxDistance);
     }
 
     /// <summary>
@@ -318,6 +325,74 @@
                     .Select(x => x.Value));
             }
 
+            /// <inheritdoc/>
+            public void TryClusteringUnclosedEnds(Vertex[] vertices, float maxDistance)
+            {
+                bool vertexFound;
+                do
+                {
+                    vertexFound = false;
+                    foreach (var vertexId in this.openPolygones.Keys)
+                    {
+                        var closestPeer = this.openPolygones.Keys
+                            .Where(x => x != vertexId)
+                            .OrderBy(x => Distance(vertices, vertexId, x))
+                            .First();
+                        if (Distance(vertices, vertexId, closestPeer) < maxDistance)
+                        {
+                            JoinClusteredVertex(vertexId, closestPeer);
+                            vertexFound = true;
+                            break;
+                        }
+                    }
+                }
+                while (vertexFound);
+
+                this.unclosedPolygones.Clear();
+                this.unclosedPolygones.AddRange(this.openPolygones
+                    .Where(x => x.Key == x.Value.StartKey)
+                    .Select(x => x.Value));
+            }
+
+            /// <summary>
+            /// Join two vertices as they are close together.
+            /// </summary>
+            /// <param name="vertexId">the vertex id to drop</param>
+            /// <param name="closestPeer">the closest existing peer, that will act as replacement</param>
+            private void JoinClusteredVertex(int vertexId, int closestPeer)
+            {
+                var vertexSegment = this.openPolygones[vertexId];
+                this.openPolygones.Remove(vertexId);
+                var peerIsLineStart = vertexSegment.RemoveVertex(vertexId);
+
+                var peerSegment = this.openPolygones[closestPeer];
+                this.openPolygones.Remove(closestPeer);
+
+                var vertexReplacement = peerIsLineStart ? vertexSegment.StartKey : vertexSegment.EndKey;
+                var joinedKey = peerSegment.Join(vertexSegment, vertexReplacement, closestPeer);
+                if (joinedKey < 0)
+                {
+                    this.closedPolygones.Add(vertexSegment);
+                }
+                else
+                {
+                    this.openPolygones.Remove(peerIsLineStart ? vertexSegment.EndKey : vertexSegment.StartKey);
+                    this.openPolygones.Add(joinedKey, peerSegment);
+                }
+            }
+
+            /// <summary>
+            /// Calculate the distance between two points
+            /// </summary>
+            /// <param name="vertices">the vertices</param>
+            /// <param name="vertexId">the first point</param>
+            /// <param name="peer">the second point</param>
+            /// <returns>the sum of the x and y distance</returns>
+            private static float Distance(Vertex[] vertices, int vertexId, int peer)
+            {
+                return Math.Abs(vertices[vertexId].X - vertices[peer].X) + Math.Abs(vertices[vertexId].Y - vertices[peer].Y);
+            }
+
             /// <summary>
             /// Add a new edge to the polygon line. Either join two polygon lines, creates a new or adds the edge to the neighboring line
             /// </summary>
@@ -412,19 +487,19 @@
             /// Gets the vertex ids in order
             /// </summary>
             /// <returns>the vertex ids</returns>
-            internal IReadOnlyCollection<int> ToIndexes()
+            public IReadOnlyCollection<int> ToIndexes()
             {
                 return this.vertexIds;
             }
 
-            internal string Debug => $"{(this.Closed ? "*" : string.Empty)}, {(this.Dirty ? "#" : string.Empty)}, {string.Join(" ", this.vertexIds)}";
+            public string Debug => $"{(this.Closed ? "*" : string.Empty)}, {(this.Dirty ? "#" : string.Empty)}, {string.Join(" ", this.vertexIds)}";
 
             /// <summary>
             /// The start value of the added edge matches either the end or start of this polygon
             /// </summary>
             /// <param name="edgeStart">the start of the added edge</param>
             /// <param name="value">the other value of the added edgeegment</param>
-            internal void AddMatchingStart(int edgeStart, int value)
+            public void AddMatchingStart(int edgeStart, int value)
             {
                 if (edgeStart == this.EndKey)
                 {
@@ -442,7 +517,7 @@
             /// </summary>
             /// <param name="value">the start value of the added edge</param>
             /// <param name="edgeEnd">the matching end</param>
-            internal void AddMatchingEnd(int value, int edgeEnd)
+            public void AddMatchingEnd(int value, int edgeEnd)
             {
                 if (edgeEnd == this.StartKey)
                 {
@@ -462,13 +537,38 @@
             /// <param name="edgeStart">the start of the edge that joines</param>
             /// <param name="edgeStart">the end of the edge that joines</param>
             /// <returns>-1: the polygone is closed. Otherwise the start/end key that was changed</returns>
-            internal int Join(PolygonLine other, int edgeStart, int edgeEnd)
+            public int Join(PolygonLine other, int edgeStart, int edgeEnd)
             {
                 return this.JoinAndClose(other)
                     ?? this.JoinSameDirection(other, edgeStart, edgeEnd)
                     ?? this.JoinWithEdgeInInverseDirection(other, edgeStart, edgeEnd)
                     ?? this.JoinReversingOtherPolygon(other, edgeStart, edgeEnd)
                     ?? throw new InvalidOperationException($"Can't join s:{edgeStart} e:{edgeEnd}, ts: {this.StartKey} te: {this.EndKey}, os: {other.StartKey} oe: {other.EndKey}");
+            }
+
+            /// <summary>
+            /// Remove a vertex that is either start or end
+            /// </summary>
+            /// <param name="vertexId">the id of the vertex</param>
+            /// <returns>true if start was modified, false if end was modified</returns>
+            public bool RemoveVertex(int vertexId)
+            {
+                if (vertexId == this.StartKey)
+                {
+                    this.vertexIds.RemoveAt(0);
+                    this.StartKey = this.vertexIds[0];
+                    return true;
+                }
+                else if (vertexId == this.EndKey)
+                {
+                    this.vertexIds.RemoveAt(this.vertexIds.Count - 1);
+                    this.EndKey = this.vertexIds[this.vertexIds.Count - 1];
+                    return false;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Can't remove a vertex in the middle of the polygon line");
+                }
             }
 
             /// <summary>
@@ -574,7 +674,7 @@
 
                 if (CompareEdgeToKeys(edgeStart, edgeEnd, other.EndKey, this.StartKey))
                 {
-                    this.InsertRange(other.vertexIds, other.StartKey);
+                    return this.InsertRange(other.vertexIds, other.StartKey);
                 }
 
                 return null;
@@ -771,6 +871,11 @@
 
                 var lineDetector = new PolygonLineDetector(fusionedVertices);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
+
+                if (lineDetector.UnclosedPolygons.Count() > 0)
+                {
+                    lineDetector.TryClusteringUnclosedEnds(sorted2D, epsilon * 100);
+                }
 
                 var polygon = Polygon.FromPolygonLines(sorted2D, lineDetector.Lines.Select(x => x.ToIndexes()).ToArray(), fusionedVertices);
                 return new PlanePolygonData(compressed3D, polygon);
