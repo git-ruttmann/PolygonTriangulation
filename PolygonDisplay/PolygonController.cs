@@ -38,7 +38,8 @@ namespace PolygonDisplay
             // this.Polygon = PolygonSamples.UnityErrors(id);
             // this.Polygon = PolygonSamples.InnerFusionSingle(id);
             // this.Polygon = PolygonSamples.MultiTouch(id);
-            this.Polygon = PolygonSamples.MoreFusionTests(id);
+            // this.Polygon = PolygonSamples.MoreFusionTests(id);
+            this.Polygon = PolygonSamples.MoreErrorTests(id);
 
             try
             {
