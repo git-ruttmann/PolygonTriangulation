@@ -107,18 +107,30 @@
         private void triangulateButton_Click(object sender, EventArgs e)
         {
             this.vertexText.Text = string.Empty;
+            var lines = new List<string>();
             var collector = PolygonTriangulator.CreateTriangleCollector();
             try
             {
-                new PolygonTriangulator(this.controller.Polygon).BuildTriangles(collector);
+                var triangulator = new PolygonTriangulator(this.controller.Polygon);
+                var splits = triangulator.GetSplits();
+                lines.Add("Splits");
+                lines.AddRange(splits.Select(x => $"{x.Item1} - {x.Item2}"));
+                lines.Add("");
+
+                var monotones = Polygon.Split(this.controller.Polygon, splits, PolygonTriangulator.CreateTriangleCollector());
+                lines.Add("Monotones");
+                lines.AddRange(monotones.SubPolygonIds.Select(x => string.Join(" ", monotones.SubPolygonVertices(x))));
+                lines.Add("");
+
+                triangulator.BuildTriangles(collector);
             }
             catch (Exception ex)
             {
                 this.vertexText.Text = ex.ToString();
             }
 
-            var lines = new List<string>();
             var triangles = collector.Triangles;
+            lines.Add("Triangles");
             for (int i = 0; i < triangles.Length; i += 3)
             {
                 lines.Add($"{triangles[i + 0]} {triangles[i + 1]} {triangles[i + 2]} ");
