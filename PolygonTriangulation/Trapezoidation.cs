@@ -105,7 +105,7 @@
             TrapezoidEdge upperEdge;
 
             var prevEdge = this.activeEdges.Prev(lowerEdge.TreeNode)?.Data;
-            if (prevEdge?.Right == lowerEdge.Right)
+            if (prevEdge?.Right == lowerEdge.Right && (prevEdge.Left == info.Prev || prevEdge.Left == info.Next))
             {
                 upperEdge = lowerEdge;
                 lowerEdge = prevEdge;

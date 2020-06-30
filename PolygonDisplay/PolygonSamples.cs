@@ -149,7 +149,7 @@
             switch (id)
             {
                 case 1:
-                    return UnityError1();
+                    return UnityError7();
                 case 2:
                     return UnityError2();
                 case 3:
@@ -370,6 +370,39 @@
             var result = builder.BuildPolygon();
 
             return result.Polygon;
+        }
+
+        public static Polygon UnityError7()
+        {
+            var vertices = new[]
+            {
+                new Vertex(-2.04168500f, 0.05391948f),
+                new Vertex(-1.73525800f, -0.39220070f),
+                new Vertex(-1.59090200f, 0.81340110f),
+                new Vertex(-1.28913800f, -1.04169800f),
+                new Vertex(-1.18307500f, 1.50051100f),
+                new Vertex(-1.16461800f, -0.62563610f),
+                new Vertex(-1.13713300f, 0.22282370f),
+                new Vertex(-1.10918100f, 1.08569700f),
+                new Vertex(-0.98826190f, -1.09449200f),
+                new Vertex(-0.96441320f, 1.46214300f),
+                new Vertex(-0.96191410f, 1.11436200f),
+                new Vertex(-0.94439380f, -0.58277110f),
+                new Vertex(-0.38140370f, -1.20097700f),
+                new Vertex(-0.24038320f, -1.22572200f),
+                new Vertex(-0.07887594f, -0.41430300f),
+                new Vertex(-0.02343902f, 1.29703000f),
+                new Vertex(0.27925600f, -0.35023050f),
+                new Vertex(0.44308910f, 1.21516900f),
+                new Vertex(0.85362760f, 0.61747490f),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(11, 14, 15, 17, 18, 16, 13, 12, 8, 3, 1, 0, 2, 4, 9, 15, 10, 7, 6, 5)
+                .ClosePartialPolygon()
+                .Close(15);
+
+            return polygon;
         }
 
         public static Polygon ReclusterUnclosedPolygons()
