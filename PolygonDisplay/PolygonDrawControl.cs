@@ -15,6 +15,23 @@
     /// </summary>
     public partial class PolygonDrawControl : UserControl
     {
+        private enum VertexTextPosition
+        {
+            Left,
+            TopLeft,
+            BottomLeft,
+            Right,
+            TopRight,
+            BottomRight,
+            Top,
+            Bottom,
+        }
+
+        /// <summary>
+        /// The drawn vertex id's
+        /// </summary>
+        private readonly HashSet<int> drawnVertexIds;
+
         /// <summary>
         /// backing value for <see cref="Zoom"/>
         /// </summary>
@@ -70,6 +87,7 @@
         /// </summary>
         public PolygonDrawControl()
         {
+            this.drawnVertexIds = new HashSet<int>();
             this.zoom = 1;
             this.zoomAsInt = 0;
             this.polygon = SamplePolygon();
@@ -224,6 +242,7 @@
                 return;
             }
 
+            this.drawnVertexIds.Clear();
             var scaledVertices = this.ScaleVertices(this.polygon.Vertices);
             var g = e.Graphics;
 
@@ -236,7 +255,7 @@
 
             for (int i = 0; i < scaledVertices.Length; i++)
             {
-                this.DrawVertexInformation(g, i, scaledVertices[i]);
+                this.DrawVertexInformation(g, i, scaledVertices[i], VertexTextPosition.BottomLeft);
             }
 
             if (this.Splits != null)
@@ -305,13 +324,16 @@
 
             foreach (var subPolygonId in this.polygon.SubPolygonIds)
             {
-                var lastVertex = this.polygon.SubPolygonVertices(subPolygonId).Last();
-                var lastPoint = scaledVertices[lastVertex];
-                foreach (var vertexId in this.polygon.SubPolygonVertices(subPolygonId))
+                var vertexIds = this.polygon.SubPolygonVertices(subPolygonId).ToArray();
+                for (var i = 0; i < vertexIds.Length; i++)
                 {
-                    var point = scaledVertices[vertexId];
-                    g.DrawLine(pen, lastPoint, point);
-                    lastPoint = point;
+                    var vertexId = vertexIds[i];
+                    var prev = i == 0 ? vertexIds.Last() : vertexIds[i - 1];
+                    var next = i == vertexIds.Length - 1 ? vertexIds.First() : vertexIds[i + 1];
+                    g.DrawLine(pen, scaledVertices[prev], scaledVertices[vertexId]);
+
+                    var vertexTextPosition = GetVertexTextPosition(vertexId, prev, next);
+                    this.DrawVertexInformation(g, vertexId, scaledVertices[vertexId], vertexTextPosition);
                 }
             }
         }
@@ -394,19 +416,79 @@
         /// <param name="g">the GDI context</param>
         /// <param name="vertexId">the id of the vertex</param>
         /// <param name="point">the locaion in screen coordinates</param>
-        private void DrawVertexInformation(Graphics g, int vertexId, PointF point)
+        /// <param name="vertexTextPosition">the vertex text position</param>
+        private void DrawVertexInformation(Graphics g, int vertexId, PointF point, VertexTextPosition vertexTextPosition)
         {
+            if (!this.drawnVertexIds.Add(vertexId))
+            {
+                return;
+            }
+
             var radius = this.LogicalToDeviceUnits(vertexId == this.HighlightIndex ? 5 : 4);
             var circlePen = vertexId == this.HighlightIndex ? Pens.Red : Pens.CadetBlue;
             g.DrawEllipse(circlePen, point.X - radius, point.Y - radius, radius * 2, radius * 2);
-            var font = this.Font;
 
-            var width = 100;
+            var (rect, stringFormat) = GetVertexTextRectangle(point, vertexTextPosition);
+            g.DrawString(vertexId.ToString(), this.Font, Brushes.DarkSlateBlue, rect, stringFormat);
+        }
+
+        /// <summary>
+        /// Calculate the text rectangle and the text alignment for a vertex text, depending on it's position
+        /// </summary>
+        /// <param name="point">the drawing location of the vertex</param>
+        /// <param name="vertexTextPosition">the vertex text position</param>
+        /// <returns>the text rectancle and the text alignment</returns>
+        private (RectangleF, StringFormat) GetVertexTextRectangle(PointF point, VertexTextPosition vertexTextPosition)
+        {
             var offset = this.LogicalToDeviceUnits(3);
-            var rect = new RectangleF(point.X - width, point.Y + offset, width - offset, font.SizeInPoints * 20);
-            var stringFormat = new StringFormat() { Alignment = StringAlignment.Far };
+            var offset2 = this.LogicalToDeviceUnits(5);
+            var width = 100;
+            var height = this.Font.SizeInPoints * 20;
+            var stringFormat = new StringFormat() { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
+            var fontHeight = this.LogicalToDeviceUnits(Convert.ToInt32(this.Font.SizeInPoints));
+            RectangleF rect;
 
-            g.DrawString(vertexId.ToString(), font, Brushes.DarkSlateBlue, rect, stringFormat);
+            switch (vertexTextPosition)
+            {
+                case VertexTextPosition.Left:
+                    stringFormat.LineAlignment = StringAlignment.Center;
+                    stringFormat.Alignment = StringAlignment.Far;
+                    rect = new RectangleF(point.X - width, point.Y - height / 2, width - offset2, height);
+                    break;
+                case VertexTextPosition.TopLeft:
+                    stringFormat.Alignment = StringAlignment.Far;
+                    rect = new RectangleF(point.X - width, point.Y - offset2 - fontHeight, width - offset, height);
+                    break;
+                case VertexTextPosition.BottomLeft:
+                    stringFormat.Alignment = StringAlignment.Far;
+                    rect = new RectangleF(point.X - width, point.Y + offset, width - offset, height);
+                    break;
+                case VertexTextPosition.Right:
+                    stringFormat.LineAlignment = StringAlignment.Center;
+                    stringFormat.Alignment = StringAlignment.Near;
+                    rect = new RectangleF(point.X + offset2, point.Y - height / 2, width - offset2, height);
+                    break;
+                case VertexTextPosition.TopRight:
+                    stringFormat.Alignment = StringAlignment.Near;
+                    rect = new RectangleF(point.X + offset2, point.Y - offset2 - fontHeight, width - offset, height);
+                    break;
+                case VertexTextPosition.BottomRight:
+                    stringFormat.Alignment = StringAlignment.Near;
+                    rect = new RectangleF(point.X + offset, point.Y + offset, width - offset, height);
+                    break;
+                case VertexTextPosition.Top:
+                    stringFormat.Alignment = StringAlignment.Center;
+                    rect = new RectangleF(point.X - width / 2, point.Y - offset2 * 2 - fontHeight, width, height);
+                    break;
+                case VertexTextPosition.Bottom:
+                    stringFormat.Alignment = StringAlignment.Center;
+                    rect = new RectangleF(point.X - width / 2, point.Y + offset2, width, height);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(vertexTextPosition));
+            }
+
+            return (rect, stringFormat);
         }
 
         /// <summary>
@@ -439,6 +521,44 @@
             if (updateCenter)
             {
                 this.polygonCenter = new Vertex(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2);
+            }
+        }
+
+        /// <summary>
+        /// Choose a text position for 3 connected vertices, so the text is not overlapped by the line
+        /// </summary>
+        /// <param name="vertexId">the vertex with the text</param>
+        /// <param name="prevId">the previous vertex</param>
+        /// <param name="nextId">the next vertex</param>
+        /// <returns>the text position</returns>
+        private VertexTextPosition GetVertexTextPosition(int vertexId, int prevId, int nextId)
+        {
+            var vertex = this.polygon.Vertices[vertexId];
+            var prev = this.polygon.Vertices[prevId];
+            var next = this.polygon.Vertices[nextId];
+
+            var prevRight = prev.X > vertex.X;
+            var prevAbove = prev.Y > vertex.Y;
+            var nextRight = next.X > vertex.X;
+            var nextAbove = next.Y > vertex.Y;
+
+            if (prevRight == nextRight)
+            {
+                return prevRight ? VertexTextPosition.Left : VertexTextPosition.Right;
+            }
+
+            if (prevAbove == nextAbove)
+            {
+                return prevAbove ? VertexTextPosition.Bottom : VertexTextPosition.Top;
+            }
+
+            if (prevRight)
+            {
+                return prevAbove ? VertexTextPosition.BottomRight : VertexTextPosition.BottomLeft;
+            }
+            else
+            {
+                return prevAbove ? VertexTextPosition.TopRight : VertexTextPosition.TopLeft;
             }
         }
     }
