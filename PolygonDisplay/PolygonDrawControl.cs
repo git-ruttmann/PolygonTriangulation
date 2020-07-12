@@ -93,6 +93,10 @@
             this.polygon = SamplePolygon();
             this.InitializeComponent();
             this.DoubleBuffered = true;
+            this.HighlightIndex = -1;
+            this.ShowSplits = true;
+            this.ShowMonotones = false;
+            this.ShowMonotones = true;
             this.AutoScale(true);
         }
 
@@ -135,6 +139,16 @@
                 this.Invalidate();
             }
         }
+
+        /// <summary>
+        /// Gets or sets a value indicating that splits are drawn
+        /// </summary>
+        public bool ShowSplits { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating that monotones are drawn in a different color.
+        /// </summary>
+        public bool ShowMonotones { get; set; }
 
         /// <summary>
         /// Gets or sets the splits
@@ -248,7 +262,7 @@
 
             if ((this.Splits?.Count ?? -1) >= 0)
             {
-                DrawTriangles(g, scaledVertices);
+                this.DrawTriangles(g, scaledVertices);
             }
 
             this.DrawPolygon(g, scaledVertices);
@@ -258,7 +272,7 @@
                 this.DrawVertexInformation(g, i, scaledVertices[i], VertexTextPosition.BottomLeft);
             }
 
-            if (this.Splits != null)
+            if (this.ShowSplits && this.Splits != null)
             {
                 this.DrawSplits(g, scaledVertices);
             }
@@ -272,6 +286,7 @@
         private void DrawTriangles(Graphics g, PointF[] scaledVertices)
         {
             var triangleCollector = PolygonTriangulator.CreateTriangleCollector();
+            var greyBrush = new SolidBrush(Color.FromArgb(47, Color.LightGray));
 
             Polygon montonizedPolygon;
             try
@@ -286,24 +301,23 @@
             var colorIndex = 0;
             var colors = new[]
             {
-                    Color.LightGoldenrodYellow,
-                    Color.LightGreen,
-                    Color.LightBlue,
-                    Color.LightCoral,
-                };
+                Color.LightGoldenrodYellow,
+                Color.LightGreen,
+                Color.LightBlue,
+                Color.LightCoral,
+            };
 
             foreach (var polygonId in montonizedPolygon.SubPolygonIds)
             {
                 var brushColor = Color.FromArgb(127, colors[colorIndex]);
                 colorIndex = (colorIndex + 1) % colors.Length;
-                var brush = new SolidBrush(brushColor);
+                var brush = this.ShowMonotones ? new SolidBrush(brushColor) : greyBrush;
 
                 var vertices = montonizedPolygon.SubPolygonVertices(polygonId).Select(x => scaledVertices[x]).ToArray();
                 g.FillPolygon(brush, vertices);
             }
 
             var triangles = triangleCollector.Triangles;
-            var greyBrush = new SolidBrush(Color.FromArgb(47, Color.LightGray));
             for (int i = 0; i < triangles.Length; i += 3)
             {
                 var vertices = triangles.Skip(i).Take(3).Select(x => scaledVertices[x]).ToArray();
@@ -320,7 +334,8 @@
         {
             var pen = new Pen(Color.Black);
             pen.Width = this.LogicalToDeviceUnits(1);
-            pen.SetLineCap(LineCap.Flat, LineCap.ArrowAnchor, DashCap.Flat);
+            pen.SetLineCap(LineCap.Flat, LineCap.Custom, DashCap.Flat);
+            pen.CustomEndCap = this.CreateArrowCap();
 
             foreach (var subPolygonId in this.polygon.SubPolygonIds)
             {
@@ -336,6 +351,26 @@
                     this.DrawVertexInformation(g, vertexId, scaledVertices[vertexId], vertexTextPosition);
                 }
             }
+        }
+
+        /// <summary>
+        /// Create a working arrow cap
+        /// </summary>
+        /// <returns></returns>
+        private CustomLineCap CreateArrowCap()
+        {
+            var hPath = new GraphicsPath();
+
+            var x = LogicalToDeviceUnits(1);
+            var y = LogicalToDeviceUnits(4);
+            hPath.AddLine(new Point(0, 0), new Point(-x, -y));
+            hPath.AddLine(new Point(-x, -y), new Point(x, -y));
+            hPath.AddLine(new Point(x, -y), new Point(0, 0));
+
+            var arrowCap = new CustomLineCap(null, hPath);
+
+            arrowCap.SetStrokeCaps(LineCap.Round, LineCap.Round);
+            return arrowCap;
         }
 
         /// <summary>
