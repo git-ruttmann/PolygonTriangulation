@@ -191,7 +191,7 @@
         /// <summary>
         /// Get id/prev/next info per vertex sorted by vertex id.
         /// </summary>
-        public IEnumerable<IPolygonVertexInfo> OrderedVertexes
+        public IEnumerable<IPolygonVertexInfo> OrderedVertices
         {
             get
             {
@@ -233,7 +233,7 @@
                 foreach (var vertexId in line)
                 {
                     chain[id].VertexId = vertexId;
-                    chain[id].PolygonId = polygonId;
+                    chain[id].SubPolygonId = polygonId;
 
                     chain[id].SameVertexChain = vertexToChain[vertexId];
                     vertexToChain[vertexId] = id;
@@ -298,8 +298,8 @@
                     }
                     else if (!samePolygon)
                     {
-                        this.polygonStartIndices[chain[prev].PolygonId] = -1;
-                        PolygonSplitter.FillPolygonId(this.chain, prev, chain[next].PolygonId);
+                        this.polygonStartIndices[chain[prev].SubPolygonId] = -1;
+                        PolygonSplitter.FillPolygonId(this.chain, prev, chain[next].SubPolygonId);
                     }
                     else
                     {
@@ -360,7 +360,7 @@
                 var incoming = outgoing + 1 == sortedByAngle.Length ? 0 : outgoing + 1;
                 var prev = this.chain[sortedByAngle[incoming].chain].Prev;
                 var startOfEdge = sortedByAngle[outgoing].chain;
-                jobList[i] = (prev, startOfEdge, this.chain[prev].PolygonId == this.chain[startOfEdge].PolygonId);
+                jobList[i] = (prev, startOfEdge, this.chain[prev].SubPolygonId == this.chain[startOfEdge].SubPolygonId);
             }
 
             return jobList;
@@ -387,7 +387,7 @@
             {
                 chain[i].VertexId = vertexId;
                 chain[i].SameVertexChain = vertexToChain[vertexId];
-                chain[i].PolygonId = polygonIdCollection[i];
+                chain[i].SubPolygonId = polygonIdCollection[i];
                 SetNext(chain, i, nextId);
 
                 if (polygonIdCollection[i] >= polygonStartIndex.Count)
@@ -432,7 +432,7 @@
         public IEnumerable<int> IndicesStartingAt(int startVertex, int subPolygonId)
         {
             var startId = this.vertexToChain[startVertex];
-            while (this.chain[startId].PolygonId != subPolygonId)
+            while (this.chain[startId].SubPolygonId != subPolygonId)
             {
                 startId = this.chain[startId].SameVertexChain;
                 if (startId < 0)
@@ -464,7 +464,12 @@
             /// <summary>
             /// The id of the polygon. Holes are a separate polygon.
             /// </summary>
-            public int PolygonId;
+            public int SubPolygonId;
+
+            /// <summary>
+            /// The next info with the same vertex id.
+            /// </summary>
+            public int SameVertexChain;
 
             /// <summary>
             /// The previous vertex id (not chain index)
@@ -487,11 +492,6 @@
                 this.Next = nextChain;
                 nextItem.Prev = current;
             }
-
-            /// <summary>
-            /// The next info with the same vertex id.
-            /// </summary>
-            public int SameVertexChain;
         }
 
         /// <summary>
@@ -686,7 +686,7 @@
                 var i = start;
                 while (true)
                 {
-                    chain[i].PolygonId = polygonId;
+                    chain[i].SubPolygonId = polygonId;
 
                     var result = i;
                     i = chain[i].Next;
@@ -759,7 +759,7 @@
                 {
                     for (var i = to; i >= 0; i = this.chain[i].SameVertexChain)
                     {
-                        if (this.chain[from].PolygonId == this.chain[i].PolygonId)
+                        if (this.chain[from].SubPolygonId == this.chain[i].SubPolygonId)
                         {
                             return false;
                         }
@@ -778,7 +778,7 @@
             /// <returns>the splitted polygon</returns>
             private void SplitPolygon(int from, int to)
             {
-                var polygonId = this.chain[from].PolygonId;
+                var polygonId = this.chain[from].SubPolygonId;
 
                 if (this.IsTriangle(from, to))
                 {
@@ -786,7 +786,7 @@
                     {
                         // skip from.Next in the current polygon chain.
                         this.polygonStartIndices[polygonId] = from;
-                        this.chain[this.chain[from].Next].PolygonId = -1;
+                        this.chain[this.chain[from].Next].SubPolygonId = -1;
                         SetNext(this.chain, from, to);
                     }
                     else
@@ -799,7 +799,7 @@
                 {
                     // skip to.Next in the current polygon chain.
                     this.polygonStartIndices[polygonId] = from;
-                    this.chain[this.chain[to].Next].PolygonId = -1;
+                    this.chain[this.chain[to].Next].SubPolygonId = -1;
                     SetNext(this.chain, to, from);
                 }
                 else
@@ -823,7 +823,7 @@
                 chain[fromCopy] = chain[from];
                 chain[from].SameVertexChain = fromCopy;
 
-                var oldPolygonId = chain[from].PolygonId;
+                var oldPolygonId = chain[from].SubPolygonId;
 
                 // already copied: chain[fromCopy].Next = chain[from].Next;
                 SetNext(chain, from, toCopy);
@@ -872,7 +872,7 @@
                 {
                     for (var to = firstTo; to >= 0; to = this.chain[to].SameVertexChain)
                     {
-                        if (this.chain[from].PolygonId == this.chain[to].PolygonId)
+                        if (this.chain[from].SubPolygonId == this.chain[to].SubPolygonId)
                         {
                             from = this.ChooseInstanceForSplit(from, to);
                             to = this.ChooseInstanceForSplit(to, from);
@@ -899,7 +899,7 @@
             private int ChooseInstanceForSplit(int chainId, int peer)
             {
                 var sameVertexChain = this.chain[chainId].SameVertexChain;
-                if (sameVertexChain < 0 || this.chain[chainId].PolygonId != this.chain[sameVertexChain].PolygonId)
+                if (sameVertexChain < 0 || this.chain[chainId].SubPolygonId != this.chain[sameVertexChain].SubPolygonId)
                 {
                     return chainId;
                 }
@@ -968,9 +968,9 @@
                 var fromCopy = this.chainFreeIndex++;
                 var toCopy = this.chainFreeIndex++;
 
-                var deletedPolygonId = chain[to].PolygonId;
+                var deletedPolygonId = chain[to].SubPolygonId;
                 this.polygonStartIndices[deletedPolygonId] = -1;
-                var lastVertexInHole = FillPolygonId(chain, to, chain[from].PolygonId);
+                var lastVertexInHole = FillPolygonId(chain, to, chain[from].SubPolygonId);
 
                 chain[toCopy] = chain[to];
                 chain[to].SameVertexChain = toCopy;

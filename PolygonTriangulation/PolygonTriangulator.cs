@@ -147,7 +147,7 @@
             /// <param name="stepCount">number of steps during debugging. Use -1 for all</param>
             public void BuildSplits(int stepCount)
             {
-                foreach (var group in this.polygon.OrderedVertexes.GroupBy(x => x.Id))
+                foreach (var group in this.polygon.OrderedVertices.GroupBy(x => x.Id))
                 {
                     var actions = group.ToArray();
                     if (actions.Count() > 1)

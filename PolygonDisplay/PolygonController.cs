@@ -56,7 +56,7 @@ namespace PolygonDisplay
             var lines = new List<string>();
             var trapezoidation = new PolygonTriangulator(this.Polygon);
             int limit = 0;
-            foreach (var vertexInfo in this.Polygon.OrderedVertexes)
+            foreach (var vertexInfo in this.Polygon.OrderedVertices)
             {
                 try
                 {

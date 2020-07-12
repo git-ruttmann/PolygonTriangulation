@@ -32,7 +32,7 @@
             this.polygonPanel.Polygon = this.controller.Polygon;
             this.polygonPanel.Splits = this.controller.Splits;
             this.vertexText.Text = String.Join(Environment.NewLine,
-                this.controller.Polygon.OrderedVertexes
+                this.controller.Polygon.OrderedVertices
                 .Select(x => $"{x.Prev}>{x.Id}>{x.Next}")
                 .ToArray());
 
