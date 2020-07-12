@@ -365,12 +365,12 @@
             var polygon = Polygon.Build(sortedVertices)
                 .AddVertices(0, 2, 4, 7, 8)
                 .ClosePartialPolygon()
-                .AddVertices(4, 1, 3)
+                .AddVertices(4, 5, 6)
                 .Close(4);
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("0-1 1-2", splits);
+            Assert.AreEqual("6-7", splits);
         }
 
         /// <summary>
@@ -464,12 +464,12 @@
             var polygon = Polygon.Build(sortedVertices)
                 .AddVertices(0, 2, 4, 7, 8)
                 .ClosePartialPolygon()
-                .AddVertices(4, 5, 6)
+                .AddVertices(4, 1, 3)
                 .Close(4);
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
-            Assert.AreEqual("6-7", splits);
+            Assert.AreEqual("0-1 1-2", splits);
         }
 
         /// <summary>

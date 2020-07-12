@@ -4,6 +4,8 @@
     using System;
     using Vertex = System.Numerics.Vector2;
     using Vector3 = System.Numerics.Vector3;
+    using System.Diagnostics;
+    using System.Linq;
 
     /// <summary>
     /// Create sample polygons
@@ -16,25 +18,189 @@
         /// <returns>the polygon</returns>
         public static Polygon Form1()
         {
+            var clockwise = new[]
+            {
+                new Vertex(1, 1),
+                new Vertex(2.5f, 2),
+                new Vertex(2, 2),
+                new Vertex(1, 3),
+                new Vertex(2, 4),
+                new Vertex(4, 4),
+                new Vertex(1.5f, 3),
+                new Vertex(2.7f, 3),
+                new Vertex(4, 3.5f),
+                new Vertex(3, 2.5f),
+                new Vertex(4, 1.5f),
+                new Vertex(3.5f, 1),
+                new Vertex(2.3f, 1),
+            };
+
+            var polygonBuilder = PlanePolygonBuilder.CreatePolygonBuilder();
+            var last = clockwise.Last();
+            foreach (var vertex in clockwise)
+            {
+                polygonBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
+            }
+
+            return polygonBuilder.BuildPolygon().Polygon;
+        }
+
+        /// <summary>
+        /// The infamous form number one
+        /// </summary>
+        /// <returns>the polygon</returns>
+        public static Polygon Form2()
+        {
+            var clockwise = new[]
+            {
+                new Vertex(1, 1),
+                new Vertex(2.5f, 2),
+                new Vertex(2, 2),
+                new Vertex(1, 3),
+                new Vertex(2, 4),
+                new Vertex(4, 4),
+                new Vertex(1.5f, 3),
+                new Vertex(2.5f, 3),
+                new Vertex(4, 3.5f),
+                new Vertex(3, 2.5f),
+                new Vertex(4, 1.5f),
+                new Vertex(3.5f, 1),
+                new Vertex(2.5f, 1),
+            };
+
+            var counter = new[]
+            {
+                new Vertex(3, 3),
+                new Vertex(2, 2.5f),
+                new Vertex(3, 2),
+                new Vertex(2.5f, 2.5f),
+            };
+
+            var polygonBuilder = PlanePolygonBuilder.CreatePolygonBuilder();
+            var last = clockwise.Last();
+            foreach (var vertex in clockwise)
+            {
+                polygonBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
+            }
+
+            last = counter.Last();
+            foreach (var dot in counter)
+            {
+                polygonBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(dot.X, dot.Y, 0));
+                last = dot;
+            }
+
+            return polygonBuilder.BuildPolygon().Polygon;
+        }
+
+        /// <summary>
+        /// The infamous form number two
+        /// </summary>
+        /// <returns>the polygon</returns>
+        public static Polygon Form3()
+        {
+            var clockwise = new[]
+            {
+                new Vertex(1, 0),
+                new Vertex(0, 1),
+                new Vertex(2, 2),
+                new Vertex(1, 2),
+                new Vertex(0, 3),
+                new Vertex(2, 4),
+                new Vertex(1, 4),
+                new Vertex(0, 5),
+                new Vertex(1, 6),
+                new Vertex(4, 6),
+                new Vertex(5, 5),
+                new Vertex(4, 4.5f),
+                new Vertex(3, 3.5f),
+                new Vertex(4, 2.5f),
+                new Vertex(3, 1.5f),
+                new Vertex(4, 0.5f),
+                new Vertex(5.5f, 1),
+                new Vertex(4.5f, 0),
+            };
+
+            var polygonBuilder = PlanePolygonBuilder.CreatePolygonBuilder();
+            var last = clockwise.Last();
+            foreach (var vertex in clockwise)
+            {
+                polygonBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
+            }
+
+            return polygonBuilder.BuildPolygon().Polygon;
+        }
+
+        /// <summary>
+        /// The polygon for online documentatino purposes
+        /// </summary>
+        /// <returns>the polygon</returns>
+        public static Polygon DocumentationOne()
+        {
+            var clockwise = new[]
+            {
+                new Vertex(1.2f, 1),
+                new Vertex(2.5f, 2),
+                new Vertex(2, 2),
+                new Vertex(1, 3),
+                new Vertex(2, 4),
+                new Vertex(4, 4),
+                new Vertex(1.5f, 3),
+                new Vertex(2.7f, 3),
+                new Vertex(4.3f, 3.5f),
+                new Vertex(3, 2.5f),
+                new Vertex(4, 1.5f),
+                new Vertex(3.5f, 1),
+                new Vertex(2.3f, 1),
+            };
+
+            var polygonBuilder = PlanePolygonBuilder.CreatePolygonBuilder();
+            var last = clockwise.Last();
+            foreach (var vertex in clockwise)
+            {
+                polygonBuilder.AddEdge(new Vector3(last.X, last.Y, 0), new Vector3(vertex.X, vertex.Y, 0));
+                last = vertex;
+            }
+
+            return polygonBuilder.BuildPolygon().Polygon;
+        }
+
+        /// <summary>
+        /// A form that contains all combination of trapezoid cusps / transition combinations
+        /// </summary>
+        /// <returns>the polygon</returns>
+        public static Polygon AllTrapezoids()
+        {
             var sortedVertices = new[]
             {
-                new Vertex(1, 1), // 0
-                new Vertex(1, 3),
-                new Vertex(1.5f, 3), // 2
-                new Vertex(2, 2),
-                new Vertex(2, 4), // 4
-                new Vertex(2.5f, 1),
-                new Vertex(2.5f, 2), // 6
-                new Vertex(2.5f, 3),
-                new Vertex(3.5f, 2.5f), // 8
-                new Vertex(3.5f, 1),
-                new Vertex(4, 1.5f), // 10
-                new Vertex(4, 3.5f),
-                new Vertex(4, 4), // 12
+                new Vertex(1, 16),
+                new Vertex(2, 11),
+                new Vertex(3, 15),
+                new Vertex(4, 13),
+                new Vertex(5, 7),
+                new Vertex(5, 17), // 5
+                new Vertex(6, 2),
+                new Vertex(7, 4),
+                new Vertex(7, 9),
+                new Vertex(8, 14),
+                new Vertex(9, 5), // 10
+                new Vertex(11, 9),
+                new Vertex(13, 14),
+                new Vertex(14, 1),
+                new Vertex(14, 12),
+                new Vertex(15, 6), // 15
+                new Vertex(16, 3),
+                new Vertex(16, 19),
+                new Vertex(17, 8),
+                new Vertex(18, 2),
+                new Vertex(19, 20), // 20
             };
 
             var polygon = Polygon.Build(sortedVertices)
-                .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
+                .AddVertices(0, 5, 2, 9, 17, 20, 12, 14, 11, 18, 15, 19, 13, 16, 6, 7, 10, 4, 8, 1, 3)
                 .Close();
 
             return polygon;
@@ -102,6 +268,25 @@
             return builder.Close(4);
         }
 
+        public static Polygon Constructed(int id)
+        {
+            switch (id)
+            {
+                case 1:
+                    return DocumentationOne();
+                case 2:
+                    return Form1();
+                case 3:
+                    return Form2();
+                case 4:
+                    return Form3();
+                case 5:
+                    return AllTrapezoids();
+                default:
+                    return InnerFusionSingle(2);
+            }
+        }
+
         public static Polygon MultiTouch(int id)
         {
             switch (id)
@@ -138,7 +323,7 @@
                 case 5:
                     return ReclusterUnclosedPolygons();
                 case 6:
-                    return UnityError4();
+                    return SimpleHole();
                 default:
                     return null;
             }
@@ -191,6 +376,57 @@
                 .AddVertices(15, 4, 2, 1, 0, 3, 13, 14)
                 .ClosePartialPolygon()
                 .AddVertices(7, 9, 11, 12, 10, 8, 6, 5)
+                .Close();
+
+            return polygon;
+        }
+
+        /// <summary>
+        /// A polygon with exactly one split
+        /// </summary>
+        /// <returns></returns>
+        public static Polygon SimpleHole()
+        {
+            var vertices = new[]
+            {
+                new Vertex(0.0f, 0.0f),
+                new Vertex(1.0f, 3.0f),
+                new Vertex(2.0f, 2.0f),
+                new Vertex(3.0f, 1.0f),
+                new Vertex(3.0f, 3.0f),
+                new Vertex(4.0f, 2.0f),
+                new Vertex(5.0f, 1.0f),
+                new Vertex(6.0f, 0.0f),
+                new Vertex(7.0f, 3.0f),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(0, 1, 4, 8, 7)
+                .ClosePartialPolygon()
+                .AddVertices(2, 3, 6, 5)
+                .Close();
+
+            return polygon;
+        }
+
+        /// <summary>
+        /// A polygon with exactly one split
+        /// </summary>
+        /// <returns></returns>
+        public static Polygon SingleSplit()
+        {
+            var vertices = new[]
+            {
+                new Vertex(0.0f, 0.0f),
+                new Vertex(1.0f, 3.0f),
+                new Vertex(2.0f, 3.0f),
+                new Vertex(3.0f, 0.0f),
+                new Vertex(4.0f, 0.0f),
+                new Vertex(5.0f, 3.0f),
+            };
+
+            var polygon = Polygon.Build(vertices)
+                .AddVertices(0, 1, 2, 5, 4, 3)
                 .Close();
 
             return polygon;
