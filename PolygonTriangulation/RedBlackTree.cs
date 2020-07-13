@@ -98,9 +98,9 @@
         /// <inheritdoc/>
         bool ICollection<T>.Remove(T item)
         {
-            if (this.TryLocateNode(item, out var node) && node is var nodeInstance)
+            if (this.TryLocateInternalNode(item, out var node))
             {
-                this.RemoveNode(nodeInstance);
+                this.RemoveNode(node);
                 return true;
             }
 
@@ -218,19 +218,9 @@
         /// <returns>true if the value was found</returns>
         public bool TryLocateNode(T value, out IOrderedNode<T> node)
         {
-            int comparison;
-            for (var current = this.root; current != null; current = comparison > 0 ? current.Right : current.Left)
-            {
-                comparison = this.comparer.Compare(value, current.Data);
-                if (comparison == 0)
-                {
-                    node = current;
-                    return true;
-                }
-            }
-
-            node = null;
-            return false;
+            var found = TryLocateInternalNode(value, out var internalNode);
+            node = internalNode;
+            return found;
         }
 
         /// <summary>
@@ -295,6 +285,29 @@
         /// </summary>
         /// <returns>true if the tree is valid</returns>
         internal bool Validate() => Validator.ValidateRoot(this.root);
+
+        /// <summary>
+        /// Try to find the node with the value
+        /// </summary>
+        /// <param name="value">the value to find</param>
+        /// <param name="node">The resulting node. null if not found</param>
+        /// <returns>true if the value was found</returns>
+        private bool TryLocateInternalNode(T value, out Node node)
+        {
+            int comparison;
+            for (var current = this.root; current != null; current = comparison > 0 ? current.Right : current.Left)
+            {
+                comparison = this.comparer.Compare(value, current.Data);
+                if (comparison == 0)
+                {
+                    node = current;
+                    return true;
+                }
+            }
+
+            node = null;
+            return false;
+        }
 
         /// <summary>
         /// Resolve Red-Red conflicts after insert.
@@ -382,12 +395,12 @@
         /// <param name="value">the value</param>
         public void Remove(T value)
         {
-            if (!this.TryLocateNode(value, out var node))
+            if (!this.TryLocateInternalNode(value, out var node))
             {
                 throw new KeyNotFoundException();
             }
 
-            this.RemoveNode((Node)node);
+            this.RemoveNode(node);
         }
 
         /// <summary>
@@ -509,6 +522,7 @@
             {
                 for (/*swapNode = swapnode */; swapNode.Left != null; swapNode = swapNode.Left)
                 {
+                    // just iterate
                 }
 
                 // Swap has a parent and is left to that. It has no left but maybe a right.
@@ -683,12 +697,14 @@
                     {
                         for (node = this.Right; node.Left != null; node = node.Left)
                         {
+                            // just iterate
                         }
                     }
                     else
                     {
                         for (node = this; node.IsRight; node = node.Parent)
                         {
+                            // just iterate
                         }
 
                         node = node.Parent;
@@ -708,12 +724,14 @@
                     {
                         for (node = this.Left; node.Right != null; node = node.Right)
                         {
+                            // just iterate
                         }
                     }
                     else
                     {
                         for (node = this; node.IsLeft; node = node.Parent)
                         {
+                            // just iterate
                         }
 
                         node = node.Parent;
