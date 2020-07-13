@@ -61,8 +61,6 @@ The new edge must be between the incoming edge and the outgoing edge, e.g. 2'-4 
 
 <img src="SplitAfterJoin.png" alt="Split after join" width="400"/>
 
-Angles are calculated by `DiamondAngle` instead of Math.Atan2, see [https://stackoverflow.com/a/14675998]
-
 ## Internal structure of a polygon
 
 The 2D vertices are stored in the array `Polygon.Vertices`. The array is never modified.
