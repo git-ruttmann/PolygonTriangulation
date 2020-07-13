@@ -107,6 +107,7 @@ E.g. before we process vertex 6, the active edges are 5-9(__K__), 1-6(__K__), 3-
     *  Close the trapezoid to the left and set the right edge to `TwoNeighbors`.
     *  Create a trapezoid between upper and upper.above (__H__).
     *  Create a trapezoid between lower and lower.below (__B__).
+
 *  During a transition __(T)__, the previous edge is part of `activeEdges` and that points to a trapezoid.
   *  Close the old trapezoid and set the right base to `UpperCorner` or `LowerCorner`, depending on if the edge is pointing left or right.
   *  Create a new trapezoid with the new active edge and the peer edge.
@@ -114,12 +115,14 @@ E.g. before we process vertex 6, the active edges are 5-9(__K__), 1-6(__K__), 3-
   *  e.g. Transition at point 5: close __J__ with `LowerCorner` as right base. 
     Create __K__ with the new edge 5-9 as lower and the above of 1-5, which is 1-6. 
     In `activeEdges`, replace 1-5 with 5-9.
+
 *  Situation __(J)__ joines two existing active edges. Both must have the same right vertex. If the lower edge direction is left to right, it's situation __(5)__.
   *  In Situation __(5)__:
     *  Close the trapezoid of the upper edge (__C__) with `LowerCorner` as right base.
     *  Close the trapezoid of the lower edge (__K__) with `UpperCorner` as right base.
     *  Create a new trapezoid between upper.Above and lower.Below. Set the left base to `TwoNeighbors`.
     *  Remove the two edges from `activeEdges`.
+
   *  In Situation __(6)__, the upper edge and lower edge both point to the same trapezoid (__G__). 
     Set the right base to `NoNeighbor` and remove both edges from `activeEdges`.
 
