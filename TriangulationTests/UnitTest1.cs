@@ -209,7 +209,7 @@
         /// </summary>
         private class SplitCollector : IPolygonSplitSink
         {
-            public void SplitPolygon(int leftVertex, int rightVertex)
+            void IPolygonSplitSink.SplitPolygon(int leftVertex, int rightVertex)
             {
                 // dummy collector
             }

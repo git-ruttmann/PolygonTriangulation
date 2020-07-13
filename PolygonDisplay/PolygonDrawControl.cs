@@ -423,10 +423,9 @@
                 new Vertex(4, 4), // 12
             };
 
-            var polygon = Polygon.Build(sortedVertices)
+            return Polygon.Build(sortedVertices)
                 .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
                 .Close();
-            return polygon;
         }
 
         /// <summary>

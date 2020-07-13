@@ -143,7 +143,7 @@
         /// <summary>
         /// Gets the vertex coordinates
         /// </summary>
-        public readonly Vertex[] vertexCoordinates;
+        private readonly Vertex[] vertexCoordinates;
 
         /// <summary>
         /// the start index in <see cref="chain"/> per sub polygon
@@ -521,17 +521,22 @@
             /// </summary>
             public int Current { get; private set; }
 
+            /// <inheritdoc/>
             object IEnumerator.Current => this.Current;
 
+            /// <inheritdoc/>
             public void Dispose()
             {
+                this.Current = -1;
             }
 
+            /// <inheritdoc/>
             public IEnumerator<int> GetEnumerator()
             {
                 return this;
             }
 
+            /// <inheritdoc/>
             public bool MoveNext()
             {
                 if (this.reset)
@@ -557,11 +562,13 @@
                 return true;
             }
 
+            /// <inheritdoc/>
             public void Reset()
             {
                 this.reset = true;
             }
 
+            /// <inheritdoc/>
             IEnumerator IEnumerable.GetEnumerator()
             {
                 return this.GetEnumerator();
@@ -841,15 +848,15 @@
             /// <summary>
             /// Check if the chain from..to forms a triangle. Adds the triangle to the result collector.
             /// </summary>
-            /// <param name="from">the start index in the chain</param>
-            /// <param name="to">the target index in the chain</param>
+            /// <param name="start">the start index in the chain</param>
+            /// <param name="target">the target index in the chain</param>
             /// <returns>true if it's a triangle</returns>
-            private bool IsTriangle(int from, int to)
+            private bool IsTriangle(int start, int target)
             {
-                ref var p0 = ref this.chain[from];
+                ref var p0 = ref this.chain[start];
                 ref var p1 = ref this.chain[p0.Next];
 
-                if (p1.Next == to)
+                if (p1.Next == target)
                 {
                     this.triangleCollector.AddTriangle(p0.VertexId, p1.VertexId, this.chain[p1.Next].VertexId);
                     return true;
@@ -875,8 +882,8 @@
                         if (this.chain[from].SubPolygonId == this.chain[to].SubPolygonId)
                         {
                             from = this.ChooseInstanceForSplit(from, to);
-                            to = this.ChooseInstanceForSplit(to, from);
-                            return (from, to);
+                            var finalTo = this.ChooseInstanceForSplit(to, from);
+                            return (from, finalTo);
                         }
                     }
                 }
@@ -985,10 +992,10 @@
                     null);
             }
 
-            public IPolygonBuilder Add(int vertex)
+            public IPolygonBuilder Add(int vertexId)
             {
                 this.nextIndices.Add(this.nextIndices.Count + 1);
-                this.vertexIds.Add(vertex);
+                this.vertexIds.Add(vertexId);
                 this.polygonIds.Add(this.polygonId);
                 return this;
             }

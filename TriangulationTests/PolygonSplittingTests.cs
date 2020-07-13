@@ -215,6 +215,7 @@
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             var triangles = triangluator.BuildTriangles();
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+            Assert.AreEqual("1-2 5-6 7-8", splits);
         }
 
         /// <summary>

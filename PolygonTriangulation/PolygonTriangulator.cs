@@ -247,8 +247,8 @@
                 }
                 else
                 {
-                    var vertices = this.polygon.SubPolygonVertices(this.subPolygonId).ToArray();
-                    collector.AddTriangle(vertices[0], vertices[1], vertices[2]);
+                    var triangleVertices = this.polygon.SubPolygonVertices(this.subPolygonId).ToArray();
+                    collector.AddTriangle(triangleVertices[0], triangleVertices[1], triangleVertices[2]);
                 }
             }
 
