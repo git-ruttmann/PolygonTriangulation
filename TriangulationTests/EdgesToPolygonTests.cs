@@ -19,6 +19,11 @@ namespace TriangulationTests
     public class EdgesToPolygon
     {
         /// <summary>
+        /// Gets or sets the test context
+        /// </summary>
+        public TestContext TestContext { get; set; }
+
+        /// <summary>
         /// Two polygons touch each other. Test at edge collector level.
         /// </summary>
         [TestMethod]
@@ -48,8 +53,10 @@ namespace TriangulationTests
 
             var triangulator = new PolygonTriangulator(polygon);
             var splits = triangulator.GetSplits();
+            Assert.IsNotNull(splits);
 
             var triangles = triangulator.BuildTriangles();
+            Assert.IsNotNull(triangles);
         }
 
         /// <summary>
@@ -78,7 +85,8 @@ namespace TriangulationTests
             builder.AddEdge(new Vector3(0.17275270f, -0.09793866f, 0), new Vector3(1.14250100f, -0.18199130f, 0));
             builder.AddEdge(new Vector3(0.06125382f, -0.08827414f, 0), new Vector3(0.17275270f, -0.09793866f, 0));
 
-            var _ = builder.BuildPolygon();
+            var polygon = builder.BuildPolygon();
+            Assert.IsNotNull(polygon);
         }
 
         [TestMethod]
@@ -128,7 +136,7 @@ namespace TriangulationTests
             var result = planeMeshBuilder.Build();
             for (int i = 0; i < result.Triangles.Length; i += 3)
             {
-                Console.WriteLine($"{result.Triangles[i + 0]} {result.Triangles[i + 1]} {result.Triangles[i + 2]}");
+                TestContext.WriteLine($"{result.Triangles[i + 0]} {result.Triangles[i + 1]} {result.Triangles[i + 2]}");
             }
 
             Assert.AreEqual(3 * 17, result.Triangles.Length);

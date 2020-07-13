@@ -334,7 +334,7 @@
                     parent.IsRed = false;
                     this.Rotate(!nodeIsLeft, grandParent);
                 }
-                else // if (parent.IsLeft != nodeIsLeft)
+                else //// if (parent.IsLeft != nodeIsLeft)
                 {
                     node.IsRed = false;
                     this.Rotate(!nodeIsLeft, parent);
@@ -656,9 +656,10 @@
                             return "b";
                         case Color.DoubleBlackNull:
                             return "x";
+                        default:
+                            return "_";
                     }
 
-                    return "_";
                 }
             }
 

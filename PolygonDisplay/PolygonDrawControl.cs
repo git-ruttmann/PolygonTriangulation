@@ -479,7 +479,7 @@
             var offset2 = this.LogicalToDeviceUnits(5);
             var width = 100;
             var height = this.Font.SizeInPoints * 20;
-            var stringFormat = new StringFormat() { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
+            var stringFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
             var fontHeight = this.LogicalToDeviceUnits(Convert.ToInt32(this.Font.SizeInPoints));
             RectangleF rect;
 
@@ -549,9 +549,6 @@
             this.fullScale = Math.Min(scaleX, scaleY);
 
             this.centerPoint = new PointF(this.Size.Width / 2, this.Size.Height / 2);
-
-            var spanX = Math.Max(maxX - minX, 0.1f);
-            var spanY = Math.Max(maxY - minY, 0.1f);
 
             if (updateCenter)
             {

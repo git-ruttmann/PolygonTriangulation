@@ -825,7 +825,7 @@
 
                 var oldPolygonId = chain[from].SubPolygonId;
 
-                // already copied: chain[fromCopy].Next = chain[from].Next;
+                //// already copied: chain[fromCopy].Next = chain[from].Next;
                 SetNext(chain, from, toCopy);
                 SetNext(chain, to, fromCopy);
 
@@ -923,37 +923,6 @@
                 else
                 {
                     return sameVertexChain;
-                }
-            }
-
-            /// <summary>
-            /// Tests if the distance to chainEnd is shorter from chainStart or from otherChainStart
-            /// </summary>
-            /// <param name="chainStart">the start of the chain</param>
-            /// <param name="otherChainStart">the start of the other chain</param>
-            /// <param name="chainEnd">the chain id of the other end of the split</param>
-            /// <returns>true if otherChainId has a shorter chain to targetVertex</returns>
-            private bool IsVertexDistanceShorter(int chainStart, int otherChainStart, int chainEnd)
-            {
-                var chainId = this.chain[chainStart].Next;
-                var otherChainId = this.chain[otherChainStart].Next;
-                var endId = this.chain[chainEnd].Next;
-
-                while (true)
-                {
-                    if (chainId == chainEnd || endId == chainStart)
-                    {
-                        return false;
-                    }
-
-                    if (otherChainId == chainEnd || endId == otherChainStart)
-                    {
-                        return true;
-                    }
-
-                    chainId = this.chain[chainId].Next;
-                    otherChainId = this.chain[otherChainId].Next;
-                    endId = this.chain[endId].Next;
                 }
             }
 

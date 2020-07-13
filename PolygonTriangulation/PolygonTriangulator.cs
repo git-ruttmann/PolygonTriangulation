@@ -176,6 +176,8 @@
                             case VertexAction.OpeningCusp:
                                 this.activeEdges.HandleOpeningCusp(info);
                                 break;
+                            default:
+                                throw new InvalidOperationException($"Unkown action {info.Action}");
                         }
                     }
                 }

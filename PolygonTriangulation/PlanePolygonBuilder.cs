@@ -400,14 +400,14 @@
             /// <param name="end"></param>
             private void AddEdge(int start, int end)
             {
-                bool startFits;
-                if (startFits = openPolygones.TryGetValue(start, out var firstSegment))
+                var startFits = openPolygones.TryGetValue(start, out var firstSegment);
+                if (startFits)
                 {
                     openPolygones.Remove(start);
                 }
 
-                bool endFits;
-                if (endFits = openPolygones.TryGetValue(end, out var lastSegment))
+                var endFits = openPolygones.TryGetValue(end, out var lastSegment);
+                if (endFits)
                 {
                     openPolygones.Remove(end);
                 }
@@ -778,11 +778,6 @@
 
                 this.rotation = rotation;
             }
-
-            /// <summary>
-            /// Get a clustering vertex comparer
-            /// </summary>
-            public static IComparer<Vertex> VertexComparer => new ClusterVertexComparer();
 
             /// <summary>
             /// Dump the edges during debugging
