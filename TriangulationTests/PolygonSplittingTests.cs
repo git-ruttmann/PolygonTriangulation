@@ -64,6 +64,41 @@
         }
 
         /// <summary>
+        /// Get edges after triangulating a partial polygon.
+        /// </summary>
+        [TestMethod]
+        public void TriangulatePartial()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(1, 1), // 0
+                new Vertex(1, 3),
+                new Vertex(1.5f, 3), // 2
+                new Vertex(2, 2),
+                new Vertex(2, 4), // 4
+                new Vertex(2.5f, 1),
+                new Vertex(2.5f, 2), // 6
+                new Vertex(2.5f, 3),
+                new Vertex(3.5f, 2.5f), // 8
+                new Vertex(3.5f, 1),
+                new Vertex(4, 1.5f), // 10
+                new Vertex(4, 3.5f),
+                new Vertex(4, 4), // 12
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
+                .Close();
+
+            Assert.AreEqual("5 0 6 3 1 4 12 2 7 11 8 10 9", string.Join(" ", polygon.SubPolygonVertices(0)));
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var partialEdges = triangluator.GetEdgesAfterPartialTrapezoidation(4).ToArray();
+
+            CollectionAssert.AreEqual(new[] { "1>4", "2<12", "2>7", "3<6", "0>6", "0<5" }, partialEdges);
+        }
+
+        /// <summary>
         /// Join a hole into the polygon and then split at the same point.
         /// Tests the collision detection in <see cref="Polygon.Split"/>
         /// </summary>
@@ -216,6 +251,31 @@
             var triangles = triangluator.BuildTriangles();
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
             Assert.AreEqual("1-2 5-6 7-8", splits);
+        }
+        
+        /// <summary>
+        /// Polygonize a simple triangle.
+        /// </summary>
+        [TestMethod]
+        public void SimpleTriangle()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(2, 1),
+            };
+
+            var polygon = Polygon.Build(sortedVertices)
+                .Add(0)
+                .Add(1)
+                .Add(2)
+                .Close();
+
+            var triangluator = new PolygonTriangulator(polygon);
+            var triangles = triangluator.BuildTriangles();
+            Assert.AreEqual(0, triangluator.GetSplits().Count());
+            Assert.IsTrue(VerifyTriangle(triangles, 0, 1, 2));
         }
 
         /// <summary>
