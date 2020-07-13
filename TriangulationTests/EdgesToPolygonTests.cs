@@ -89,6 +89,23 @@ namespace TriangulationTests
             Assert.IsNotNull(polygon);
         }
 
+        /// <summary>
+        /// Triangulate a polygon that crosses itself. Must throw an exception
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(TriangulationException))]
+        public void BadSelfCrossing()
+        {
+            var builder = new PlanePolygonBuilder(new Plane());
+            builder.AddEdge(new Vector3(1, 0, 0), new Vector3(1, 3, 0));
+            builder.AddEdge(new Vector3(1, 3, 0), new Vector3(3, 1, 0));
+            builder.AddEdge(new Vector3(3, 1, 0), new Vector3(3, 3, 0));
+            builder.AddEdge(new Vector3(3, 3, 0), new Vector3(1, 0, 0));
+
+            builder.Build();
+            Assert.Fail("May not reach this point");
+        }
+
         [TestMethod]
         public void PolygonizeForm1()
         {
