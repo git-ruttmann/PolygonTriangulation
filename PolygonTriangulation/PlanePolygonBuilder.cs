@@ -123,7 +123,7 @@
         {
             var rotation = Quaternion
                 .Identity;
-            // .FromToRotation(plane.normal, new Vector3(0, 0, -1));
+            //// .FromToRotation(plane.normal, new Vector3(0, 0, -1));
             this.edgesToPolygon = new EdgesToPolygonBuilder(rotation);
         }
 
@@ -271,17 +271,11 @@
             private readonly List<PolygonLine> unclosedPolygones;
 
             /// <summary>
-            /// vertices that are part of more than 2 polygon edges
-            /// </summary>
-            private readonly IReadOnlyList<int> fusionVertices;
-
-            /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="fusionVertices">Vertices that are used by more than two edges</param>
             public PolygonLineDetector(IReadOnlyList<int> fusionVertices)
             {
-                this.fusionVertices = fusionVertices;
                 this.openPolygones = new Dictionary<int, PolygonLine>();
                 this.closedPolygones = new List<PolygonLine>();
                 this.unclosedPolygones = new List<PolygonLine>();
