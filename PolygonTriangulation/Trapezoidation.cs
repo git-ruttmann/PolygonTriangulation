@@ -83,11 +83,11 @@
                 info.NextUnique);
             if (lowerEdge.IsRightToLeft)
             {
-                Trapezoid.EnterInsideBySplit(info.Id, lowerEdge, upperEdge, this.splitSink);
+                Trapezoid.EnterInsideBySplit(info.Id, lowerEdge, upperEdge);
             }
             else
             {
-                var belowEdge = this.activeEdges.Prev(lowerEdge.TreeNode).Data;
+                var belowEdge = lowerEdge.TreeNode.Prev.Data;
                 var trapezoid = belowEdge.Trapezoid;
                 trapezoid.LeaveInsideBySplit(info.Id, lowerEdge, upperEdge, this.splitSink);
             }
@@ -104,7 +104,7 @@
             var lowerEdge = this.EdgeForVertex(info.Id, info.Unique);
             TrapezoidEdge upperEdge;
 
-            var prevEdge = this.activeEdges.Prev(lowerEdge.TreeNode)?.Data;
+            var prevEdge = lowerEdge.TreeNode.Prev?.Data;
             if (prevEdge?.Right == lowerEdge.Right && (prevEdge.Left == info.Prev || prevEdge.Left == info.Next))
             {
                 upperEdge = lowerEdge;
@@ -112,7 +112,7 @@
             }
             else
             {
-                upperEdge = this.activeEdges.Next(lowerEdge.TreeNode)?.Data;
+                upperEdge = lowerEdge.TreeNode.Next?.Data;
             }
 
             if (lowerEdge.Right != upperEdge?.Right)
@@ -127,7 +127,7 @@
             }
             else
             {
-                var upperEdge2 = this.activeEdges.Next(lowerEdge.TreeNode).Data;
+                var upperEdge2 = lowerEdge.TreeNode.Next.Data;
                 var upperTrapezoid = upperEdge2.Trapezoid;
                 Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, info.Id, this.splitSink);
             }
@@ -249,7 +249,7 @@
         /// <param name="lowerEdge">the lower edge</param>
         private void JoinTrapezoidEdges(TrapezoidEdge lowerEdge)
         {
-            var nextNode = this.activeEdges.Next(lowerEdge.TreeNode);
+            var nextNode = lowerEdge.TreeNode.Next;
             this.activeEdges.RemoveNode(nextNode);
             this.activeEdges.RemoveNode(lowerEdge.TreeNode);
 
@@ -297,13 +297,15 @@
             }
 
             /// <summary>
-            /// Test if the left vertex of value is above storage.
+            /// Test if the left vertex of x is above y.
             /// </summary>
-            /// <param name="value">the current added value</param>
-            /// <param name="storage">the edge that is already part of the tree</param>
+            /// <param name="x">the current added value</param>
+            /// <param name="y">the edge that is already part of the tree</param>
             /// <returns>a comparison result</returns>
-            public int Compare(TrapezoidEdge value, TrapezoidEdge storage)
+            public int Compare(TrapezoidEdge x, TrapezoidEdge y)
             {
+                var value = x;
+                var storage = y;
                 var vertexOfValue = value.Left == storage.Left ? value.Right : value.Left;
                 return this.IsVertexAbove(vertexOfValue, storage) ? 1 : -1;
             }
@@ -372,9 +374,9 @@
             /// </remarks>
             private bool IsVertexAbove(int vertexId, TrapezoidEdge edge)
             {
-                var vertex = vertices[vertexId];
-                var left = vertices[edge.Left];
-                var right = vertices[edge.Right];
+                var vertex = this.vertices[vertexId];
+                var left = this.vertices[edge.Left];
+                var right = this.vertices[edge.Right];
 
                 // this is very likely as the points are added in order left to right
                 if (vertex.X >= left.X)
@@ -550,8 +552,7 @@
             /// <param name="vertexId">the vertex id of the cusp</param>
             /// <param name="lowerEdge">the lower edge of the new split</param>
             /// <param name="upperEdge">the upper edge of the new split</param>
-            /// <param name="splitSink">the polygon splitter</param>
-            public static void EnterInsideBySplit(int vertexId, TrapezoidEdge lowerEdge, TrapezoidEdge upperEdge, IPolygonSplitSink splitSink)
+            public static void EnterInsideBySplit(int vertexId, TrapezoidEdge lowerEdge, TrapezoidEdge upperEdge)
             {
                 new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, upperEdge);
             }

@@ -61,8 +61,6 @@ The new edge must be between the incoming edge and the outgoing edge, e.g. 2'-4 
 
 <img src="SplitAfterJoin.png" alt="Split after join" width="400"/>
 
-Angles are calculated by `DiamondAngle` instead of Math.Atan2, see [https://stackoverflow.com/a/14675998]
-
 ## Internal structure of a polygon
 
 The 2D vertices are stored in the array `Polygon.Vertices`. The array is never modified.
@@ -85,7 +83,7 @@ The vertex ids of a sub polygon are accessed by `Polygon.SubPolygonVertices(int 
 Polygons can be created by `Polygon.Build`. 
 The vertices must be sorted in X and then in Y direction and they're added in clockwise order.
 The vertex id is the index in the `sortedVertices` array:
-```
+``` csharp
     var sortedVertices = new[]
     {
         new Vertex(0, 0),
@@ -100,7 +98,7 @@ The vertex id is the index in the `sortedVertices` array:
 ```
 
 A polygon can contains multiple side by side polygons or even holes. The vertices of a hole must be connected in counter-clockwise order:
-```
+``` csharp
     var polygon = Polygon.Build(sortedVertices)
         .AddVertices(1, 0, 2, 5, 8, 6)
         .ClosePartialPolygon()
@@ -110,7 +108,7 @@ A polygon can contains multiple side by side polygons or even holes. The vertice
 
 A fusion vertex can join two or more polygons in a common vertex. Those must be mentioned during `Close()`:
 
-```
+``` csharp
     var polygon = Polygon.Build(sortedVertices)
         .AddVertices(0, 1, 2)
         .ClosePartialPolygon()

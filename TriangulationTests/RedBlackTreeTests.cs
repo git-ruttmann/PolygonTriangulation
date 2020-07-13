@@ -77,23 +77,23 @@
                 Assert.IsTrue(tree.TryLocateNode(items[i], out var node));
                 if (i == 0)
                 {
-                    Assert.IsNull(tree.Prev(node));
+                    Assert.IsNull(node.Prev);
                 }
                 else
                 {
-                    Assert.AreEqual(items[i - 1], tree.Prev(node).Data);
+                    Assert.AreEqual(items[i - 1], node.Prev.Data);
                 }
 
                 if (i == items.Length - 1)
                 {
-                    Assert.IsNull(tree.Next(node));
+                    Assert.IsNull(node.Next);
                 }
                 else
                 {
                     Assert.AreEqual(
                         items[i + 1], 
-                        tree.Next(node).Data, 
-                        $"Next of {items[i]} is {tree.Next(node).Data} instead of {items[i + 1]}");
+                        node.Next.Data, 
+                        $"Next of {items[i]} is {node.Next.Data} instead of {items[i + 1]}");
                 }
             }
         }

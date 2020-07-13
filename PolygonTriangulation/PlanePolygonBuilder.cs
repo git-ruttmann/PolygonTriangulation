@@ -123,7 +123,7 @@
         {
             var rotation = Quaternion
                 .Identity;
-            // .FromToRotation(plane.normal, new Vector3(0, 0, -1));
+            //// .FromToRotation(plane.normal, new Vector3(0, 0, -1));
             this.edgesToPolygon = new EdgesToPolygonBuilder(rotation);
         }
 
@@ -271,17 +271,11 @@
             private readonly List<PolygonLine> unclosedPolygones;
 
             /// <summary>
-            /// vertices that are part of more than 2 polygon edges
-            /// </summary>
-            private readonly IReadOnlyList<int> fusionVertices;
-
-            /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="fusionVertices">Vertices that are used by more than two edges</param>
             public PolygonLineDetector(IReadOnlyList<int> fusionVertices)
             {
-                this.fusionVertices = fusionVertices;
                 this.openPolygones = new Dictionary<int, PolygonLine>();
                 this.closedPolygones = new List<PolygonLine>();
                 this.unclosedPolygones = new List<PolygonLine>();
@@ -340,7 +334,7 @@
                             .First();
                         if (Distance(vertices, vertexId, closestPeer) < maxDistance)
                         {
-                            JoinClusteredVertex(vertexId, closestPeer);
+                            this.JoinClusteredVertex(vertexId, closestPeer);
                             vertexFound = true;
                             break;
                         }
@@ -400,23 +394,23 @@
             /// <param name="end"></param>
             private void AddEdge(int start, int end)
             {
-                bool startFits;
-                if (startFits = openPolygones.TryGetValue(start, out var firstSegment))
+                var startFits = this.openPolygones.TryGetValue(start, out var firstSegment);
+                if (startFits)
                 {
-                    openPolygones.Remove(start);
+                    this.openPolygones.Remove(start);
                 }
 
-                bool endFits;
-                if (endFits = openPolygones.TryGetValue(end, out var lastSegment))
+                var endFits = this.openPolygones.TryGetValue(end, out var lastSegment);
+                if (endFits)
                 {
-                    openPolygones.Remove(end);
+                    this.openPolygones.Remove(end);
                 }
 
                 if (!startFits && !endFits)
                 {
                     var segment = new PolygonLine(start, end);
-                    openPolygones.Add(start, segment);
-                    openPolygones.Add(end, segment);
+                    this.openPolygones.Add(start, segment);
+                    this.openPolygones.Add(end, segment);
                 }
                 else if (startFits && endFits)
                 {
@@ -427,18 +421,18 @@
                     }
                     else
                     {
-                        openPolygones[remainingKeyOfOther] = firstSegment;
+                        this.openPolygones[remainingKeyOfOther] = firstSegment;
                     }
                 }
                 else if (startFits)
                 {
                     firstSegment.AddMatchingStart(start, end);
-                    openPolygones[end] = firstSegment;
+                    this.openPolygones[end] = firstSegment;
                 }
                 else
                 {
                     lastSegment.AddMatchingEnd(start, end);
-                    openPolygones[start] = lastSegment;
+                    this.openPolygones[start] = lastSegment;
                 }
             }
         }
@@ -633,16 +627,16 @@
             }
 
             /// <summary>
-            /// Compare the edge points to two corresponding keys
+            /// Compare the edge points to two corresponding keys.
             /// </summary>
             /// <param name="edgeStart">the edge start</param>
             /// <param name="edgeEnd">the edge end</param>
-            /// <param name="key1">the key for edgeStart</param>
-            /// <param name="key2">the key for edgeEnd</param>
+            /// <param name="keyStart">the key that's compared to edgeStart</param>
+            /// <param name="keyEnd">the key that's compared to edgeEnd</param>
             /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
-            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int key1, int key2)
+            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int keyStart, int keyEnd)
             {
-                return (edgeStart == key1) && (edgeEnd == key2);
+                return (edgeStart == keyStart) && (edgeEnd == keyEnd);
             }
 
             /// <summary>
@@ -778,11 +772,6 @@
 
                 this.rotation = rotation;
             }
-
-            /// <summary>
-            /// Get a clustering vertex comparer
-            /// </summary>
-            public static IComparer<Vertex> VertexComparer => new ClusterVertexComparer();
 
             /// <summary>
             /// Dump the edges during debugging

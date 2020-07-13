@@ -6,6 +6,7 @@
     using Vector3 = System.Numerics.Vector3;
     using System.Diagnostics;
     using System.Linq;
+    using System.Collections.Specialized;
 
     /// <summary>
     /// Create sample polygons
@@ -263,6 +264,8 @@
                 case 6: // lower right
                     builder = builder.AddVertices(4, 6, 5);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(id), "no polygon");
             }
 
             return builder.Close(4);

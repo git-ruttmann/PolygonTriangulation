@@ -183,6 +183,7 @@
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             var triangles = triangluator.BuildTriangles();
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+            Assert.AreEqual("2-3 3-5 6-7 7-8 8-10 10-11", splits);
         }
 
         /// <summary>
@@ -214,6 +215,7 @@
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             var triangles = triangluator.BuildTriangles();
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
+            Assert.AreEqual("1-2 5-6 7-8", splits);
         }
 
         /// <summary>
@@ -295,7 +297,8 @@
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             Assert.AreEqual("0-1 1-2 3-4 6-7 8-9", splits);
 
-            var _ = triangluator.BuildTriangles();
+            var result = triangluator.BuildTriangles();
+            Assert.IsNotNull(result);
         }
 
         /// <summary>
@@ -354,6 +357,8 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual(string.Empty, splits);
+            Assert.AreEqual(2, polygon.SubPolygonIds.Count());
         }
 
         /// <summary>
@@ -536,6 +541,9 @@
                             }
 
                             break;
+
+                        default:
+                            throw new InvalidOperationException("Can't happen, dear sonar");
                     }
                 }
             }

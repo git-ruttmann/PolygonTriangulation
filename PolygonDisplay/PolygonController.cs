@@ -35,10 +35,10 @@ namespace PolygonDisplay
         {
             this.ActiveStorageId = id;
 
-            // this.Polygon = PolygonSamples.Constructed(id);
-            // this.Polygon = PolygonSamples.UnityErrors(id);
-            // this.Polygon = PolygonSamples.InnerFusionSingle(id);
-            // this.Polygon = PolygonSamples.MultiTouch(id);
+            //// this.Polygon = PolygonSamples.Constructed(id);
+            //// this.Polygon = PolygonSamples.UnityErrors(id);
+            //// this.Polygon = PolygonSamples.InnerFusionSingle(id);
+            //// this.Polygon = PolygonSamples.MultiTouch(id);
             this.Polygon = PolygonSamples.MoreFusionTests(id);
 
             try

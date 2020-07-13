@@ -347,7 +347,7 @@
                     var next = i == vertexIds.Length - 1 ? vertexIds.First() : vertexIds[i + 1];
                     g.DrawLine(pen, scaledVertices[prev], scaledVertices[vertexId]);
 
-                    var vertexTextPosition = GetVertexTextPosition(vertexId, prev, next);
+                    var vertexTextPosition = this.GetVertexTextPosition(vertexId, prev, next);
                     this.DrawVertexInformation(g, vertexId, scaledVertices[vertexId], vertexTextPosition);
                 }
             }
@@ -361,8 +361,8 @@
         {
             var hPath = new GraphicsPath();
 
-            var x = LogicalToDeviceUnits(1);
-            var y = LogicalToDeviceUnits(4);
+            var x = this.LogicalToDeviceUnits(1);
+            var y = this.LogicalToDeviceUnits(4);
             hPath.AddLine(new Point(0, 0), new Point(-x, -y));
             hPath.AddLine(new Point(-x, -y), new Point(x, -y));
             hPath.AddLine(new Point(x, -y), new Point(0, 0));
@@ -423,10 +423,9 @@
                 new Vertex(4, 4), // 12
             };
 
-            var polygon = Polygon.Build(sortedVertices)
+            return Polygon.Build(sortedVertices)
                 .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
                 .Close();
-            return polygon;
         }
 
         /// <summary>
@@ -463,7 +462,7 @@
             var circlePen = vertexId == this.HighlightIndex ? Pens.Red : Pens.CadetBlue;
             g.DrawEllipse(circlePen, point.X - radius, point.Y - radius, radius * 2, radius * 2);
 
-            var (rect, stringFormat) = GetVertexTextRectangle(point, vertexTextPosition);
+            var (rect, stringFormat) = this.GetVertexTextRectangle(point, vertexTextPosition);
             g.DrawString(vertexId.ToString(), this.Font, Brushes.DarkSlateBlue, rect, stringFormat);
         }
 
@@ -479,7 +478,7 @@
             var offset2 = this.LogicalToDeviceUnits(5);
             var width = 100;
             var height = this.Font.SizeInPoints * 20;
-            var stringFormat = new StringFormat() { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
+            var stringFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
             var fontHeight = this.LogicalToDeviceUnits(Convert.ToInt32(this.Font.SizeInPoints));
             RectangleF rect;
 
@@ -549,9 +548,6 @@
             this.fullScale = Math.Min(scaleX, scaleY);
 
             this.centerPoint = new PointF(this.Size.Width / 2, this.Size.Height / 2);
-
-            var spanX = Math.Max(maxX - minX, 0.1f);
-            var spanY = Math.Max(maxY - minY, 0.1f);
 
             if (updateCenter)
             {
