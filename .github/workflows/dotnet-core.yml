@@ -18,8 +18,26 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Install dependencies
-      run: dotnet restore TriangulationTests/TriangulationTests.csproj
+      run: dotnet restore TriangulationTests
     - name: Build
-      run: dotnet build --configuration Release --no-restore TriangulationTests/TriangulationTests.csproj
+      run: dotnet build --configuration Release --no-restore TriangulationTests
     - name: Test
-      run: dotnet test --no-restore --verbosity normal TriangulationTests/TriangulationTests.csproj
+      run: dotnet test --no-restore --verbosity normal TriangulationTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+    
+    - name: Upload Coverage to Codacy
+      env: # Set the secret as an input
+        CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+      run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r TriangulationTests/coverage.opencover.xml --commit-uuid $GITHUB_SHA 
+
+    - name: Setup .net core 2.2
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 2.1.806
+    - name: Install Coverage Tool
+      # run: dotnet tool install --tool-path . coveralls.net
+      run: dotnet tool install -g coveralls.net
+    - name: Upload Coverage
+      env: # Set the secret as an input
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: csmacnz.Coveralls --opencover -i TriangulationTests/coverage.opencover.xml --useRelativePaths --commitId $GITHUB_SHA --commitBranch `echo $GITHUB_REF | sed -e 's#refs/heads/##'` --commitAuthor "$GITHUB_ACTOR" --commitMessage "$REPO_COMMIT_MESSAGE"
+
