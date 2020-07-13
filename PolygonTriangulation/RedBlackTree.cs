@@ -274,7 +274,7 @@
                 return;
             }
 
-            node.IsRed = (level > 0) && !blackLevelSet.Contains(level);
+            node.IsRed = !blackLevelSet.Contains(level);
 
             MarkLevelRecursive(node.Left, level + 1, blackLevelSet);
             MarkLevelRecursive(node.Right, level + 1, blackLevelSet);
@@ -422,7 +422,7 @@
             if (replacementNode != null)
             {
                 // the top level node never accepts the double black state => node != null
-                for (var node = replacementNode; node.IsDoubleBlack == true; node = node.Parent)
+                for (var node = replacementNode; node.IsDoubleBlack; node = node.Parent)
                 {
                     this.ResolveSiblingOfDoubleBlack(node);
                 }
@@ -598,9 +598,24 @@
         {
             private enum Color
             {
+                /// <summary>
+                /// Node is red - do not count for black height
+                /// </summary>
                 Red,
+
+                /// <summary>
+                /// Node is black - count for black height and rebalance on delete
+                /// </summary>
                 Black,
-                DoubleBlack,
+
+                /// <summary>
+                /// Node is double black. Can be inherited from child only.
+                /// </summary>
+                DoubleBlackNode,
+
+                /// <summary>
+                /// A black leaf was deleted, rebalance the parent tree and remove this node afterwards.
+                /// </summary>
                 DoubleBlackNull,
             };
 
@@ -665,7 +680,7 @@
                             return "R";
                         case Color.Black:
                             return "B";
-                        case Color.DoubleBlack:
+                        case Color.DoubleBlackNode:
                             return "b";
                         case Color.DoubleBlackNull:
                             return "x";
@@ -679,7 +694,7 @@
             /// <summary>
             /// Gets a value indicating a double black state.
             /// </summary>
-            public bool IsDoubleBlack => this.color == Color.DoubleBlack || this.color == Color.DoubleBlackNull;
+            public bool IsDoubleBlack => this.color == Color.DoubleBlackNode || this.color == Color.DoubleBlackNull;
 
             public Node Parent { get; private set; }
 
@@ -847,7 +862,7 @@
                     }
                     else
                     {
-                        replacement.color = Color.DoubleBlack;
+                        throw new InvalidOperationException("replacement can't be black because replacement.parent.left == null");
                     }
                 }
                 else if (replacement?.IsRed == false)
@@ -871,23 +886,21 @@
 
                 if (this.Parent == null)
                 {
-                    this.color = Color.Black;
+                    throw new InvalidOperationException("The parent should never take the double black state");
+                }
+
+                if (this.Parent.IsRed)
+                {
+                    this.Parent.IsRed = false;
+                }
+
+                if (this.color == Color.DoubleBlackNull)
+                {
+                    this.Parent.SetChild(this.IsLeft, null);
                 }
                 else
                 {
-                    if (this.Parent.IsRed)
-                    {
-                        this.Parent.IsRed = false;
-                    }
-
-                    if (this.color == Color.DoubleBlackNull)
-                    {
-                        this.Parent.SetChild(this.IsLeft, null);
-                    }
-                    else
-                    {
-                        this.color = Color.Black;
-                    }
+                    this.color = Color.Black;
                 }
             }
 
@@ -901,7 +914,7 @@
             {
                 if (this.Parent != null)
                 {
-                    this.color = this.color == Color.Red ? Color.Black : Color.DoubleBlack;
+                    this.color = this.color == Color.Red ? Color.Black : Color.DoubleBlackNode;
                 }
             }
         }
