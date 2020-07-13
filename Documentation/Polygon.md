@@ -11,7 +11,7 @@ Hence the vertices are connected in clock wise order and holes in counter clock 
 
 <img src="SimpleHole.png" alt="Before single split" width="400"/>
 
-# Generating a polygon from edges
+## Generating a polygon from edges
 
 The `PlanePolygonBuilder` creates a polygon from edges on a 3D plane. 
 The vertices are first rotated to the plane normal and treated as 2D coordinates afterwards.
@@ -21,7 +21,7 @@ Very close vertices are considered the same to compensate rounding issues. That 
 Edges, that are not part of a closed polygon, are listed in `IPolygonLineDetector.UnclosedPolygons`. 
 The top level call of the library, `PlanePolygonBuilder.Build`, simply ignores unclosed polygons.
 
-# Splitting a polygon
+## Splitting a polygon
 
 The core operation for the polygon is to be splitted into multiple sub polygons. 
 The initial polygon contains a single sub polygon: 0 1 2 5 4 3.
@@ -34,7 +34,7 @@ A vertex can be the target of multiple splits, so it will be part of more than 2
 There is always exactly one _sub polygon_, which contains both vertices of a split.
 `FindCommonChain` selects the correct instance for both vertices.
 
-## Handling of holes
+### Handling of holes
 
 A hole is a special case of a split, where the two vertices belong to different sub polygons. 
 The `JoinHoleIntoPolygon` creates two edges, the first connects from 1 to 2 and the second connects from 2' to 1'.
@@ -46,7 +46,7 @@ All splits that join a hole into another sub polygon are processed before any ot
 
 <img src="SimpleHoleJoiningSplit.png" alt="Hole integrated by split" width="400"/> <img src="SimpleHoleSplitted.png" alt="Hole after full split" width="400"/>
 
-## Combination of splits and holes at a single vertex
+### Combination of splits and holes at a single vertex
 
 For the next polygon, the [Trapezoidation](Trapezoidation.md) finds the splits 1-2, 2-4, 4-5 and 6-7.
 The first split, 1-2, joins the hole into the polygon. 
@@ -63,16 +63,16 @@ The new edge must be between the incoming edge and the outgoing edge, e.g. 2'-4 
 
 Angles are calculated by `DiamondAngle` instead of Math.Atan2, see https://stackoverflow.com/a/14675998
 
-# Internal structure of a polygon
+## Internal structure of a polygon
 
 The 2D vertices are stored in the array `Polygon.Vertices`. The array is never modified.
 The vertices must be sorted from left to right and then from bottom to top.
 
 The vertex characteristics are stored in a `Polygon.VertexChain`. It can contain multiple instances of the same Vertex:
-* The `VertexId`, which is the array index in `Polygon.Vertices`.
-* The `Prev` and `Next` chain element in the current _sub polygon_.
-* The `SubPolygonId` of the _vertex instance_.
-* The `SameVertexChain` points to the next _vertex instance_ with the same `VertexId` but a different `SubPolygonId`.
+*  The `VertexId`, which is the array index in `Polygon.Vertices`.
+*  The `Prev` and `Next` chain element in the current _sub polygon_.
+*  The `SubPolygonId` of the _vertex instance_.
+*  The `SameVertexChain` points to the next _vertex instance_ with the same `VertexId` but a different `SubPolygonId`.
 
 The `vertexToChain` maps the vertex id to the index in the vertex `chain`.
 
@@ -80,7 +80,7 @@ The array `polygonStartIndices` contains the first chain element per sub polygon
 The index in that array is the _sub polygon id_, which is used by `Polygon.SubPolygonIds` and `VertexChain.SubPolygonId`.
 The vertex ids of a sub polygon are accessed by `Polygon.SubPolygonVertices(int subPolygonId)`.
 
-# Crafting a polygon for unittests
+## Crafting a polygon for unittests
 
 Polygons can be created by `Polygon.Build`. 
 The vertices must be sorted in X and then in Y direction and they're added in clockwise order.
@@ -120,7 +120,7 @@ A fusion vertex can join two or more polygons in a common vertex. Those must be 
         .Close(2, 4);
 ```
 
-# Fusion vertices
+## Fusion vertices
 
 Sometimes the very same vertex is used in two different sub polygons. The two polygons __fusion__ in that point. 
 That can be two separate polygons or a hole in the polygon. The same two polygons can even touch multiple times.
@@ -128,7 +128,7 @@ That can be two separate polygons or a hole in the polygon. The same two polygon
 <img src="Fusion1.png" alt="Single Fusion" width="483"/> <img src="Fusion4.png" alt="Single Fusion" width="335"/>
 <img src="Fusion2.png" alt="Single Fusion" width="335"/> <img src="Fusion3.png" alt="Single Fusion" width="335"/>
 
-## Fusion vertices during polygon building
+### Fusion vertices during polygon building
 The polygon outline must never cross itself.
 During polygon construction, `FusionVerticesIntoChain` sorts the edges around each fusion point in clockwise order. 
 A valid polygon order is 0 2 __5__ 1 3 __5__ 4 6 __5__ 7 8 __5__ 9 10.
@@ -139,18 +139,18 @@ But it would be invalid to use 0 2 __5__ 4 6 __5__ 1 3 __5__ 7 8 __5__ 9 10, bec
 
 <img src="FusionOrderingBad.png" alt="Bad Fusion Order" width="512"/>
 
-## Fusion vertices during Trapezoidation
+### Fusion vertices during Trapezoidation
 The [Trapezoidation](Trapezoidation.md) will process a fusioned vertex multiple times. 
 The processing order is "Join cusps", "Transitions", "Opening Cusps", which resembles the left to right processing of the vertices.
 
 <img src="FusionOrdering.png" alt="Single Fusion" width="475"/>
 
 A bad example: consider processing the opening cusp 6-4-7 _before_ the transition 2-4-5: 
-* Order of the active edges before 6-4-7 from high to low: 2-4 0-8.
-* 4-6 is 4-6 is inserted and considered to be below 2-4 and above 0-8.
-* Active edges after inserting the cusp: 2-4 4-7 4-6 0-8.
-* The transition from 2-4 to 4-5 just replaces 2-4 by 4-5. (A transition expects to stay on the same level.)
-* Active edges after transition: 4-5 4-7 4-6 0-8. => Corrupted.
+*  Order of the active edges before 6-4-7 from high to low: 2-4 0-8.
+*  4-6 is 4-6 is inserted and considered to be below 2-4 and above 0-8.
+*  Active edges after inserting the cusp: 2-4 4-7 4-6 0-8.
+*  The transition from 2-4 to 4-5 just replaces 2-4 by 4-5. (A transition expects to stay on the same level.)
+*  Active edges after transition: 4-5 4-7 4-6 0-8. => Corrupted.
 
 > The problem effectively arises because the vertex 4 (left vertex of the inserted edge) is compared to edge 2-4. But it's neither above nor below.
 >

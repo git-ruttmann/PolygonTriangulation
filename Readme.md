@@ -1,10 +1,12 @@
+![.NET Core](https://github.com/git-ruttmann/PolygonTriangulation/workflows/.NET%20Core/badge.svg)
+
 # Polygon Triangulation
 
 A C# library to convert a polygon into triangles.
 Support includes:
-* multiple polygons
-* polygon holes
-* fusion vertex (same vertex is used by two sub polygons)
+*  multiple polygons
+*  polygon holes
+*  fusion vertex (same vertex is used by two sub polygons)
 
 The project was developed as part of a Unity project to visualize the intersection between a 3D mesh and a plane.
 
