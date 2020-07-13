@@ -633,16 +633,16 @@
             }
 
             /// <summary>
-            /// Compare the edge points to two corresponding keys
+            /// Compare the edge points to two corresponding keys.
             /// </summary>
             /// <param name="edgeStart">the edge start</param>
             /// <param name="edgeEnd">the edge end</param>
-            /// <param name="key1">the key for edgeStart</param>
-            /// <param name="key2">the key for edgeEnd</param>
+            /// <param name="keyStart">the key that's compared to edgeStart</param>
+            /// <param name="keyEnd">the key that's compared to edgeEnd</param>
             /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
-            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int key1, int key2)
+            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int keyStart, int keyEnd)
             {
-                return (edgeStart == key1) && (edgeEnd == key2);
+                return (edgeStart == keyStart) && (edgeEnd == keyEnd);
             }
 
             /// <summary>

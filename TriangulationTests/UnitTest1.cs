@@ -161,43 +161,23 @@
 
             var code = TriangulationException.BuildPolygonCode(sourcePolygon);
 
-            // ------ pasted result of sourcePolygon.BuildPolygonCode()
-            var vertices = new[]
-            {
-                new Vertex(0.0000000f, 0.0000000f),
-                new Vertex(1.0000000f, 2.0000000f),
-                new Vertex(1.0000000f, 3.0000000f),
-                new Vertex(2.0000000f, 2.0000000f),
-                new Vertex(3.0000000f, 3.0000000f),
-                new Vertex(4.0000000f, 2.0000000f),
-                new Vertex(5.0000000f, 2.0000000f),
-                new Vertex(5.0000000f, 3.0000000f),
-                new Vertex(6.0000000f, 1.0000000f),
-            };
-
-            var polygon = Polygon.Build(vertices)
-                .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
-                .ClosePartialPolygon()
-                .Close(4);
-            // ------ end of pasted code
-
             var expected = @"var vertices = new[]
                 {
-                new Vertex(0.0000000f, 0.0000000f),
-                new Vertex(1.0000000f, 2.0000000f),
-                new Vertex(1.0000000f, 3.0000000f),
-                new Vertex(2.0000000f, 2.0000000f),
-                new Vertex(3.0000000f, 3.0000000f),
-                new Vertex(4.0000000f, 2.0000000f),
-                new Vertex(5.0000000f, 2.0000000f),
-                new Vertex(5.0000000f, 3.0000000f),
-                new Vertex(6.0000000f, 1.0000000f),
+                    new Vertex(0.0000000f, 0.0000000f),
+                    new Vertex(1.0000000f, 2.0000000f),
+                    new Vertex(1.0000000f, 3.0000000f),
+                    new Vertex(2.0000000f, 2.0000000f),
+                    new Vertex(3.0000000f, 3.0000000f),
+                    new Vertex(4.0000000f, 2.0000000f),
+                    new Vertex(5.0000000f, 2.0000000f),
+                    new Vertex(5.0000000f, 3.0000000f),
+                    new Vertex(6.0000000f, 1.0000000f),
                 };
 
                 var polygon = Polygon.Build(vertices)
-                .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
-                .ClosePartialPolygon()
-                .Close(4);";
+                    .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
+                    .ClosePartialPolygon()
+                    .Close(4);";
 
             var lines = code.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim());
             var expectedLines = expected.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim());

@@ -353,25 +353,25 @@
             /// <returns>highest/lowest point in the polygon, depending if itss left hand or right hand. -1 if its a triangle.</returns>
             private int FindStartOfMonotonePolygon()
             {
-                var iterator = this.polygon.SubPolygonVertices(this.subPolygonId).GetEnumerator();
-                iterator.MoveNext();
-                var first = iterator.Current;
+                var startLookupIterator = this.polygon.SubPolygonVertices(this.subPolygonId).GetEnumerator();
+                startLookupIterator.MoveNext();
+                var first = startLookupIterator.Current;
                 var posmax = first;
                 var posmin = first;
 
-                var movedNext = iterator.MoveNext();
-                var posmaxNext = iterator.Current;
+                var movedNext = startLookupIterator.MoveNext();
+                var posmaxNext = startLookupIterator.Current;
                 var count = 1;
 
                 while (movedNext)
                 {
-                    var index = iterator.Current;
-                    movedNext = iterator.MoveNext();
+                    var index = startLookupIterator.Current;
+                    movedNext = startLookupIterator.MoveNext();
 
                     if (index > posmax)
                     {
                         posmax = index;
-                        posmaxNext = movedNext ? iterator.Current : first;
+                        posmaxNext = movedNext ? startLookupIterator.Current : first;
                     }
 
                     if (index < posmin)

@@ -357,6 +357,8 @@
 
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
+            Assert.AreEqual(string.Empty, splits);
+            Assert.AreEqual(2, polygon.SubPolygonIds.Count());
         }
 
         /// <summary>

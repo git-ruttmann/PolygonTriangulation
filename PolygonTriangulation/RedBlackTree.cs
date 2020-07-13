@@ -98,9 +98,9 @@
         /// <inheritdoc/>
         bool ICollection<T>.Remove(T item)
         {
-            if (this.TryLocateNode(item, out var node))
+            if (this.TryLocateNode(item, out var node) && node is var nodeInstance)
             {
-                this.RemoveNode((Node)node);
+                this.RemoveNode(nodeInstance);
                 return true;
             }
 
@@ -200,6 +200,7 @@
             {
                 for (node = lowerNode.Right; node.Left != null; node = node.Left)
                 {
+                    // just iterate
                 }
 
                 node.SetLeftChild(higherNode);

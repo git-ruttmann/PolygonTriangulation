@@ -332,10 +332,10 @@
         {
             var vertex = this.vertexCoordinates[fusionVertexId];
             var vertexInstances = new List<(int chain, bool outgoing)>(8);
-            for (int chain = this.vertexToChain[fusionVertexId]; chain >= 0; chain = this.chain[chain].SameVertexChain)
+            for (int chainId = this.vertexToChain[fusionVertexId]; chainId >= 0; chainId = this.chain[chainId].SameVertexChain)
             {
-                vertexInstances.Add((chain, true));
-                vertexInstances.Add((chain, false));
+                vertexInstances.Add((chainId, true));
+                vertexInstances.Add((chainId, false));
             }
 
             var sortedByAngle = vertexInstances
