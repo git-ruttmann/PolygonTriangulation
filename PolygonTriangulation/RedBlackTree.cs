@@ -383,7 +383,7 @@
         /// <param name="value">the value</param>
         public void Remove(T value)
         {
-            if (!TryLocateNode(value, out var node))
+            if (!this.TryLocateNode(value, out var node))
             {
                 throw new KeyNotFoundException();
             }

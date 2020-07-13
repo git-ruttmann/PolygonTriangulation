@@ -347,7 +347,7 @@
                     var next = i == vertexIds.Length - 1 ? vertexIds.First() : vertexIds[i + 1];
                     g.DrawLine(pen, scaledVertices[prev], scaledVertices[vertexId]);
 
-                    var vertexTextPosition = GetVertexTextPosition(vertexId, prev, next);
+                    var vertexTextPosition = this.GetVertexTextPosition(vertexId, prev, next);
                     this.DrawVertexInformation(g, vertexId, scaledVertices[vertexId], vertexTextPosition);
                 }
             }
@@ -361,8 +361,8 @@
         {
             var hPath = new GraphicsPath();
 
-            var x = LogicalToDeviceUnits(1);
-            var y = LogicalToDeviceUnits(4);
+            var x = this.LogicalToDeviceUnits(1);
+            var y = this.LogicalToDeviceUnits(4);
             hPath.AddLine(new Point(0, 0), new Point(-x, -y));
             hPath.AddLine(new Point(-x, -y), new Point(x, -y));
             hPath.AddLine(new Point(x, -y), new Point(0, 0));
@@ -463,7 +463,7 @@
             var circlePen = vertexId == this.HighlightIndex ? Pens.Red : Pens.CadetBlue;
             g.DrawEllipse(circlePen, point.X - radius, point.Y - radius, radius * 2, radius * 2);
 
-            var (rect, stringFormat) = GetVertexTextRectangle(point, vertexTextPosition);
+            var (rect, stringFormat) = this.GetVertexTextRectangle(point, vertexTextPosition);
             g.DrawString(vertexId.ToString(), this.Font, Brushes.DarkSlateBlue, rect, stringFormat);
         }
 

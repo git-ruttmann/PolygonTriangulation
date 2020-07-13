@@ -136,7 +136,7 @@ namespace TriangulationTests
             var result = planeMeshBuilder.Build();
             for (int i = 0; i < result.Triangles.Length; i += 3)
             {
-                TestContext.WriteLine($"{result.Triangles[i + 0]} {result.Triangles[i + 1]} {result.Triangles[i + 2]}");
+                this.TestContext.WriteLine($"{result.Triangles[i + 0]} {result.Triangles[i + 1]} {result.Triangles[i + 2]}");
             }
 
             Assert.AreEqual(3 * 17, result.Triangles.Length);

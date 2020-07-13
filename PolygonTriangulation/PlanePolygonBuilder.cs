@@ -340,7 +340,7 @@
                             .First();
                         if (Distance(vertices, vertexId, closestPeer) < maxDistance)
                         {
-                            JoinClusteredVertex(vertexId, closestPeer);
+                            this.JoinClusteredVertex(vertexId, closestPeer);
                             vertexFound = true;
                             break;
                         }
@@ -400,23 +400,23 @@
             /// <param name="end"></param>
             private void AddEdge(int start, int end)
             {
-                var startFits = openPolygones.TryGetValue(start, out var firstSegment);
+                var startFits = this.openPolygones.TryGetValue(start, out var firstSegment);
                 if (startFits)
                 {
-                    openPolygones.Remove(start);
+                    this.openPolygones.Remove(start);
                 }
 
-                var endFits = openPolygones.TryGetValue(end, out var lastSegment);
+                var endFits = this.openPolygones.TryGetValue(end, out var lastSegment);
                 if (endFits)
                 {
-                    openPolygones.Remove(end);
+                    this.openPolygones.Remove(end);
                 }
 
                 if (!startFits && !endFits)
                 {
                     var segment = new PolygonLine(start, end);
-                    openPolygones.Add(start, segment);
-                    openPolygones.Add(end, segment);
+                    this.openPolygones.Add(start, segment);
+                    this.openPolygones.Add(end, segment);
                 }
                 else if (startFits && endFits)
                 {
@@ -427,18 +427,18 @@
                     }
                     else
                     {
-                        openPolygones[remainingKeyOfOther] = firstSegment;
+                        this.openPolygones[remainingKeyOfOther] = firstSegment;
                     }
                 }
                 else if (startFits)
                 {
                     firstSegment.AddMatchingStart(start, end);
-                    openPolygones[end] = firstSegment;
+                    this.openPolygones[end] = firstSegment;
                 }
                 else
                 {
                     lastSegment.AddMatchingEnd(start, end);
-                    openPolygones[start] = lastSegment;
+                    this.openPolygones[start] = lastSegment;
                 }
             }
         }

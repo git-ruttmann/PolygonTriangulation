@@ -372,9 +372,9 @@
             /// </remarks>
             private bool IsVertexAbove(int vertexId, TrapezoidEdge edge)
             {
-                var vertex = vertices[vertexId];
-                var left = vertices[edge.Left];
-                var right = vertices[edge.Right];
+                var vertex = this.vertices[vertexId];
+                var left = this.vertices[edge.Left];
+                var right = this.vertices[edge.Right];
 
                 // this is very likely as the points are added in order left to right
                 if (vertex.X >= left.X)

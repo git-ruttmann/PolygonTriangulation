@@ -281,7 +281,7 @@
 
             foreach (var fusionVertexId in fusionVertices)
             {
-                var jobList = CreateVertexFusionJobs(fusionVertexId);
+                var jobList = this.CreateVertexFusionJobs(fusionVertexId);
 
                 var first = true;
                 var newSubPolygons = new List<int>();
@@ -298,8 +298,8 @@
                     }
                     else if (!samePolygon)
                     {
-                        this.polygonStartIndices[chain[prev].SubPolygonId] = -1;
-                        PolygonSplitter.FillPolygonId(this.chain, prev, chain[next].SubPolygonId);
+                        this.polygonStartIndices[this.chain[prev].SubPolygonId] = -1;
+                        PolygonSplitter.FillPolygonId(this.chain, prev, this.chain[next].SubPolygonId);
                     }
                     else
                     {
@@ -332,7 +332,7 @@
         {
             var vertex = this.vertexCoordinates[fusionVertexId];
             var vertexInstances = new List<(int chain, bool outgoing)>(8);
-            for (int chain = vertexToChain[fusionVertexId]; chain >= 0; chain = this.chain[chain].SameVertexChain)
+            for (int chain = this.vertexToChain[fusionVertexId]; chain >= 0; chain = this.chain[chain].SameVertexChain)
             {
                 vertexInstances.Add((chain, true));
                 vertexInstances.Add((chain, false));
@@ -704,12 +704,12 @@
             /// <returns>a polygon with multiple montone subpolygons</returns>
             public Polygon Execute()
             {
-                var splits = JoinHolesIntoPolygon();
+                var splits = this.JoinHolesIntoPolygon();
 
                 foreach (var split in splits)
                 {
                     var (from, to) = this.FindCommonChain(split.Item1, split.Item2);
-                    SplitPolygon(from, to);
+                    this.SplitPolygon(from, to);
                 }
 
                 return new Polygon(this.originalPolygon.vertexCoordinates, this.chain, this.originalPolygon.vertexToChain, this.polygonStartIndices);
@@ -804,7 +804,7 @@
                 }
                 else
                 {
-                    SplitChainIntoTwoPolygons(from, to);
+                    this.SplitChainIntoTwoPolygons(from, to);
                 }
             }
 
@@ -818,21 +818,21 @@
                 var fromCopy = this.chainFreeIndex++;
                 var toCopy = this.chainFreeIndex++;
 
-                chain[toCopy] = chain[to];
-                chain[to].SameVertexChain = toCopy;
-                chain[fromCopy] = chain[from];
-                chain[from].SameVertexChain = fromCopy;
+                this.chain[toCopy] = this.chain[to];
+                this.chain[to].SameVertexChain = toCopy;
+                this.chain[fromCopy] = this.chain[from];
+                this.chain[from].SameVertexChain = fromCopy;
 
-                var oldPolygonId = chain[from].SubPolygonId;
+                var oldPolygonId = this.chain[from].SubPolygonId;
 
                 //// already copied: chain[fromCopy].Next = chain[from].Next;
-                SetNext(chain, from, toCopy);
-                SetNext(chain, to, fromCopy);
+                SetNext(this.chain, from, toCopy);
+                SetNext(this.chain, to, fromCopy);
 
                 var newPolygonId = this.polygonStartIndices.Count;
                 this.polygonStartIndices.Add(fromCopy);
 
-                FillPolygonId(chain, fromCopy, newPolygonId);
+                FillPolygonId(this.chain, fromCopy, newPolygonId);
 
                 this.polygonStartIndices[newPolygonId] = fromCopy;
                 this.polygonStartIndices[oldPolygonId] = toCopy;
@@ -937,19 +937,19 @@
                 var fromCopy = this.chainFreeIndex++;
                 var toCopy = this.chainFreeIndex++;
 
-                var deletedPolygonId = chain[to].SubPolygonId;
+                var deletedPolygonId = this.chain[to].SubPolygonId;
                 this.polygonStartIndices[deletedPolygonId] = -1;
-                var lastVertexInHole = FillPolygonId(chain, to, chain[from].SubPolygonId);
+                var lastVertexInHole = FillPolygonId(this.chain, to, this.chain[from].SubPolygonId);
 
-                chain[toCopy] = chain[to];
-                chain[to].SameVertexChain = toCopy;
-                chain[fromCopy] = chain[from];
-                chain[from].SameVertexChain = fromCopy;
+                this.chain[toCopy] = this.chain[to];
+                this.chain[to].SameVertexChain = toCopy;
+                this.chain[fromCopy] = this.chain[from];
+                this.chain[from].SameVertexChain = fromCopy;
 
-                SetNext(chain, fromCopy, chain[from].Next);
-                SetNext(chain, toCopy, fromCopy);
-                SetNext(chain, from, to);
-                SetNext(chain, lastVertexInHole, toCopy);
+                SetNext(this.chain, fromCopy, this.chain[from].Next);
+                SetNext(this.chain, toCopy, fromCopy);
+                SetNext(this.chain, from, to);
+                SetNext(this.chain, lastVertexInHole, toCopy);
             }
         }
 
@@ -1009,7 +1009,7 @@
             {
                 if (this.vertexIds.Count > this.first)
                 {
-                    this.nextIndices[this.nextIndices.Count - 1] = first;
+                    this.nextIndices[this.nextIndices.Count - 1] = this.first;
                     this.polygonId++;
                     this.first = this.vertexIds.Count;
                 }
