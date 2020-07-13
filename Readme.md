@@ -2,6 +2,9 @@
 
 # Polygon Triangulation
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f96f39e2f9f14c538364a16afb612972)](https://app.codacy.com/manual/git-ruttmann/PolygonTriangulation?utm_source=github.com&utm_medium=referral&utm_content=git-ruttmann/PolygonTriangulation&utm_campaign=Badge_Grade_Dashboard)
+
+
 A C# library to convert a complex polygon into triangles.
 Support includes:
 *  multiple polygons
