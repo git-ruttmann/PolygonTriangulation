@@ -1,3 +1,5 @@
+![.NET Core](https://github.com/git-ruttmann/PolygonTriangulation/workflows/.NET%20Core/badge.svg)
+
 # Polygon Triangulation
 
 A C# library to convert a polygon into triangles.
