@@ -2,7 +2,7 @@
 
 # Polygon Triangulation
 
-A C# library to convert a polygon into triangles.
+A C# library to convert a complex polygon into triangles.
 Support includes:
 *  multiple polygons
 *  polygon holes
@@ -12,7 +12,7 @@ The project was developed as part of a Unity project to visualize the intersecti
 
 The included Windows Forms project `PolygonDisplay` visualizes the [Polygon](Documentation/Polygon.md), the detected splits and the [Monotones](Documentation/Monotones.md).
 
-# Usage
+## Usage
 
 Create a `PlanePolygonBuilder(plane)` and call repeatedly `AddEdge(start, end)`.
 After adding the last edge, call `Build()`.
@@ -20,7 +20,7 @@ The result contains a vertex array and a list of Triangles. A Triangle is define
 
 The 3D vertices of the edge are converted to 2D by rotating them along the plane and removing the depth component.
 
-# Testing
+## Testing
 
 To test the intermediate steps, create a `IEdgesToPolygonBuilder` by calling `PlanePolygonBuilder.CreatePolygonBuilder()`.
 Call `AddEdge(start, end)` to add the polygon edges and finally `BuildPolygon()` to receive a `IPlanePolygon` which contains a 
