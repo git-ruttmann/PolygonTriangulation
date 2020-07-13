@@ -138,6 +138,41 @@
         /// Create a polygon and then create the code for the polygon
         /// </summary>
         [TestMethod]
+        public void CreateTriangulationException()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(0, 0),
+                new Vertex(1, 2),
+                new Vertex(1, 3),  // 2
+                new Vertex(2, 2),
+                new Vertex(3, 3),  // 4
+                new Vertex(4, 2),
+                new Vertex(5, 2),
+                new Vertex(5, 3),  // 7
+                new Vertex(6, 1),
+            };
+
+            var sourcePolygon = Polygon.Build(sortedVertices)
+                .AddVertices(0, 2, 4, 7, 8)
+                .ClosePartialPolygon()
+                .AddVertices(4, 5, 6)
+                .Close(4);
+
+            var innerException = new InvalidOperationException("Inner Exception");
+            var outerException = new TriangulationException(sourcePolygon, "edge creation code", innerException);
+
+            Assert.AreEqual(outerException.InnerException, innerException);
+            Assert.AreEqual(outerException.Message, "Inner Exception");
+            Assert.AreEqual(outerException.Polygon, sourcePolygon);
+            Assert.IsNotNull(outerException.PolygonCreateCode);
+            Assert.AreEqual("edge creation code", outerException.EdgeCreateCode);
+        }
+
+        /// <summary>
+        /// Create a polygon and then create the code for the polygon
+        /// </summary>
+        [TestMethod]
         public void CreatePolygonCode()
         {
             var sortedVertices = new[]
