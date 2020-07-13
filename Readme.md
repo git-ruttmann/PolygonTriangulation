@@ -1,3 +1,8 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET Core](https://github.com/git-ruttmann/PolygonTriangulation/workflows/.NET%20Core/badge.svg)](https://github.com/git-ruttmann/PolygonTriangulation/actions?query=workflow%3A%22.NET+Core%22)
+[![Codacy Quality](https://api.codacy.com/project/badge/Grade/26eb06d8a0d84eff830589eb4d2a99d5)](https://app.codacy.com/manual/git-ruttmann/PolygonTriangulation)
+[![Codacy Coverage](https://app.codacy.com/project/badge/Coverage/26eb06d8a0d84eff830589eb4d2a99d5)](https://www.codacy.com/manual/git-ruttmann/PolygonTriangulation?utm_source=github.com&utm_medium=referral&utm_content=git-ruttmann/PolygonTriangulation&utm_campaign=Badge_Coverage)
+
 # Polygon Triangulation
 
 A C# library to convert a complex polygon into triangles.
