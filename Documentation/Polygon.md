@@ -1,10 +1,11 @@
 # Polygon
 
-A polygon holds a number of vertices, connnected by edges, that enclose the polygon area. 
+A polygon holds a number of vertices, connnected by edges that enclose the polygon area. 
 During the [Trapezoidation](Trapezoidation.md), the polygon is split into multiple [monotone polygons](Monotones.md).
 
 A polygon can contain multiple polygon lines, called __sub polygons__.
 The enclosed areas can be side by side or they define a hole inside another polygon area. 
+The edges of the polygon must not intersect.
 
 Each edge is directed, the polygon area is always to the right of the edge. 
 Hence the vertices are connected in clock wise order and holes in counter clock wise order.
@@ -36,13 +37,13 @@ There is always exactly one _sub polygon_, which contains both vertices of a spl
 
 ### Handling of holes
 
-A hole is a special case of a split, where the two vertices belong to different sub polygons. 
+A hole is a special case of a split. It's easily detected because the two vertices belong to different sub polygons.
 The `JoinHoleIntoPolygon` creates two edges, the first connects from 1 to 2 and the second connects from 2' to 1'.
 The resulting single sub polygon is defined by 0 1 2 3 5 4 2' 1' 7 6.
 
 The second split 5-6 splits that polygon again into two sub polygons: 0 1 2 3 5 6 and 1' 7 6 5 4 2'.
 
-All splits that join a hole into another sub polygon are processed before any other split.
+All splits, that join a hole into another sub polygon are processed first.
 
 <img src="SimpleHoleJoiningSplit.png" alt="Hole integrated by split" width="400"/> <img src="SimpleHoleSplitted.png" alt="Hole after full split" width="400"/>
 
@@ -56,8 +57,9 @@ Splitting along 2'-4 creates the correct sub polygons 1' 4 2' and 0 1 2 3 6 5 2'
 Splitting along 2-4 creates the wrong sub polygons 1' 4 2 3 6 5 2' and 0 1 2' 4 8 7. 
 These sub polygons overlap each other, causing later processing errors.
 
-`ChooseInstanceForSplit` chooses the correct vertex __2__ from _5 __2'__ 1'_ and _1 __2__ 3_. 
-The new edge must be between the incoming edge and the outgoing edge, e.g. 2'-4 is between 2'-5 and 2'-1' but 2-4 is not between 2-1 and 2-3.
+`ChooseInstanceForSplit` chooses the correct vertex __2__ between _5 __2'__ 1'_ and _1 __2__ 3_. 
+The new edge must be between the incoming edge and the outgoing edge, 
+e.g. 2'-4 is between 2'-5 and 2'-1' but 2-4 is not between 2-1 and 2-3.
 
 <img src="SplitAfterJoin.png" alt="Split after join" width="400"/>
 
@@ -66,17 +68,18 @@ The new edge must be between the incoming edge and the outgoing edge, e.g. 2'-4 
 The 2D vertices are stored in the array `Polygon.Vertices`. The array is never modified.
 The vertices must be sorted from left to right and then from bottom to top.
 
-The vertex characteristics are stored in a `Polygon.VertexChain`. It can contain multiple instances of the same Vertex:
-* The `VertexId`, which is the array index in `Polygon.Vertices`.
-* The `Prev` and `Next` chain element in the current _sub polygon_.
+The polygon outline of a _sub polygon_ is represented by a chain of _vertex instances_.
+The `chain` is an array of type `Polygon.VertexChain` and can contain multiple instances of the same Vertex:
+* The `VertexId`, defined as array index in `Polygon.Vertices`.
+* The `Prev` and `Next` chain element in the current _sub polygon_, indices in `chain`.
 * The `SubPolygonId` of the _vertex instance_.
 * The `SameVertexChain` points to the next _vertex instance_ with the same `VertexId` but a different `SubPolygonId`.
 
-The `vertexToChain` maps the vertex id to the index in the vertex `chain`.
+The `vertexToChain` maps the _vertex id_ to the index in the vertex `chain`.
 
-The array `polygonStartIndices` contains the first chain element per sub polygon. 
+The _sub polygons_ store the index of one chain element (aka _vertex instance_) in `polygonStartIndices`.
 The index in that array is the _sub polygon id_, which is used by `Polygon.SubPolygonIds` and `VertexChain.SubPolygonId`.
-The vertex ids of a sub polygon are accessed by `Polygon.SubPolygonVertices(int subPolygonId)`.
+The vertex list of a _sub polygon_ is available by `Polygon.SubPolygonVertices(int subPolygonId)`.
 
 ## Crafting a polygon for unittests
 
@@ -139,18 +142,19 @@ But it would be invalid to use 0 2 __5__ 4 6 __5__ 1 3 __5__ 7 8 __5__ 9 10, bec
 
 ### Fusion vertices during Trapezoidation
 The [Trapezoidation](Trapezoidation.md) will process a fusioned vertex multiple times. 
-The processing order is "Join cusps", "Transitions", "Opening Cusps", which resembles the left to right processing of the vertices.
+The processing order is "Joining cusps", "Transitions", "Opening Cusps", which resembles the left to right processing of the vertices.
 
 <img src="FusionOrdering.png" alt="Single Fusion" width="475"/>
 
 A bad example: consider processing the opening cusp 6-4-7 _before_ the transition 2-4-5: 
 * Order of the active edges before 6-4-7 from high to low: 2-4 0-8.
-* 4-6 is 4-6 is inserted and considered to be below 2-4 and above 0-8.
+* 4-6 is inserted and considered to be below 2-4 and above 0-8.
 * Active edges after inserting the cusp: 2-4 4-7 4-6 0-8.
 * The transition from 2-4 to 4-5 just replaces 2-4 by 4-5. (A transition expects to stay on the same level.)
 * Active edges after transition: 4-5 4-7 4-6 0-8. => Corrupted.
 
-> The problem effectively arises because the vertex 4 (left vertex of the inserted edge) is compared to edge 2-4. But it's neither above nor below.
+> The problem effectively arises because the vertex 4 (left vertex of the inserted edge) is compared to edge 2-4. 
+> But it's neither above nor below.
 >
 > Processing all closing cusps and transitions before the insert operation ensures, that there is no active edge having the fusion vertex on the right.
 
