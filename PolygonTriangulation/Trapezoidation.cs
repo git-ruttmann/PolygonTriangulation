@@ -180,30 +180,42 @@
         /// <summary>
         /// transition from one edge to the next
         /// </summary>
-        /// <param name="previousStart"></param>
-        /// <param name="start"></param>
-        /// <param name="target"></param>
+        /// <param name="edge">the previous edge</param>
+        /// <param name="newTarget">the new target vertex id</param>
         /// <returns>the new edge</returns>
         internal ITestingTrapezoidEdge TestTransition(ITestingTrapezoidEdge edge, int newTarget)
         {
-            return this.Transition((TrapezoidEdge)edge, newTarget, newTarget);
+            if (edge is TrapezoidEdge trapezoidEdge)
+            {
+                return this.Transition(trapezoidEdge, newTarget, newTarget);
+            }
+
+            throw new InvalidOperationException("Invalid use of internal test function");
         }
 
         /// <summary>
         /// Two edges join in a final vertex
         /// </summary>
-        /// <param name="lowerEdge">the lower edge</param>
+        /// <param name="lower">the lower edge</param>
         internal void TestJoin(ITestingTrapezoidEdge lower)
         {
-            this.JoinTrapezoidEdges((TrapezoidEdge)lower);
+            if (lower is TrapezoidEdge trapezoidEdge)
+            {
+                this.JoinTrapezoidEdges(trapezoidEdge);
+                return;
+            }
+
+            throw new InvalidOperationException("Invalid use of internal test function");
         }
 
         /// <summary>
         /// Insert two edges starting in one point.
         /// </summary>
-        /// <param name="start">the index of the starting vertex</param>
-        /// <param name="prev">the end index of the lower edge</param>
-        /// <param name="next">the end index of the upper edge </param>
+        /// <param name="start">the id of the common start vertex (left)</param>
+        /// <param name="prev">the end vertex of the lower edge</param>
+        /// <param name="prevUnique">the uniqe id of the prev vertex</param>
+        /// <param name="next">the end vertex of the upper edge</param>
+        /// <param name="nextUnique">the uniqe id of the next vertex</param>
         /// <returns>(lower edge, upper edge)</returns>
         /// <remarks>
         /// There is never a Begin() where the prev or next is left to start or prev is at same X and below start.
@@ -229,9 +241,9 @@
         /// <summary>
         /// transition from one edge to the next
         /// </summary>
-        /// <param name="previousStart"></param>
-        /// <param name="start"></param>
-        /// <param name="target"></param>
+        /// <param name="edge">the existing edge</param>
+        /// <param name="newTarget">the new target vertex</param>
+        /// <param name="targetUnique">the uniqe id of newTarget</param>
         /// <returns>the new edge</returns>
         private TrapezoidEdge Transition(TrapezoidEdge edge, int newTarget, int targetUnique)
         {
@@ -273,7 +285,8 @@
         /// <summary>
         /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
         /// </summary>
-        /// <param name="vertexUniqe">the vertex id</param>
+        /// <param name="vertexId">the vertex id</param>
+        /// <param name="vertexUniqe">the uniqe id of the vertex</param>
         /// <returns>the edge</returns>
         private TrapezoidEdge EdgeForVertex(int vertexId, int vertexUniqe)
         {

@@ -4,6 +4,7 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Runtime.CompilerServices;
 
@@ -223,7 +224,7 @@
         /// <returns>a polygon</returns>
         public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines, IReadOnlyList<int> fusionVertices)
         {
-            var chain = new VertexChain[lines.Sum(x => x.Count)];
+            var vertexChain = new VertexChain[lines.Sum(x => x.Count)];
             var id = 0;
             var first = id;
             var vertexToChain = Enumerable.Repeat(-1, vertexCoordinates.Length).ToArray();
@@ -236,21 +237,59 @@
 
                 foreach (var vertexId in line)
                 {
-                    chain[id].VertexId = vertexId;
-                    chain[id].SubPolygonId = polygonId;
+                    vertexChain[id].VertexId = vertexId;
+                    vertexChain[id].SubPolygonId = polygonId;
 
-                    chain[id].SameVertexChain = vertexToChain[vertexId];
+                    vertexChain[id].SameVertexChain = vertexToChain[vertexId];
                     vertexToChain[vertexId] = id;
 
-                    SetNext(chain, id, id == chain.Length - 1 ? first : id + 1);
+                    SetNext(vertexChain, id, id == vertexChain.Length - 1 ? first : id + 1);
                     id++;
                 }
 
-                SetNext(chain, id - 1, first);
+                SetNext(vertexChain, id - 1, first);
                 first = id;
             }
 
-            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, subPolygones);
+            var polygon = new Polygon(vertexCoordinates, vertexChain, vertexToChain, subPolygones);
+            polygon.FusionVerticesIntoChain(fusionVertices);
+            return polygon;
+        }
+
+        /// <summary>
+        /// Create a polygon with vertex id's and next chain. Can contain holes.
+        /// </summary>
+        /// <param name="vertexCoordinates">the coordinates</param>
+        /// <param name="vertexIds">the vertex ids</param>
+        /// <param name="nextIndices">the next index in vertexIds. Must be same length as vertexIds</param>
+        /// <param name="fusionVertices">Vertices that are used in more than one subpolygon. Can be null.</param>
+        /// <returns>a polygon</returns>
+        public static Polygon FromVertexList(Vertex[] vertexCoordinates, IEnumerable<int> vertexIds, IEnumerable<int> nextIndices, IEnumerable<int> polygonIds, IReadOnlyList<int> fusionVertices)
+        {
+            var vertexIdCollection = vertexIds as IReadOnlyCollection<int> ?? vertexIds.ToArray();
+            var polygonIdCollection = polygonIds as IList<int> ?? polygonIds.ToArray();
+            var vertexToChain = Enumerable.Repeat(-1, vertexCoordinates.Length).ToArray();
+            var vertexChain = new VertexChain[vertexIdCollection.Count];
+            var polygonStartIndex = new List<int>();
+
+            var i = 0;
+            foreach (var (vertexId, nextId) in vertexIdCollection.Zip(nextIndices, Tuple.Create))
+            {
+                vertexChain[i].VertexId = vertexId;
+                vertexChain[i].SameVertexChain = vertexToChain[vertexId];
+                vertexChain[i].SubPolygonId = polygonIdCollection[i];
+                SetNext(vertexChain, i, nextId);
+
+                if (polygonIdCollection[i] >= polygonStartIndex.Count)
+                {
+                    polygonStartIndex.Add(i);
+                }
+
+                vertexToChain[vertexId] = i;
+                i++;
+            }
+
+            var polygon = new Polygon(vertexCoordinates, vertexChain, vertexToChain, polygonStartIndex);
             polygon.FusionVerticesIntoChain(fusionVertices);
             return polygon;
         }
@@ -378,44 +417,6 @@
             return jobList;
         }
 
-        /// <summary>
-        /// Create a polygon with vertex id's and next chain. Can contain holes.
-        /// </summary>
-        /// <param name="vertexCoordinates">the coordinates</param>
-        /// <param name="vertexIds">the vertex ids</param>
-        /// <param name="nextIndices">the next index in vertexIds. Must be same length as vertexIds</param>
-        /// <param name="fusionVertices">Vertices that are used in more than one subpolygon. Can be null.</param>
-        /// <returns>a polygon</returns>
-        public static Polygon FromVertexList(Vertex[] vertexCoordinates, IEnumerable<int> vertexIds, IEnumerable<int> nextIndices, IEnumerable<int> polygonIds, IReadOnlyList<int> fusionVertices)
-        {
-            var vertexIdCollection = vertexIds as IReadOnlyCollection<int> ?? vertexIds.ToArray();
-            var polygonIdCollection = polygonIds as IList<int> ?? polygonIds.ToArray();
-            var vertexToChain = Enumerable.Repeat(-1, vertexCoordinates.Length).ToArray();
-            var chain = new VertexChain[vertexIdCollection.Count];
-            var polygonStartIndex = new List<int>();
-
-            var i = 0;
-            foreach (var (vertexId, nextId) in vertexIdCollection.Zip(nextIndices, Tuple.Create))
-            {
-                chain[i].VertexId = vertexId;
-                chain[i].SameVertexChain = vertexToChain[vertexId];
-                chain[i].SubPolygonId = polygonIdCollection[i];
-                SetNext(chain, i, nextId);
-
-                if (polygonIdCollection[i] >= polygonStartIndex.Count)
-                {
-                    polygonStartIndex.Add(i);
-                }
-
-                vertexToChain[vertexId] = i;
-                i++;
-            }
-
-            var polygon = new Polygon(vertexCoordinates, chain, vertexToChain, polygonStartIndex);
-            polygon.FusionVerticesIntoChain(fusionVertices);
-            return polygon;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SetNext(VertexChain[] chain, int current, int next)
         {
@@ -466,7 +467,7 @@
         /// - a polygon has a specific chain element as start index
         /// - a polygon with holes has multiple chain start elements. They are joined via <see cref="PolygonSplitter.JoinHoleIntoPolygon(int, int)"/>
         /// </summary>
-        private struct VertexChain
+        private struct VertexChain : IEquatable<VertexChain>
         {
             /// <summary>
             /// the index in <see cref="SharedData.VertexCoordinates"/>
@@ -503,6 +504,12 @@
             {
                 this.Next = nextChain;
                 nextItem.Prev = current;
+            }
+
+            /// <inheritdoc/>
+            public bool Equals([AllowNull] VertexChain other)
+            {
+                return this.VertexId == other.VertexId && this.SubPolygonId == other.SubPolygonId;
             }
         }
 
