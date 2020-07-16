@@ -565,30 +565,29 @@
 
         public static Polygon UnityError6()
         {
-            var vertices = new[]
-            {
-                new Vertex(0.97032920f, 0.81851240f),
-                new Vertex(0.97592230f, 0.92531130f),
-                new Vertex(1.01729100f, 1.71523700f),
-                new Vertex(1.02747200f, 1.90963600f),
-                new Vertex(1.07189700f, 2.75792400f),
-                new Vertex(1.07534400f, 2.82374700f),
-                new Vertex(1.26485600f, 1.71643700f),
-                new Vertex(1.38595200f, 0.79852870f),
-                new Vertex(2.90666200f, 2.73569500f),
-                new Vertex(2.97032900f, 0.72234950f),
-                new Vertex(2.97468800f, 0.80557190f),
-                new Vertex(3.02283700f, 1.72496800f),
-                new Vertex(3.07318800f, 2.68641600f),
-                new Vertex(3.07534400f, 2.72758500f),
-            };
-
-            var polygon = Polygon.Build(vertices)
-                .AddVertices(6, 11, 10, 9, 7, 0, 1, 2)
-                .ClosePartialPolygon()
-                .AddVertices(12, 11, 3, 4, 5, 8, 13)
-                .ClosePartialPolygon()
-                .Close(11);
+            ////var vertices = new[]
+            ////{
+            ////    new Vertex(0.97032920f, 0.81851240f),
+            ////    new Vertex(0.97592230f, 0.92531130f),
+            ////    new Vertex(1.01729100f, 1.71523700f),
+            ////    new Vertex(1.02747200f, 1.90963600f),
+            ////    new Vertex(1.07189700f, 2.75792400f),
+            ////    new Vertex(1.07534400f, 2.82374700f),
+            ////    new Vertex(1.26485600f, 1.71643700f),
+            ////    new Vertex(1.38595200f, 0.79852870f),
+            ////    new Vertex(2.90666200f, 2.73569500f),
+            ////    new Vertex(2.97032900f, 0.72234950f),
+            ////    new Vertex(2.97468800f, 0.80557190f),
+            ////    new Vertex(3.02283700f, 1.72496800f),
+            ////    new Vertex(3.07318800f, 2.68641600f),
+            ////    new Vertex(3.07534400f, 2.72758500f),
+            ////};
+            ////var polygon = Polygon.Build(vertices)
+            ////    .AddVertices(6, 11, 10, 9, 7, 0, 1, 2)
+            ////    .ClosePartialPolygon()
+            ////    .AddVertices(12, 11, 3, 4, 5, 8, 13)
+            ////    .ClosePartialPolygon()
+            ////    .Close(11);
 
             var builder = PlanePolygonBuilder.CreatePolygonBuilder();
             builder.AddEdge(new Vector3(1.38595200f, 0.79852870f, 0), new Vector3(0.97032920f, 0.81851240f, 0));

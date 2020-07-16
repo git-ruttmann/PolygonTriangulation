@@ -23,6 +23,13 @@ The result contains a vertex array and a list of Triangles. A Triangle is define
 
 The 3D vertices of the edge are converted to 2D by rotating them along the plane and removing the depth component.
 
+## Unity
+
+Unity is using its own types for Vector2, Vector3, Plane and Quaternion, while the common code uses thy types from `System.Numerics`.
+The `#if UNITY_EDITOR || UNITY_STANDALONE` directive changes the namespace and the different case for the property names like `Vector2.x` vs `Vector2.X`.
+
+To use the code, copy all files from PolygonTriangulation to the unity scripts folder.
+
 ## Testing
 
 To test the intermediate steps, create a `IEdgesToPolygonBuilder` by calling `PlanePolygonBuilder.CreatePolygonBuilder()`.

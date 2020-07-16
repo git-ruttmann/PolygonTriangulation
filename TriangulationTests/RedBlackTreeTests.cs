@@ -966,6 +966,10 @@
         /// <summary>
         /// A custom IOrderedNode implementation to trigger the "not internal type" code of the red black tree
         /// </summary>
+        /// <remarks>
+        /// The Prev and Next implementation is utter nonsense.
+        /// Sonar should do better on unit test mocks.
+        /// </remarks>
         private class PseudoNode : IOrderedNode<int>
         {
             public PseudoNode(int data)
@@ -977,10 +981,10 @@
             public int Data { get; }
 
             /// <inheritdoc/>
-            public IOrderedNode<int> Next => throw new NotImplementedException();
+            public IOrderedNode<int> Next => new PseudoNode(this.Data + 1);
 
             /// <inheritdoc/>
-            public IOrderedNode<int> Prev => throw new NotImplementedException();
+            public IOrderedNode<int> Prev => new PseudoNode(this.Data - 1);
         }
     }
 }

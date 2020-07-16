@@ -4,7 +4,12 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Runtime.CompilerServices;
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+    using Vertex = UnityEngine.Vector2;
+#else
     using Vertex = System.Numerics.Vector2;
+#endif
 
     // Marker interface for trapezoid edge tests
     internal interface ITestingTrapezoidEdge
@@ -175,30 +180,42 @@
         /// <summary>
         /// transition from one edge to the next
         /// </summary>
-        /// <param name="previousStart"></param>
-        /// <param name="start"></param>
-        /// <param name="target"></param>
+        /// <param name="edge">the previous edge</param>
+        /// <param name="newTarget">the new target vertex id</param>
         /// <returns>the new edge</returns>
         internal ITestingTrapezoidEdge TestTransition(ITestingTrapezoidEdge edge, int newTarget)
         {
-            return this.Transition((TrapezoidEdge)edge, newTarget, newTarget);
+            if (edge is TrapezoidEdge trapezoidEdge)
+            {
+                return this.Transition(trapezoidEdge, newTarget, newTarget);
+            }
+
+            throw new InvalidOperationException("Invalid use of internal test function");
         }
 
         /// <summary>
         /// Two edges join in a final vertex
         /// </summary>
-        /// <param name="lowerEdge">the lower edge</param>
+        /// <param name="lower">the lower edge</param>
         internal void TestJoin(ITestingTrapezoidEdge lower)
         {
-            this.JoinTrapezoidEdges((TrapezoidEdge)lower);
+            if (lower is TrapezoidEdge trapezoidEdge)
+            {
+                this.JoinTrapezoidEdges(trapezoidEdge);
+                return;
+            }
+
+            throw new InvalidOperationException("Invalid use of internal test function");
         }
 
         /// <summary>
         /// Insert two edges starting in one point.
         /// </summary>
-        /// <param name="start">the index of the starting vertex</param>
-        /// <param name="prev">the end index of the lower edge</param>
-        /// <param name="next">the end index of the upper edge </param>
+        /// <param name="start">the id of the common start vertex (left)</param>
+        /// <param name="prev">the end vertex of the lower edge</param>
+        /// <param name="prevUnique">the uniqe id of the prev vertex</param>
+        /// <param name="next">the end vertex of the upper edge</param>
+        /// <param name="nextUnique">the uniqe id of the next vertex</param>
         /// <returns>(lower edge, upper edge)</returns>
         /// <remarks>
         /// There is never a Begin() where the prev or next is left to start or prev is at same X and below start.
@@ -224,9 +241,9 @@
         /// <summary>
         /// transition from one edge to the next
         /// </summary>
-        /// <param name="previousStart"></param>
-        /// <param name="start"></param>
-        /// <param name="target"></param>
+        /// <param name="edge">the existing edge</param>
+        /// <param name="newTarget">the new target vertex</param>
+        /// <param name="targetUnique">the uniqe id of newTarget</param>
         /// <returns>the new edge</returns>
         private TrapezoidEdge Transition(TrapezoidEdge edge, int newTarget, int targetUnique)
         {
@@ -268,7 +285,8 @@
         /// <summary>
         /// Gets the active edge with right point == vertexId. If there are two edges, return the lower one.
         /// </summary>
-        /// <param name="vertexUniqe">the vertex id</param>
+        /// <param name="vertexId">the vertex id</param>
+        /// <param name="vertexUniqe">the uniqe id of the vertex</param>
         /// <returns>the edge</returns>
         private TrapezoidEdge EdgeForVertex(int vertexId, int vertexUniqe)
         {
@@ -325,18 +343,32 @@
                 var upperRight = this.vertices[upper.Right];
                 var lowerRight = this.vertices[lower.Right];
 
-                if ((upperRight.Y > left.Y) != (lowerRight.Y > left.Y))
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var leftY = left.y;
+                var upperRightX = upperRight.x;
+                var upperRightY = upperRight.y;
+                var lowerRightX = lowerRight.x;
+                var lowerRightY = lowerRight.y;
+#else
+                var leftY = left.Y;
+                var upperRightX = upperRight.X;
+                var upperRightY = upperRight.Y;
+                var lowerRightX = lowerRight.X;
+                var lowerRightY = lowerRight.Y;
+#endif
+
+                if ((upperRightY > leftY) != (lowerRightY > leftY))
                 {
-                    return upperRight.Y > lowerRight.Y;
+                    return upperRightY > lowerRightY;
                 }
 
-                if (upperRight.X > lowerRight.X)
+                if (upperRightX > lowerRightX)
                 {
-                    if (upperRight.Y < left.Y && upperRight.Y > lowerRight.Y)
+                    if (upperRightY < leftY && upperRightY > lowerRightY)
                     {
                         return true;
                     }
-                    else if (upperRight.Y > left.Y && upperRight.Y < lowerRight.Y)
+                    else if (upperRightY > leftY && upperRightY < lowerRightY)
                     {
                         return false;
                     }
@@ -347,11 +379,11 @@
                 }
                 else
                 {
-                    if (lowerRight.Y > left.Y && upperRight.Y > lowerRight.Y)
+                    if (lowerRightY > leftY && upperRightY > lowerRightY)
                     {
                         return true;
                     }
-                    else if (lowerRight.Y < left.Y && upperRight.Y < lowerRight.Y)
+                    else if (lowerRightY < leftY && upperRightY < lowerRightY)
                     {
                         return false;
                     }
@@ -378,6 +410,26 @@
                 var left = this.vertices[edge.Left];
                 var right = this.vertices[edge.Right];
 
+#if UNITY_EDITOR || UNITY_STANDALONE
+                // this is very likely as the points are added in order left to right
+                if (vertex.x >= left.x)
+                {
+                    if (vertex.y > left.y)
+                    {
+                        if (left.y >= right.y || (vertex.x < right.x && vertex.y > right.y))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (left.y < right.y || (vertex.x < right.x && vertex.y < right.y))
+                        {
+                            return false;
+                        }
+                    }
+                }
+#else
                 // this is very likely as the points are added in order left to right
                 if (vertex.X >= left.X)
                 {
@@ -396,6 +448,7 @@
                         }
                     }
                 }
+#endif
 
                 return this.IsVertexAboveSlow(ref vertex, ref left, ref right);
             }
@@ -409,6 +462,17 @@
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private bool IsVertexAboveSlow(ref Vertex vertex, ref Vertex left, ref Vertex right)
             {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var xSpan = right.x - left.x;
+
+                if (xSpan < epsilon * epsilon)
+                {
+                    return vertex.y > left.y;
+                }
+
+                var yOfEdgeAtVertex = (vertex.x - left.x) / xSpan * (right.y - left.y) + left.y;
+                return yOfEdgeAtVertex < vertex.y;
+#else
                 var xSpan = right.X - left.X;
 
                 if (xSpan < epsilon * epsilon)
@@ -418,6 +482,7 @@
 
                 var yOfEdgeAtVertex = (vertex.X - left.X) / xSpan * (right.Y - left.Y) + left.Y;
                 return yOfEdgeAtVertex < vertex.Y;
+#endif
             }
         }
 

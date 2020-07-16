@@ -53,7 +53,11 @@
             sb.AppendLine("var vertices = new[]");
             sb.AppendLine("{");
             var vertexStrings = polygon.Vertices.Select(
+#if UNITY_EDITOR || UNITY_STANDALONE
+                x => string.Format(culture, "    new Vertex({0:0.0000000}f, {1:0.0000000}f),", x.x, x.y));
+#else
                 x => string.Format(culture, "    new Vertex({0:0.0000000}f, {1:0.0000000}f),", x.X, x.Y));
+#endif
             sb.AppendLine(string.Join(Environment.NewLine, vertexStrings));
             sb.AppendLine("};");
             sb.AppendLine("");
@@ -61,7 +65,7 @@
             sb.AppendLine("var polygon = Polygon.Build(vertices)");
             foreach (var subPolygonId in polygon.SubPolygonIds)
             {
-                sb.AppendLine($"    .AddVertices({string.Join(", ", polygon.SubPolygonVertices(0))})");
+                sb.AppendLine($"    .AddVertices({string.Join(", ", polygon.SubPolygonVertices(subPolygonId))})");
                 sb.AppendLine($"    .ClosePartialPolygon()");
             }
 

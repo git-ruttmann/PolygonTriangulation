@@ -3,7 +3,11 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+#if UNITY_EDITOR || UNITY_STANDALONE
+    using Vertex = UnityEngine.Vector2;
+#else
     using Vertex = System.Numerics.Vector2;
+#endif
 
     /// <summary>
     /// Receive triangles
@@ -342,7 +346,11 @@
                 var v0 = this.vertices[this.current];
                 var v1 = this.vertices[this.second];
                 var v2 = this.vertices[this.third];
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var cross = (v2.x - v0.x) * (v1.y - v0.y) - ((v2.y - v0.y) * (v1.x - v0.x));
+#else
                 var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
+#endif
                 return cross < 0;
             }
 

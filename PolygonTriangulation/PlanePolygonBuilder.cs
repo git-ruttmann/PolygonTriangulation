@@ -6,10 +6,17 @@
     using System.Linq;
     using System.Text;
 
+#if UNITY_EDITOR || UNITY_STANDALONE
+    using Vertex = UnityEngine.Vector2;
+    using Vector3 = UnityEngine.Vector3;
+    using Quaternion = UnityEngine.Quaternion;
+    using Plane = UnityEngine.Plane;
+#else
     using Vertex = System.Numerics.Vector2;
     using Vector3 = System.Numerics.Vector3;
     using Quaternion = System.Numerics.Quaternion;
     using Plane = System.Numerics.Plane;
+#endif
 
     /// <summary>
     /// Test interface for the polygon builder
@@ -81,12 +88,17 @@
     public interface ITriangulatedPlanePolygon
     {
         /// <summary>
-        /// The 3D vertices
+        /// Gets the 3D vertices
         /// </summary>
         Vector3[] Vertices { get; }
 
         /// <summary>
-        /// The triangles with vertex offset
+        /// Gets the 2D vertices of the plane points
+        /// </summary>
+        IReadOnlyList<Vertex> Vertices2D { get; }
+
+        /// <summary>
+        /// Gets the triangles with vertex offset
         /// </summary>
         int[] Triangles { get; }
     }
@@ -121,17 +133,30 @@
 
         public PlanePolygonBuilder(Plane plane)
         {
-            var rotation = Quaternion
-                .Identity;
-            //// .FromToRotation(plane.normal, new Vector3(0, 0, -1));
+#if UNITY_EDITOR || UNITY_STANDALONE
+            var rotation = Quaternion.FromToRotation(plane.normal, new Vector3(0, 0, -1));
+#else
+            var rotation = IdendityQuaternion;
+#endif
             this.edgesToPolygon = new EdgesToPolygonBuilder(rotation);
         }
 
         /// <summary>
+        /// Gets the 3D to 2D rotation
+        /// </summary>
+        public Quaternion Rotation => this.edgesToPolygon.Rotation;
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+        private static Quaternion IdendityQuaternion => Quaternion.identity;
+#else
+        private static Quaternion IdendityQuaternion => Quaternion.Identity;
+#endif
+
+        /// <summary>
         /// Create a edges to polygon builder for unit testing
         /// </summary>
-        /// <returns></returns>
-        internal static IEdgesToPolygonBuilder CreatePolygonBuilder() => new EdgesToPolygonBuilder(Quaternion.Identity);
+        /// <returns>the polygon builder</returns>
+        internal static IEdgesToPolygonBuilder CreatePolygonBuilder() => new EdgesToPolygonBuilder(IdendityQuaternion);
 
         /// <summary>
         /// Create a polygon from edges detector. The edge is defined by the vertex ids
@@ -162,7 +187,7 @@
                 polygonResult = this.edgesToPolygon.BuildPolygon();
                 var triangulator = new PolygonTriangulator(polygonResult.Polygon);
                 var triangles = triangulator.BuildTriangles();
-                return new TriangulatedPlanePolygon(polygonResult.Vertices, triangles);
+                return new TriangulatedPlanePolygon(polygonResult.Vertices, polygonResult.Polygon.Vertices, triangles);
             }
             catch (Exception e)
             {
@@ -175,10 +200,11 @@
         /// </summary>
         private class TriangulatedPlanePolygon : ITriangulatedPlanePolygon
         {
-            public TriangulatedPlanePolygon(Vector3[] vertices, int[] triangles)
+            public TriangulatedPlanePolygon(Vector3[] vertices, IReadOnlyList<Vertex> vertices2D, int[] triangles)
             {
                 this.Vertices = vertices;
                 this.Triangles = triangles;
+                this.Vertices2D = vertices2D;
             }
 
             /// <inheritdoc/>
@@ -186,6 +212,9 @@
 
             /// <inheritdoc/>
             public int[] Triangles { get; }
+
+            /// <inheritdoc/>
+            public IReadOnlyList<Vertex> Vertices2D { get; }
         }
 
         /// <summary>
@@ -215,6 +244,40 @@
             /// <inheritdoc/>
             public int Compare(Vertex x, Vertex y)
             {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var xdist = Math.Abs(x.x - y.x);
+                if (xdist < epsilon)
+                {
+                    var ydist = Math.Abs(x.y - y.y);
+                    if (ydist < epsilon)
+                    {
+                        return 0;
+                    }
+
+                    var xCompare = x.x.CompareTo(y.x);
+                    if (xCompare != 0)
+                    {
+                        return xCompare;
+                    }
+
+                    if (x.y < y.y)
+                    {
+                        return -1;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+                else if (x.x < y.x)
+                {
+                    return -1;
+                }
+                else
+                {
+                    return 1;
+                }
+#else
                 var xdist = Math.Abs(x.X - y.X);
                 if (xdist < epsilon)
                 {
@@ -247,6 +310,7 @@
                 {
                     return 1;
                 }
+#endif
             }
         }
 
@@ -384,7 +448,11 @@
             /// <returns>the sum of the x and y distance</returns>
             private static float Distance(Vertex[] vertices, int vertexId, int peer)
             {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                return Math.Abs(vertices[vertexId].x - vertices[peer].x) + Math.Abs(vertices[vertexId].y - vertices[peer].y);
+#else
                 return Math.Abs(vertices[vertexId].X - vertices[peer].X) + Math.Abs(vertices[vertexId].Y - vertices[peer].Y);
+#endif
             }
 
             /// <summary>
@@ -747,20 +815,6 @@
             private readonly List<Vertex> vertices2D;
 
             /// <summary>
-            /// 3D to 2D rotation
-            /// </summary>
-            private readonly Quaternion rotation;
-
-            /// <summary>
-            /// Internal constructor without rotation
-            /// </summary>
-            internal EdgesToPolygonBuilder()
-                : this(Quaternion.Identity)
-            {
-
-            }
-
-            /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="rotation">the rotation to map a vertex on a 2D plane</param>
@@ -770,8 +824,13 @@
                 this.vertices3D = new List<Vector3>();
                 this.vertices2D = new List<Vertex>();
 
-                this.rotation = rotation;
+                this.Rotation = rotation;
             }
+
+            /// <summary>
+            /// 3D to 2D rotation
+            /// </summary>
+            public Quaternion Rotation { get; }
 
             /// <summary>
             /// Dump the edges during debugging
@@ -784,7 +843,11 @@
                 sb.AppendLine("var builder = PlanePolygonBuilder.CreatePolygonBuilder();");
                 for (int i = 0; i < this.vertices2D.Count - 1; i += 2)
                 {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                    sb.AppendLine($"builder.AddEdge(new Vector3({this.vertices2D[i].x:0.00000000}f, {this.vertices2D[i].y:0.00000000}f, 0), new Vector3({this.vertices2D[i + 1].x:0.00000000}f, {this.vertices2D[i + 1].y:0.00000000}f, 0));");
+#else
                     sb.AppendLine($"builder.AddEdge(new Vector3({this.vertices2D[i].X:0.00000000}f, {this.vertices2D[i].Y:0.00000000}f, 0), new Vector3({this.vertices2D[i + 1].X:0.00000000}f, {this.vertices2D[i + 1].Y:0.00000000}f, 0));");
+#endif
                 }
 
                 sb.AppendLine("builder.BuildPolygon();");
@@ -804,12 +867,20 @@
             {
                 var planeTriangleOffset = this.vertices2D.Count;
                 this.vertices3D.Add(p0);
-                var p0Rotated = Vector3.Transform(p0, this.rotation);
+                this.vertices3D.Add(p1);
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var p0Rotated = this.Rotation * p0;
+                this.vertices2D.Add(new Vertex(p0Rotated.x, p0Rotated.y));
+
+                var p1Rotated = this.Rotation * p1;
+                this.vertices2D.Add(new Vertex(p1Rotated.x, p1Rotated.y));
+#else
+                var p0Rotated = Vector3.Transform(p0, this.Rotation);
                 this.vertices2D.Add(new Vertex(p0Rotated.X, p0Rotated.Y));
 
-                this.vertices3D.Add(p1);
-                var p1Rotated = Vector3.Transform(p1, this.rotation);
+                var p1Rotated = Vector3.Transform(p1, this.Rotation);
                 this.vertices2D.Add(new Vertex(p1Rotated.X, p1Rotated.Y));
+#endif
 
                 this.edges.Add(planeTriangleOffset + 0);
                 this.edges.Add(planeTriangleOffset + 1);
