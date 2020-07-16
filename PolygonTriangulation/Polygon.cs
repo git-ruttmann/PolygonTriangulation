@@ -7,7 +7,11 @@
     using System.Linq;
     using System.Runtime.CompilerServices;
 
+#if UNITY_EDITOR || UNITY_STANDALONE
+    using Vertex = UnityEngine.Vector2;
+#else
     using Vertex = System.Numerics.Vector2;
+#endif
 
     /// <summary>
     /// The action necessary for the vertex transition.
@@ -254,11 +258,19 @@
         /// <summary>
         /// Calculates an angle that grows counter clockwise from 0 to 4
         /// </summary>
-        /// <param name="dx">delta in x direction</param>
-        /// <param name="dy">delta in y direction</param>
+        /// <param name="vertex">the center point</param>
+        /// <param name="vertex">the point around the center</param>
         /// <returns>a float representing the angle</returns>
-        private static float DiamondAngle(float dx, float dy)
+        private static float DiamondAngle(ref Vertex vertex, ref Vertex peer)
         {
+#if UNITY_EDITOR || UNITY_STANDALONE
+            var dx = peer.x - vertex.x;
+            var dy = peer.y - vertex.y;
+#else
+            var dx = peer.X - vertex.X;
+            var dy = peer.Y - vertex.Y;
+#endif
+
             if (dy >= 0)
             {
                 return (dx >= 0 ? dy / (dx + dy) : 1 - dx / (-dx + dy));
@@ -343,7 +355,7 @@
                 {
                     var peerId = x.outgoing ? this.chain[x.chain].Next : this.chain[x.chain].Prev;
                     ref var peer = ref this.vertexCoordinates[this.chain[peerId].VertexId];
-                    return 4.0f - DiamondAngle(peer.X - vertex.X, peer.Y - vertex.Y);
+                    return 4.0f - DiamondAngle(ref vertex, ref peer);
                 })
                 .ToArray();
 
@@ -913,12 +925,12 @@
 
                 ref var vertex = ref this.originalPolygon.vertexCoordinates[this.chain[chainId].VertexId];
                 ref var peerVertex = ref this.originalPolygon.vertexCoordinates[this.chain[peer].VertexId];
-                var peerAngle = DiamondAngle(peerVertex.X - vertex.X, peerVertex.Y - vertex.Y);
+                var peerAngle = DiamondAngle(ref vertex, ref peerVertex);
 
                 ref var prevVertex = ref this.originalPolygon.vertexCoordinates[this.chain[this.chain[chainId].Prev].VertexId];
                 ref var nextVertex = ref this.originalPolygon.vertexCoordinates[this.chain[this.chain[chainId].Next].VertexId];
-                var prevAngle = DiamondAngle(prevVertex.X - vertex.X, prevVertex.Y - vertex.Y);
-                var nextAngle = DiamondAngle(nextVertex.X - vertex.X, nextVertex.Y - vertex.Y);
+                var prevAngle = DiamondAngle(ref vertex, ref prevVertex);
+                var nextAngle = DiamondAngle(ref vertex, ref nextVertex);
 
                 nextAngle += nextAngle < prevAngle ? 4 : 0;
                 peerAngle += peerAngle < prevAngle ? 4 : 0;

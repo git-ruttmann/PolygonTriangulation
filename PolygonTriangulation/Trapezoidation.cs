@@ -4,7 +4,12 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Runtime.CompilerServices;
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+    using Vertex = UnityEngine.Vector2;
+#else
     using Vertex = System.Numerics.Vector2;
+#endif
 
     // Marker interface for trapezoid edge tests
     internal interface ITestingTrapezoidEdge
@@ -325,18 +330,32 @@
                 var upperRight = this.vertices[upper.Right];
                 var lowerRight = this.vertices[lower.Right];
 
-                if ((upperRight.Y > left.Y) != (lowerRight.Y > left.Y))
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var leftY = left.y;
+                var upperRightX = upperRight.x;
+                var upperRightY = upperRight.y;
+                var lowerRightX = lowerRight.x;
+                var lowerRightY = lowerRight.y;
+#else
+                var leftY = left.Y;
+                var upperRightX = upperRight.X;
+                var upperRightY = upperRight.Y;
+                var lowerRightX = lowerRight.X;
+                var lowerRightY = lowerRight.Y;
+#endif
+
+                if ((upperRightY > leftY) != (lowerRightY > leftY))
                 {
-                    return upperRight.Y > lowerRight.Y;
+                    return upperRightY > lowerRightY;
                 }
 
-                if (upperRight.X > lowerRight.X)
+                if (upperRightX > lowerRightX)
                 {
-                    if (upperRight.Y < left.Y && upperRight.Y > lowerRight.Y)
+                    if (upperRightY < leftY && upperRightY > lowerRightY)
                     {
                         return true;
                     }
-                    else if (upperRight.Y > left.Y && upperRight.Y < lowerRight.Y)
+                    else if (upperRightY > leftY && upperRightY < lowerRightY)
                     {
                         return false;
                     }
@@ -347,11 +366,11 @@
                 }
                 else
                 {
-                    if (lowerRight.Y > left.Y && upperRight.Y > lowerRight.Y)
+                    if (lowerRightY > leftY && upperRightY > lowerRightY)
                     {
                         return true;
                     }
-                    else if (lowerRight.Y < left.Y && upperRight.Y < lowerRight.Y)
+                    else if (lowerRightY < leftY && upperRightY < lowerRightY)
                     {
                         return false;
                     }
@@ -378,6 +397,26 @@
                 var left = this.vertices[edge.Left];
                 var right = this.vertices[edge.Right];
 
+#if UNITY_EDITOR || UNITY_STANDALONE
+                // this is very likely as the points are added in order left to right
+                if (vertex.x >= left.x)
+                {
+                    if (vertex.y > left.y)
+                    {
+                        if (left.y >= right.y || (vertex.x < right.x && vertex.y > right.y))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (left.y < right.y || (vertex.x < right.x && vertex.y < right.y))
+                        {
+                            return false;
+                        }
+                    }
+                }
+#else
                 // this is very likely as the points are added in order left to right
                 if (vertex.X >= left.X)
                 {
@@ -396,6 +435,7 @@
                         }
                     }
                 }
+#endif
 
                 return this.IsVertexAboveSlow(ref vertex, ref left, ref right);
             }
@@ -409,6 +449,17 @@
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private bool IsVertexAboveSlow(ref Vertex vertex, ref Vertex left, ref Vertex right)
             {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var xSpan = right.x - left.x;
+
+                if (xSpan < epsilon * epsilon)
+                {
+                    return vertex.y > left.y;
+                }
+
+                var yOfEdgeAtVertex = (vertex.x - left.x) / xSpan * (right.y - left.y) + left.y;
+                return yOfEdgeAtVertex < vertex.y;
+#else
                 var xSpan = right.X - left.X;
 
                 if (xSpan < epsilon * epsilon)
@@ -418,6 +469,7 @@
 
                 var yOfEdgeAtVertex = (vertex.X - left.X) / xSpan * (right.Y - left.Y) + left.Y;
                 return yOfEdgeAtVertex < vertex.Y;
+#endif
             }
         }
 
