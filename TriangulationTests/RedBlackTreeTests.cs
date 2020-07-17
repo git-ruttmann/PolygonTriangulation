@@ -978,10 +978,10 @@
             public int Data { get; }
 
             /// <inheritdoc/>
-            public IOrderedNode<int> Next => new PseudoNode(this.Data + 1);
+            IOrderedNode<int> IOrderedNode<int>.Next => throw new NotImplementedException();
 
             /// <inheritdoc/>
-            public IOrderedNode<int> Prev => new PseudoNode(this.Data - 1);
+            IOrderedNode<int> IOrderedNode<int>.Prev => throw new NotImplementedException();
         }
     }
 }
