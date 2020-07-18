@@ -33,12 +33,12 @@
         private readonly HashSet<int> drawnVertexIds;
 
         /// <summary>
-        /// backing value for <see cref="Zoom"/>
+        /// zoom factor
         /// </summary>
-        private double zoom;
+        private double zoomFactor;
 
         /// <summary>
-        /// zoom as integer factor
+        /// backing value for <see cref="Zoom"/>
         /// </summary>
         private int zoomAsInt;
 
@@ -88,7 +88,7 @@
         public PolygonDrawControl()
         {
             this.drawnVertexIds = new HashSet<int>();
-            this.zoom = 1;
+            this.zoomFactor = 1;
             this.zoomAsInt = 0;
             this.polygon = SamplePolygon();
             this.InitializeComponent();
@@ -135,7 +135,7 @@
             set
             {
                 this.zoomAsInt = Math.Min(55, Math.Max(0, value));
-                this.zoom = Math.Pow(1.2, this.zoomAsInt);
+                this.zoomFactor = Math.Pow(1.2, this.zoomAsInt);
                 this.Invalidate();
             }
         }
@@ -223,7 +223,7 @@
                 this.dragging = false;
 
                 var dragVector = e.Location - (Size)this.dragStart;
-                var scale = (this.fullScale * this.zoom);
+                var scale = (this.fullScale * this.zoomFactor);
 
                 this.polygonCenter = new Vertex(
                     (float)(this.polygonCenter.X - dragVector.X / scale),
@@ -434,7 +434,7 @@
         /// <returns>Array of scaled points</returns>
         private PointF[] ScaleVertices(IReadOnlyList<Vertex> vertices)
         {
-            var scale = (this.fullScale * this.zoom);
+            var scale = (this.fullScale * this.zoomFactor);
 
             var scaledPoints = vertices
                 .Select(x => new PointF(

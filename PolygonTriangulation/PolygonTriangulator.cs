@@ -163,7 +163,8 @@
                     {
                         if (stepCount >= 0)
                         {
-                            if (--stepCount < 0)
+                            stepCount -= 1;
+                            if (stepCount < 0)
                             {
                                 return;
                             }

@@ -247,7 +247,8 @@ namespace TriangulationTests
                 last = dot;
             }
 
-            planeMeshBuilder.Build();
+            var result = planeMeshBuilder.Build();
+            Assert.AreEqual(3 * (clockwise.Length - 2), result.Triangles.Length);
         }
 
         /// <summary>

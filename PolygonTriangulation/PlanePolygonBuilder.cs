@@ -932,7 +932,7 @@
                 var lineDetector = new PolygonLineDetector(fusionedVertices);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
 
-                if (lineDetector.UnclosedPolygons.Count() > 0)
+                if (lineDetector.UnclosedPolygons.Any())
                 {
                     lineDetector.TryClusteringUnclosedEnds(sorted2D, epsilon * 100);
                 }

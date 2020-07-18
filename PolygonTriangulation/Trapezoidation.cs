@@ -11,7 +11,9 @@
     using Vertex = System.Numerics.Vector2;
 #endif
 
-    // Marker interface for trapezoid edge tests
+    /// <summary>
+    /// Marker interface for trapezoid edge tests
+    /// </summary>
     internal interface ITestingTrapezoidEdge
     {
     }
@@ -602,8 +604,6 @@
 
                 this.lowerEdge = lowerEdge;
                 this.upperEdge = upperEdge;
-                this.lowerEdge.Trapezoid = this;
-                this.upperEdge.Trapezoid = this;
             }
 
             /// <summary>
@@ -619,7 +619,7 @@
             /// <param name="upperEdge">the upper edge of the new split</param>
             public static void EnterInsideBySplit(int vertexId, TrapezoidEdge lowerEdge, TrapezoidEdge upperEdge)
             {
-                new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, upperEdge);
+                UpdateEdges(new Trapezoid(vertexId, Base.NoNeighbor, lowerEdge, upperEdge));
             }
 
             /// <summary>
@@ -634,7 +634,7 @@
                 upper.EvaluateRight(vertexId, Base.LowerCorner, splitSink);
                 lower.EvaluateRight(vertexId, Base.UpperCorner, splitSink);
 
-                new Trapezoid(vertexId, Base.TwoNeighbors, lower.lowerEdge, upper.upperEdge);
+                UpdateEdges(new Trapezoid(vertexId, Base.TwoNeighbors, lower.lowerEdge, upper.upperEdge));
             }
 
             /// <summary>
@@ -648,8 +648,8 @@
             {
                 this.EvaluateRight(vertexId, Base.TwoNeighbors, splitSink);
 
-                new Trapezoid(vertexId, Base.LowerCorner, upperEdge, this.upperEdge);
-                new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, lowerEdge);
+                UpdateEdges(new Trapezoid(vertexId, Base.LowerCorner, upperEdge, this.upperEdge));
+                UpdateEdges(new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, lowerEdge));
             }
 
             /// <summary>
@@ -672,7 +672,7 @@
             {
                 this.EvaluateRight(vertexId, Base.UpperCorner, splitSink);
 
-                new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, nextEdge);
+                UpdateEdges(new Trapezoid(vertexId, Base.UpperCorner, this.lowerEdge, nextEdge));
             }
 
             /// <summary>
@@ -685,7 +685,7 @@
             {
                 this.EvaluateRight(vertexId, Base.LowerCorner, splitSink);
 
-                new Trapezoid(vertexId, Base.LowerCorner, nextEdge, this.upperEdge);
+                UpdateEdges(new Trapezoid(vertexId, Base.LowerCorner, nextEdge, this.upperEdge));
             }
 
             /// <summary>
@@ -721,6 +721,16 @@
                 {
                     splitter.SplitPolygon(this.leftVertex, rightVertex);
                 }
+            }
+
+            /// <summary>
+            /// Update the edges to point to the new trapezoid
+            /// </summary>
+            /// <param name="trapezoid">the trapezoid</param>
+            private static void UpdateEdges(Trapezoid trapezoid)
+            {
+                trapezoid.lowerEdge.Trapezoid = trapezoid;
+                trapezoid.upperEdge.Trapezoid = trapezoid;
             }
         }
     }

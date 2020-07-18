@@ -327,7 +327,7 @@
                 return;
             }
 
-            var uncle = parent.Sibling;
+            var uncle = parent.GetSibling();
             if (uncle != null && parent.IsRed && uncle.IsRed)
             {
                 // propagate red from parent and it's sibling to the grand parent (that can't be red, otherwise uncle would already violate red-red)
@@ -445,7 +445,7 @@
         private void ResolveSiblingOfDoubleBlack(Node doubleBlackNode)
         {
             var isLeft = doubleBlackNode.IsLeft;
-            var sibling = doubleBlackNode.Sibling;
+            var sibling = doubleBlackNode.GetSibling();
 
             if (sibling.IsRed)
             {
@@ -454,7 +454,7 @@
                 this.Rotate(isLeft, sibling.Parent);
 
                 // After rotation, the node and it's NEW sibling will both be black. 
-                sibling = doubleBlackNode.Sibling;
+                sibling = doubleBlackNode.GetSibling();
             }
 
             var outerSiblingChild = isLeft ? sibling.Right : sibling.Left;
@@ -645,7 +645,16 @@
             /// <summary>
             /// Get's the other node with the same parent
             /// </summary>
-            public Node Sibling => this.Parent == null ? null : this.IsLeft ? this.Parent.Right : this.Parent.Left;
+            /// <returns>the sibling of the item</returns>
+            public Node GetSibling()
+            {
+                if (this.Parent == null)
+                {
+                    return null;
+                }
+
+                return this.IsLeft ? this.Parent.Right : this.Parent.Left;
+            }
 
             /// <inheritdoc/>
             public T Data { get; }

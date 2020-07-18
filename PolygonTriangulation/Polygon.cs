@@ -222,6 +222,7 @@
         /// <param name="lines">The polygon lines. Each vertex Id must be unique inside a polygon line.</param>
         /// <param name="fusionVertices">vertices that are used in more than one subpolygon</param>
         /// <returns>a polygon</returns>
+        [SuppressMessage("Major Code Smell", "S1117:Local variables should not shadow class fields", Justification = "Reusing a fieldname in a static method seems fine")]
         public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines, IReadOnlyList<int> fusionVertices)
         {
             var vertexChain = new VertexChain[lines.Sum(x => x.Count)];
@@ -256,6 +257,7 @@
             return polygon;
         }
 
+
         /// <summary>
         /// Create a polygon with vertex id's and next chain. Can contain holes.
         /// </summary>
@@ -264,6 +266,7 @@
         /// <param name="nextIndices">the next index in vertexIds. Must be same length as vertexIds</param>
         /// <param name="fusionVertices">Vertices that are used in more than one subpolygon. Can be null.</param>
         /// <returns>a polygon</returns>
+        [SuppressMessage("Major Code Smell", "S1117:Local variables should not shadow class fields", Justification = "Reusing a fieldname in a static method seems fine")]
         public static Polygon FromVertexList(Vertex[] vertexCoordinates, IEnumerable<int> vertexIds, IEnumerable<int> nextIndices, IEnumerable<int> polygonIds, IReadOnlyList<int> fusionVertices)
         {
             var vertexIdCollection = vertexIds as IReadOnlyCollection<int> ?? vertexIds.ToArray();
@@ -312,11 +315,11 @@
 
             if (dy >= 0)
             {
-                return (dx >= 0 ? dy / (dx + dy) : 1 - dx / (-dx + dy));
+                return dx >= 0 ? dy / (dx + dy) : 1 - dx / (-dx + dy);
             }
             else
             {
-                return (dx < 0 ? 2 - dy / (-dx - dy) : 3 + dx / (dx - dy));
+                return dx < 0 ? 2 - dy / (-dx - dy) : 3 + dx / (dx - dy);
             }
         }
 

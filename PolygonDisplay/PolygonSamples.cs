@@ -5,6 +5,7 @@
 
     using Vertex = System.Numerics.Vector2;
     using Vector3 = System.Numerics.Vector3;
+
     using PolygonTriangulation;
 
     /// <summary>
@@ -243,29 +244,22 @@
                 ? Polygon.Build(sortedVerticesUpper).AddVertices(0, 2, 4, 7, 8).ClosePartialPolygon()
                 : Polygon.Build(sortedVerticesLower).AddVertices(0, 2, 7, 8, 4).ClosePartialPolygon();
 
-            switch (id)
+            builder = id switch
             {
-                case 1: // upper left
-                    builder = builder.AddVertices(4, 1, 3);
-                    break;
-                case 2: // upper center
-                    builder = builder.AddVertices(4, 3, 5);
-                    break;
-                case 3: // upper right
-                    builder = builder.AddVertices(4, 5, 6);
-                    break;
-                case 4: // lower left
-                    builder = builder.AddVertices(4, 3, 1);
-                    break;
-                case 5: // lower center
-                    builder = builder.AddVertices(4, 5, 3);
-                    break;
-                case 6: // lower right
-                    builder = builder.AddVertices(4, 6, 5);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(id), "no polygon");
-            }
+                // upper left
+                1 => builder.AddVertices(4, 1, 3),
+                // upper center
+                2 => builder.AddVertices(4, 3, 5),
+                // upper right
+                3 => builder.AddVertices(4, 5, 6),
+                // lower left
+                4 => builder.AddVertices(4, 3, 1),
+                // lower center
+                5 => builder.AddVertices(4, 5, 3),
+                // lower right
+                6 => builder.AddVertices(4, 6, 5),
+                _ => throw new ArgumentOutOfRangeException(nameof(id), "no polygon"),
+            };
 
             return builder.Close(4);
         }
@@ -336,7 +330,7 @@
             switch (id)
             {
                 case 1:
-                    return UnityError7();
+                    return UnityError1();
                 case 2:
                     return UnityError2();
                 case 3:
@@ -531,39 +525,6 @@
 
         public static Polygon UnityError5()
         {
-            var vertices = new[]
-            {
-                new Vertex(0.5204509f, 1.1067680f),
-                new Vertex(0.6062286f, 1.3088240f),
-                new Vertex(0.6763443f, 1.4739880f),
-                new Vertex(0.8025235f, 1.3167940f),
-                new Vertex(0.8901310f, 1.2076520f),
-                new Vertex(1.1040800f, 2.4815560f),
-                new Vertex(1.2380720f, 2.7971850f),
-                new Vertex(1.2653450f, 0.7483246f),
-                new Vertex(1.3066230f, 2.9586610f),
-                new Vertex(1.8197220f, 2.4329830f),
-                new Vertex(1.8281890f, 1.1439830f),
-                new Vertex(2.5204510f, 0.1443675f),
-                new Vertex(2.5346890f, 0.1779069f),
-                new Vertex(2.6145320f, 2.3292950f),
-                new Vertex(2.9135360f, 1.0703150f),
-                new Vertex(3.2722740f, 1.9153500f),
-                new Vertex(3.3066230f, 1.9962610f),
-            };
-
-            var polygon = Polygon.Build(vertices)
-                .AddVertices(10, 14, 12, 11, 7, 0, 1, 2, 3, 4)
-                .ClosePartialPolygon()
-                .AddVertices(15, 14, 9, 5, 6, 8, 13, 16)
-                .ClosePartialPolygon()
-                .Close(14);
-
-            return polygon;
-        }
-
-        public static Polygon UnityError6()
-        {
             ////var vertices = new[]
             ////{
             ////    new Vertex(0.97032920f, 0.81851240f),
@@ -609,7 +570,7 @@
             return result.Polygon;
         }
 
-        public static Polygon UnityError7()
+        public static Polygon UnityError6()
         {
             var vertices = new[]
             {
