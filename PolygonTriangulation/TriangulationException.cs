@@ -2,10 +2,12 @@
 {
     using System;
     using System.Linq;
+    using System.Runtime.Serialization;
 
     /// <summary>
     /// polygon data for exceptions during polygon triangulation
     /// </summary>
+    [Serializable]
     public class TriangulationException : InvalidOperationException
     {
         public TriangulationException(Polygon polygon, string edgeCreateCode, Exception innerException)
@@ -17,19 +19,16 @@
         public TriangulationException(Polygon polygon, string edgeCreateCode, string message, Exception innerException)
             : base(message, innerException)
         {
-            this.Polygon = polygon;
-            if (polygon != null)
-            {
-                this.PolygonCreateCode = BuildPolygonCode(polygon);
-            }
-
+            this.PolygonCreateCode = BuildPolygonCode(polygon);
             this.EdgeCreateCode = edgeCreateCode;
         }
 
-        /// <summary>
-        /// Gets the polygon with the problem, may be null
-        /// </summary>
-        public Polygon Polygon { get; }
+        protected TriangulationException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            this.EdgeCreateCode = info.GetString(nameof(EdgeCreateCode));
+            this.PolygonCreateCode = info.GetString(nameof(PolygonCreateCode));
+        }
 
         /// <summary>
         /// Gets the code to feed the edges to a polygon builder.
@@ -41,12 +40,25 @@
         /// </summary>
         public string PolygonCreateCode { get; }
 
+        /// <inheritdoc/>
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue(nameof(EdgeCreateCode), this.EdgeCreateCode);
+            info.AddValue(nameof(PolygonCreateCode), this.PolygonCreateCode);
+        }
+
         /// <summary>
         /// Create a polygon string that can be used to create the polygon
         /// </summary>
         /// <returns>polygon as code</returns>
         internal static string BuildPolygonCode(Polygon polygon)
         {
+            if (polygon == null)
+            {
+                return string.Empty;
+            }
+
             var sb = new System.Text.StringBuilder();
             var culture = System.Globalization.CultureInfo.InvariantCulture;
 

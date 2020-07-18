@@ -163,8 +163,7 @@
             var outerException = new TriangulationException(sourcePolygon, "edge creation code", innerException);
 
             Assert.AreEqual(outerException.InnerException, innerException);
-            Assert.AreEqual(outerException.Message, "Inner Exception");
-            Assert.AreEqual(outerException.Polygon, sourcePolygon);
+            Assert.AreEqual("Inner Exception", outerException.Message);
             Assert.IsNotNull(outerException.PolygonCreateCode);
             Assert.AreEqual("edge creation code", outerException.EdgeCreateCode);
         }
