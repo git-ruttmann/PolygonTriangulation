@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>S1172,S3881</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>
