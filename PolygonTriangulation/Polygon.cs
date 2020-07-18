@@ -348,6 +348,7 @@
 
                     if (first)
                     {
+                        this.polygonStartIndices[this.chain[prev].SubPolygonId] = prev;
                         first = false;
                     }
                     else if (!samePolygon)

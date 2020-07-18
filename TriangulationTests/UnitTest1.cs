@@ -205,7 +205,7 @@
                 };
 
                 var polygon = Polygon.Build(vertices)
-                    .AddVertices(0, 2, 4, 5, 6, 4, 7, 8)
+                    .AddVertices(2, 4, 5, 6, 4, 7, 8, 0)
                     .ClosePartialPolygon()
                     .Close(4);";
 

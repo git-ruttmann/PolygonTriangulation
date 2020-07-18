@@ -3,6 +3,7 @@
     using System.Linq;
 
     using Vertex = System.Numerics.Vector2;
+    using Vector3 = System.Numerics.Vector3;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
@@ -469,6 +470,36 @@
             var triangluator = new PolygonTriangulator(polygon);
             var splits = string.Join(" ", triangluator.GetSplits().OrderBy(x => x.Item1).ThenBy(x => x.Item2).Select(x => $"{x.Item1}-{x.Item2}"));
             Assert.AreEqual("0-1 1-2", splits);
+        }
+
+        /// <summary>
+        /// A fusion from eddges
+        /// </summary>
+        [TestMethod]
+        public void SingleFusionFromEdges()
+        {
+            var vertices = new[]
+            {
+                new Vector3(0, 0, 0),
+                new Vector3(0, 2, 0),
+                new Vector3(1, 1, 0),
+                new Vector3(2, 0, 0),
+                new Vector3(2, 2, 0),
+            };
+
+            var builder = PlanePolygonBuilder.CreatePolygonBuilder();
+            builder.AddEdge(vertices[1], vertices[2]);
+            builder.AddEdge(vertices[2], vertices[4]);
+            builder.AddEdge(vertices[3], vertices[2]);
+            builder.AddEdge(vertices[2], vertices[0]);
+            builder.AddEdge(vertices[0], vertices[1]);
+            builder.AddEdge(vertices[4], vertices[3]);
+
+            var result = builder.BuildPolygon();
+            var polygon = result.Polygon;
+
+            Assert.IsTrue(SubPolygonExists(polygon, 2, 4, 3), "Polygon must be splitted and have the correct direction");
+            Assert.IsTrue(SubPolygonExists(polygon, 2, 0, 1), "Polygon must be splitted and have the correct direction");
         }
 
         /// <summary>
