@@ -1,6 +1,5 @@
 ﻿namespace PolygonDisplay
 {
-    using PolygonTriangulation;
     using System;
     using System.Collections.Generic;
     using System.Drawing;
@@ -8,6 +7,7 @@
     using System.Linq;
     using System.Windows.Forms;
 
+    using PolygonTriangulation;
     using Vertex = System.Numerics.Vector2;
 
     /// <summary>

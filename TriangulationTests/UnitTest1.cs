@@ -1,16 +1,12 @@
 ﻿namespace TriangulationTests
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
-    
+
     using Vertex = System.Numerics.Vector2;
-    using Plane = System.Numerics.Plane;
-    using Vector3 = System.Numerics.Vector3;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
-    using System.Security.Cryptography.X509Certificates;
 
     [TestClass]
     public class UnitTest1

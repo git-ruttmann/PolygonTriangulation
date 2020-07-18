@@ -10,6 +10,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonDisplay", "PolygonDisplay\PolygonDisplay.csproj", "{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2EFAEA6D-3965-464E-A0AD-188667A80217}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{B69883E5-A4DC-4811-89E6-B0A24BFA8865}"
 	ProjectSection(SolutionItems) = preProject

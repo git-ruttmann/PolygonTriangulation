@@ -1,12 +1,11 @@
 ﻿namespace PolygonDisplay
 {
-    using PolygonTriangulation;
     using System;
+    using System.Linq;
+
     using Vertex = System.Numerics.Vector2;
     using Vector3 = System.Numerics.Vector3;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Collections.Specialized;
+    using PolygonTriangulation;
 
     /// <summary>
     /// Create sample polygons

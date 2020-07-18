@@ -1,6 +1,5 @@
 ﻿namespace TriangulationTests
 {
-    using System;
     using System.Linq;
 
     using Vertex = System.Numerics.Vector2;

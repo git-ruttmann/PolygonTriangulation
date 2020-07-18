@@ -1,12 +1,10 @@
-﻿
-namespace PolygonDisplay
+﻿namespace PolygonDisplay
 {
-    using PolygonTriangulation;
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Windows.Forms;
-    using Vertex = System.Numerics.Vector2;
+
+    using PolygonTriangulation;
 
     public interface IPolygonForm
     {

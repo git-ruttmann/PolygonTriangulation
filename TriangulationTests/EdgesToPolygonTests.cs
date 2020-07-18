@@ -3,6 +3,7 @@ namespace TriangulationTests
 {
     using System;
     using System.Linq;
+    using System.Collections.Generic;
 
     using Vertex = System.Numerics.Vector2;
     using Plane = System.Numerics.Plane;
@@ -10,7 +11,6 @@ namespace TriangulationTests
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
-    using System.Collections.Generic;
 
     /// <summary>
     /// Tests using 3D edges as input
