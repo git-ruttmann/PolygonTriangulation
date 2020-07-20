@@ -335,14 +335,34 @@
             private readonly List<PolygonLine> unclosedPolygones;
 
             /// <summary>
+            /// The fusion vertices
+            /// </summary>
+            private readonly ICollection<int> fusionVertices;
+
+            /// <summary>
+            /// Segments with fusion point that need delay
+            /// </summary>
+            private readonly List<(int, int)> fusionDelayedSegments;
+
+            /// <summary>
             /// Constructor
             /// </summary>
+            public PolygonLineDetector()
+            {
+            }
+
+            /// <summary>
+            /// Constructor with fusion vertices
+            /// </summary>
             /// <param name="fusionVertices">Vertices that are used by more than two edges</param>
-            public PolygonLineDetector(IReadOnlyList<int> fusionVertices)
+            public PolygonLineDetector(ICollection<int> fusionVertices)
+                : this()
             {
                 this.openPolygones = new Dictionary<int, PolygonLine>();
                 this.closedPolygones = new List<PolygonLine>();
                 this.unclosedPolygones = new List<PolygonLine>();
+                this.fusionVertices = fusionVertices;
+                this.fusionDelayedSegments = fusionVertices.Any() ? new List<(int, int)>() : null;
             }
 
             /// <summary>
@@ -376,6 +396,14 @@
                     }
 
                     this.AddEdge(start, end);
+                }
+
+                if (this.fusionDelayedSegments?.Count > 0)
+                {
+                    foreach (var (start, end) in fusionDelayedSegments)
+                    {
+                        this.AddEdge(start, end);
+                    }
                 }
 
                 this.unclosedPolygones.AddRange(this.openPolygones
@@ -494,13 +522,29 @@
                 }
                 else if (startFits)
                 {
-                    firstSegment.AddMatchingStart(start, end);
-                    this.openPolygones[end] = firstSegment;
+                    if ((start == firstSegment.EndKey) || !this.fusionVertices.Contains(start))
+                    {
+                        firstSegment.AddMatchingStart(start, end);
+                        this.openPolygones[end] = firstSegment;
+                    }
+                    else
+                    {
+                        this.fusionDelayedSegments.Add((start, end));
+                        this.openPolygones[start] = firstSegment;
+                    }
                 }
                 else
                 {
-                    lastSegment.AddMatchingEnd(start, end);
-                    this.openPolygones[start] = lastSegment;
+                    if ((end == lastSegment.StartKey) || !this.fusionVertices.Contains(end))
+                    {
+                        lastSegment.AddMatchingEnd(start, end);
+                        this.openPolygones[start] = lastSegment;
+                    }
+                    else
+                    {
+                        this.fusionDelayedSegments.Add((start, end));
+                        this.openPolygones[end] = lastSegment;
+                    }
                 }
             }
         }
@@ -800,6 +844,11 @@
         private class EdgesToPolygonBuilder : IEdgesToPolygonBuilder
         {
             /// <summary>
+            /// An empty hash set
+            /// </summary>
+            private static readonly ICollection<int> emptyHashSet = new HashSet<int>();
+
+            /// <summary>
             /// current edges in pairs
             /// </summary>
             private readonly List<int> edges;
@@ -895,7 +944,7 @@
                 var sorted2D = this.vertices2D.ToArray();
                 var sortedIndizes = Enumerable.Range(0, sorted2D.Length).ToArray();
                 var comparer = new ClusterVertexComparer();
-                List<int> fusionedVertices = null;
+                ICollection<int> fusionedVertices = null;
                 Array.Sort(sorted2D, sortedIndizes, comparer);
 
                 var translation = new int[sorted2D.Length];
@@ -912,7 +961,7 @@
                     {
                         if (++sameVertexCount == 2)
                         {
-                            fusionedVertices = fusionedVertices ?? new List<int>();
+                            fusionedVertices = fusionedVertices ?? new HashSet<int>();
                             fusionedVertices.Add(writeIndex);
                         }
                     }
@@ -929,7 +978,7 @@
                     compressed3D[translation[i]] = this.vertices3D[i];
                 }
 
-                var lineDetector = new PolygonLineDetector(fusionedVertices);
+                var lineDetector = new PolygonLineDetector(fusionedVertices ?? emptyHashSet);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
 
                 if (lineDetector.UnclosedPolygons.Any())

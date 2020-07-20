@@ -223,7 +223,7 @@
         /// <param name="fusionVertices">vertices that are used in more than one subpolygon</param>
         /// <returns>a polygon</returns>
         [SuppressMessage("Major Code Smell", "S1117:Local variables should not shadow class fields", Justification = "Reusing a fieldname in a static method seems fine")]
-        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines, IReadOnlyList<int> fusionVertices)
+        public static Polygon FromPolygonLines(Vertex[] vertexCoordinates, IReadOnlyCollection<int>[] lines, ICollection<int> fusionVertices)
         {
             var vertexChain = new VertexChain[lines.Sum(x => x.Count)];
             var id = 0;
@@ -256,7 +256,6 @@
             polygon.FusionVerticesIntoChain(fusionVertices);
             return polygon;
         }
-
 
         /// <summary>
         /// Create a polygon with vertex id's and next chain. Can contain holes.

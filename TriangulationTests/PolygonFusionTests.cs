@@ -473,6 +473,36 @@
         }
 
         /// <summary>
+        /// Fusion at a point, the 2 incoming edges come first, then the 2 outgoing edges. The Polygon Line Detector must take care.
+        /// </summary>
+        [TestMethod]
+        public void SingleFusionWithTwoIncomingEdges()
+        {
+            var vertices = new[]
+            {
+                new Vector3(0, 0, 0),
+                new Vector3(0, 2, 0),
+                new Vector3(1, 1, 0),
+                new Vector3(2, 0, 0),
+                new Vector3(2, 2, 0),
+            };
+
+            var builder = PlanePolygonBuilder.CreatePolygonBuilder();
+            builder.AddEdge(vertices[1], vertices[2]);
+            builder.AddEdge(vertices[3], vertices[2]);
+            builder.AddEdge(vertices[2], vertices[4]);
+            builder.AddEdge(vertices[2], vertices[0]);
+            builder.AddEdge(vertices[0], vertices[1]);
+            builder.AddEdge(vertices[4], vertices[3]);
+
+            var result = builder.BuildPolygon();
+            var polygon = result.Polygon;
+
+            Assert.IsTrue(SubPolygonExists(polygon, 2, 4, 3), "Polygon must be splitted and have the correct direction");
+            Assert.IsTrue(SubPolygonExists(polygon, 2, 0, 1), "Polygon must be splitted and have the correct direction");
+        }
+
+        /// <summary>
         /// A fusion from eddges
         /// </summary>
         [TestMethod]
