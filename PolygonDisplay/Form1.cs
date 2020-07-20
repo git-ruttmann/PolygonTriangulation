@@ -97,6 +97,11 @@
             }
             catch (Exception ex)
             {
+                if (!ExceptionHelper.CanSwallow(ex))
+                {
+                    throw;
+                }
+
                 this.vertexText.Text = ex.ToString();
             }
 
@@ -125,6 +130,11 @@
             }
             catch (Exception ex)
             {
+                if (!ExceptionHelper.CanSwallow(ex))
+                {
+                    throw;
+                }
+
                 this.vertexText.Text = ex.ToString();
             }
 

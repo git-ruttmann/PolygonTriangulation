@@ -43,8 +43,13 @@
             {
                 this.Splits = new PolygonTriangulator(this.Polygon).GetSplits().ToArray();
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                if (!ExceptionHelper.CanSwallow(e))
+                {
+                    throw;
+                }
+
                 this.Splits = new Tuple<int, int>[0];
             }
         }
@@ -64,6 +69,11 @@
                 }
                 catch (Exception e)
                 {
+                    if (!ExceptionHelper.CanSwallow(e))
+                    {
+                        throw;
+                    }
+
                     lines.Add(string.Empty);
                     lines.Add(e.ToString());
                     break;
