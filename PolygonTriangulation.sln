@@ -3,15 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30002.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonTriangulation", "PolygonTriangulation\PolygonTriangulation.csproj", "{250832D7-A812-4B2A-9EF7-F1791EC657FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonTriangulation", "PolygonTriangulation\PolygonTriangulation.csproj", "{250832D7-A812-4B2A-9EF7-F1791EC657FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriangulationTests", "TriangulationTests\TriangulationTests.csproj", "{981FE2F3-4D3E-4F7F-8A64-32FD485330BB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TriangulationTests", "TriangulationTests\TriangulationTests.csproj", "{981FE2F3-4D3E-4F7F-8A64-32FD485330BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonDisplay", "PolygonDisplay\PolygonDisplay.csproj", "{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonDisplay", "PolygonDisplay\PolygonDisplay.csproj", "{8898DB4E-4452-4A83-B4F5-B518BBAB5EB6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2EFAEA6D-3965-464E-A0AD-188667A80217}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{B69883E5-A4DC-4811-89E6-B0A24BFA8865}"

@@ -12,13 +12,6 @@
 #endif
 
     /// <summary>
-    /// Marker interface for trapezoid edge tests
-    /// </summary>
-    internal interface ITestingTrapezoidEdge
-    {
-    }
-
-    /// <summary>
     /// The receiver of split commands
     /// </summary>
     public interface IPolygonSplitSink
@@ -32,11 +25,19 @@
     }
 
     /// <summary>
+    /// Marker interface for trapezoid edge tests
+    /// </summary>
+    internal interface ITestingTrapezoidEdge
+    {
+    }
+
+    /// <summary>
     /// Splits a polygon into trapezoids and reports necessary splits.
     /// </summary>
     public class Trapezoidation
     {
-        const float epsilon = 1.0E-5f;
+        private const float Epsilon = 1.0E-5f;
+
         /// <summary>
         /// A comparer for trapezoid edges vs. vertex
         /// </summary>
@@ -48,7 +49,7 @@
         private readonly RedBlackTree<TrapezoidEdge> activeEdges;
 
         /// <summary>
-        /// map the right of the vertex to the active polygon edge. Collisions for closing vertices ar handled by <see cref="EdgeForVertex(int)"/>
+        /// map the right of the vertex to the active polygon edge. Collisions for closing vertices ar handled by <see cref="EdgeForVertex"/>
         /// </summary>
         private readonly Dictionary<int, TrapezoidEdge> vertexToEdge;
 
@@ -58,9 +59,10 @@
         private readonly IPolygonSplitSink splitSink;
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="Trapezoidation"/> class.
         /// </summary>
-        /// <param name="vertices">the coordinates of the vertices</param>
+        /// <param name="vertices">The vertices.</param>
+        /// <param name="splitSink">The sink for detected splits.</param>
         public Trapezoidation(IReadOnlyList<Vertex> vertices, IPolygonSplitSink splitSink)
         {
             this.vertexToEdge = new Dictionary<int, TrapezoidEdge>();
@@ -77,16 +79,14 @@
         /// <summary>
         /// Handle an opening cusp. i.e. starts two new edges.
         /// </summary>
-        /// <param name="id">the id of the cusp vertex</param>
-        /// <param name="prev">the id of previous polygon vertex</param>
-        /// <param name="next">the id of the next polygon vertex</param>
+        /// <param name="info">The vertex information.</param>
         public void HandleOpeningCusp(IPolygonVertexInfo info)
         {
             var (lowerEdge, upperEdge) = this.StartNewTrapezoidEdges(
                 info.Id,
-                info.Prev,
+                info.PrevVertexId,
                 info.PrevUnique,
-                info.Next,
+                info.NextVertexId,
                 info.NextUnique);
             if (lowerEdge.IsRightToLeft)
             {
@@ -94,7 +94,7 @@
             }
             else
             {
-                var belowEdge = lowerEdge.TreeNode.Prev.Data;
+                var belowEdge = lowerEdge.TreeNode.PrevNode.Data;
                 var trapezoid = belowEdge.Trapezoid;
                 trapezoid.LeaveInsideBySplit(info.Id, lowerEdge, upperEdge, this.splitSink);
             }
@@ -103,23 +103,21 @@
         /// <summary>
         /// Handle a closing cusp. i.e. joins two edges
         /// </summary>
-        /// <param name="id">the id of the cusp vertex</param>
-        /// <param name="prev">the id of previous polygon vertex</param>
-        /// <param name="next">the id of the next polygon vertex</param>
+        /// <param name="info">The vertex information.</param>
         public void HandleClosingCusp(IPolygonVertexInfo info)
         {
             var lowerEdge = this.EdgeForVertex(info.Id, info.Unique);
             TrapezoidEdge upperEdge;
 
-            var prevEdge = lowerEdge.TreeNode.Prev?.Data;
-            if (prevEdge?.Right == lowerEdge.Right && (prevEdge.Left == info.Prev || prevEdge.Left == info.Next))
+            var prevEdge = lowerEdge.TreeNode.PrevNode?.Data;
+            if (prevEdge?.Right == lowerEdge.Right && (prevEdge.Left == info.PrevVertexId || prevEdge.Left == info.NextVertexId))
             {
                 upperEdge = lowerEdge;
                 lowerEdge = prevEdge;
             }
             else
             {
-                upperEdge = lowerEdge.TreeNode.Next?.Data;
+                upperEdge = lowerEdge.TreeNode.NextNode?.Data;
             }
 
             if (lowerEdge.Right != upperEdge?.Right)
@@ -134,7 +132,7 @@
             }
             else
             {
-                var upperEdge2 = lowerEdge.TreeNode.Next.Data;
+                var upperEdge2 = lowerEdge.TreeNode.NextNode.Data;
                 var upperTrapezoid = upperEdge2.Trapezoid;
                 Trapezoid.EnterInsideByJoin(lowerTrapezoid, upperTrapezoid, info.Id, this.splitSink);
             }
@@ -143,23 +141,21 @@
         }
 
         /// <summary>
-        /// A transition from one vertex to the next, where prev>id has the same direction as id>next
+        /// A transition from one vertex to the next, where prev&gt;id has the same direction as id&gt;next
         /// </summary>
-        /// <param name="id">the id of the current vertex</param>
-        /// <param name="prev">the id of previous polygon vertex</param>
-        /// <param name="next">the id of the next polygon vertex</param>
+        /// <param name="info">The vertex information.</param>
         public void HandleTransition(IPolygonVertexInfo info)
         {
             var oldEdge = this.EdgeForVertex(info.Id, info.Unique);
             var trapezoid = oldEdge.Trapezoid;
             if (oldEdge.IsRightToLeft)
             {
-                var newEdge = this.Transition(oldEdge, info.Prev, info.PrevUnique);
+                var newEdge = this.Transition(oldEdge, info.PrevVertexId, info.PrevUnique);
                 trapezoid.TransitionOnLowerEdge(info.Id, newEdge, this.splitSink);
             }
             else
             {
-                var newEdge = this.Transition(oldEdge, info.Next, info.NextUnique);
+                var newEdge = this.Transition(oldEdge, info.NextVertexId, info.NextUnique);
                 trapezoid.TransitionOnUpperEdge(info.Id, newEdge, this.splitSink);
             }
         }
@@ -268,7 +264,7 @@
         /// <param name="lowerEdge">the lower edge</param>
         private void JoinTrapezoidEdges(TrapezoidEdge lowerEdge)
         {
-            var nextNode = lowerEdge.TreeNode.Next;
+            var nextNode = lowerEdge.TreeNode.NextNode;
             this.activeEdges.RemoveNode(nextNode);
             this.activeEdges.RemoveNode(lowerEdge.TreeNode);
 
@@ -308,7 +304,7 @@
             private readonly IReadOnlyList<Vertex> vertices;
 
             /// <summary>
-            /// Initializes a new <see cref="EdgeComparer"/>
+            /// Initializes a new instance of the <see cref="EdgeComparer"/> class.
             /// </summary>
             /// <param name="vertices">the real vertices referenced by vertex ids</param>
             public EdgeComparer(IReadOnlyList<Vertex> vertices)
@@ -376,7 +372,7 @@
                     }
                     else
                     {
-                        return !this.IsVertexAboveSlow(ref lowerRight, ref left, ref upperRight);
+                        return !IsVertexAboveSlow(ref lowerRight, ref left, ref upperRight);
                     }
                 }
                 else
@@ -391,19 +387,52 @@
                     }
                     else
                     {
-                        return this.IsVertexAboveSlow(ref upperRight, ref left, ref lowerRight);
+                        return IsVertexAboveSlow(ref upperRight, ref left, ref lowerRight);
                     }
                 }
             }
 
             /// <summary>
+            /// Test if the vertex is above this edge by calculating the edge.Y at vertex.X
+            /// </summary>
+            /// <param name="vertex">The vertex.</param>
+            /// <param name="left">The left vertex of the edge.</param>
+            /// <param name="right">The right vertex of the edge.</param>
+            /// <returns>true if the verex is above</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static bool IsVertexAboveSlow(ref Vertex vertex, ref Vertex left, ref Vertex right)
+            {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                var xSpan = right.x - left.x;
+
+                if (xSpan < epsilon * epsilon)
+                {
+                    return vertex.y > left.y;
+                }
+
+                var yOfEdgeAtVertex = (vertex.x - left.x) / xSpan * (right.y - left.y) + left.y;
+                return yOfEdgeAtVertex < vertex.y;
+#else
+                var xSpan = right.X - left.X;
+
+                if (xSpan < Epsilon * Epsilon)
+                {
+                    return vertex.Y > left.Y;
+                }
+
+                var yOfEdgeAtVertex = ((vertex.X - left.X) / xSpan * (right.Y - left.Y)) + left.Y;
+                return yOfEdgeAtVertex < vertex.Y;
+#endif
+            }
+
+            /// <summary>
             /// Test if the vertex is above the line that is formed by the edge
             /// </summary>
-            /// <param name="vertexId"></param>
-            /// <param name="edge"></param>
+            /// <param name="vertexId">The vertex identifier.</param>
+            /// <param name="edge">The edge.</param>
             /// <returns>true if the vertex is above the edge</returns>
             /// <remarks>
-            /// This is called only during insert operations, therefore value.left > storage.left.
+            /// This is called only during insert operations, therefore value.left is larger than storage.left.
             /// Try to find the result without calculation first, then calculate the storage.Y at value.Left.X
             /// </remarks>
             private bool IsVertexAbove(int vertexId, TrapezoidEdge edge)
@@ -452,39 +481,7 @@
                 }
 #endif
 
-                return this.IsVertexAboveSlow(ref vertex, ref left, ref right);
-            }
-
-            /// <summary>
-            /// Test if the vertex is above this edge by calculating the edge.Y at vertex.X
-            /// </summary>
-            /// <param name="vertexId">the id of the vertex</param>
-            /// <param name="vertices">the vertex list</param>
-            /// <returns>true if the verex is above</returns>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private bool IsVertexAboveSlow(ref Vertex vertex, ref Vertex left, ref Vertex right)
-            {
-#if UNITY_EDITOR || UNITY_STANDALONE
-                var xSpan = right.x - left.x;
-
-                if (xSpan < epsilon * epsilon)
-                {
-                    return vertex.y > left.y;
-                }
-
-                var yOfEdgeAtVertex = (vertex.x - left.x) / xSpan * (right.y - left.y) + left.y;
-                return yOfEdgeAtVertex < vertex.y;
-#else
-                var xSpan = right.X - left.X;
-
-                if (xSpan < epsilon * epsilon)
-                {
-                    return vertex.Y > left.Y;
-                }
-
-                var yOfEdgeAtVertex = (vertex.X - left.X) / xSpan * (right.Y - left.Y) + left.Y;
-                return yOfEdgeAtVertex < vertex.Y;
-#endif
+                return IsVertexAboveSlow(ref vertex, ref left, ref right);
             }
         }
 
@@ -501,22 +498,28 @@
                 this.RightUnique = rightUnique;
             }
 
-            /// <inheritdoc/>
+            /// <summary>
+            /// Gets a value indicating whether this instance is right to left.
+            /// </summary>
             public bool IsRightToLeft { get; }
 
-            /// <inheritdoc/>
+            /// <summary>
+            /// Gets the left vertex id.
+            /// </summary>
             public int Left { get; }
 
-            /// <inheritdoc/>
+            /// <summary>
+            /// Gets the right vertex id.
+            /// </summary>
             public int Right { get; }
 
             /// <summary>
-            /// The unique id of the right vertex
+            /// Gets the unique id of the right vertex
             /// </summary>
             public int RightUnique { get; }
 
             /// <summary>
-            /// The storage position in the tree
+            /// Gets or sets the node in the red black tree
             /// </summary>
             public IOrderedNode<TrapezoidEdge> TreeNode { get; set; }
 
@@ -542,6 +545,42 @@
         [DebuggerDisplay("{Debug}")]
         private class Trapezoid
         {
+            /// <summary>
+            /// Gets the upper edge
+            /// </summary>
+            private readonly TrapezoidEdge upperEdge;
+
+            /// <summary>
+            /// Gets the lower edge
+            /// </summary>
+            private readonly TrapezoidEdge lowerEdge;
+
+            /// <summary>
+            /// The neighbor state of the left base and <see cref="leftVertex"/>.
+            /// </summary>
+            private readonly Base leftBase;
+
+            /// <summary>
+            /// Gets the index of the left vertex, defining the left base.
+            /// </summary>
+            private readonly int leftVertex;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="Trapezoid"/> class.
+            /// </summary>
+            /// <param name="leftVertex">the id of the vertex for the left "virtual trapezoid" edge</param>
+            /// <param name="leftBase">The state of the left base.</param>
+            /// <param name="lowerEdge">the lower edge</param>
+            /// <param name="upperEdge">the upper edge</param>
+            private Trapezoid(int leftVertex, Base leftBase, TrapezoidEdge lowerEdge, TrapezoidEdge upperEdge)
+            {
+                this.leftBase = leftBase;
+                this.leftVertex = leftVertex;
+
+                this.lowerEdge = lowerEdge;
+                this.upperEdge = upperEdge;
+            }
+
             /// <summary>
             /// The neighbor state of the left/right base line
             /// </summary>
@@ -570,43 +609,6 @@
             }
 
             /// <summary>
-            /// Gets the upper edge
-            /// </summary>
-            private readonly TrapezoidEdge upperEdge;
-
-            /// <summary>
-            /// Gets the lower edge
-            /// </summary>
-            private readonly TrapezoidEdge lowerEdge;
-
-            /// <summary>
-            /// The neighbor state of the left base and <see cref="leftVertex"/>.
-            /// </summary>
-            private readonly Base leftBase;
-
-            /// <summary>
-            /// Gets the index of the left vertex, defining the left base.
-            /// </summary>
-            private readonly int leftVertex;
-
-            /// <summary>
-            /// Initialize a new trapzoid
-            /// </summary>
-            /// <param name="leftVertex">the id of the vertex for the left "virtual trapezoid" edge</param>
-            /// <param name="leftNeighborCount">number of left trapezoids</param>
-            /// <param name="leftCornerValidity">the validity of the leftVertex. Can be Upper, Lower or None for Cusps</param>
-            /// <param name="lowerEdge">the lower edge</param>
-            /// <param name="upperEdge">the upper edge</param>
-            private Trapezoid(int leftVertex, Base leftBase, TrapezoidEdge lowerEdge, TrapezoidEdge upperEdge)
-            {
-                this.leftBase = leftBase;
-                this.leftVertex = leftVertex;
-
-                this.lowerEdge = lowerEdge;
-                this.upperEdge = upperEdge;
-            }
-
-            /// <summary>
             /// Gets a debug string
             /// </summary>
             public string Debug => $"Left:{this.leftVertex} {this.leftBase} Low: {this.lowerEdge} High: {this.upperEdge}";
@@ -625,9 +627,9 @@
             /// <summary>
             /// A right pointing cusp that enters the polygon space. Join the upper left and the lower left trapezoids in one.
             /// </summary>
-            /// <param name="vertexId">the vertex id that joins the two edges.</param>
             /// <param name="lower">the left lower trapezoid</param>
             /// <param name="upper">the left upper trapezoid</param>
+            /// <param name="vertexId">the vertex id that joins the two edges.</param>
             /// <param name="splitSink">the polygon splitter</param>
             public static void EnterInsideByJoin(Trapezoid lower, Trapezoid upper, int vertexId, IPolygonSplitSink splitSink)
             {
@@ -699,6 +701,16 @@
             }
 
             /// <summary>
+            /// Update the edges to point to the new trapezoid
+            /// </summary>
+            /// <param name="trapezoid">the trapezoid</param>
+            private static void UpdateEdges(Trapezoid trapezoid)
+            {
+                trapezoid.lowerEdge.Trapezoid = trapezoid;
+                trapezoid.upperEdge.Trapezoid = trapezoid;
+            }
+
+            /// <summary>
             /// Detects whether one side has two neighbors (i.e. a touching cusp).
             /// </summary>
             /// <param name="combinedBase">the combined base line state</param>
@@ -712,8 +724,8 @@
             /// Combine the right side info with the left side and evaluate if it matches a split situation.
             /// </summary>
             /// <param name="rightVertex">the vertex that defines the right side</param>
-            /// <param name="neighborCount">the number of right neighbors</param>
-            /// <param name="cornerValidity">the vertex position of the right vertex</param>
+            /// <param name="rightBase">the number of right neighbors</param>
+            /// <param name="splitter">the sink for split information</param>
             private void EvaluateRight(int rightVertex, Base rightBase, IPolygonSplitSink splitter)
             {
                 var combinedBase = this.leftBase | rightBase;
@@ -721,16 +733,6 @@
                 {
                     splitter.SplitPolygon(this.leftVertex, rightVertex);
                 }
-            }
-
-            /// <summary>
-            /// Update the edges to point to the new trapezoid
-            /// </summary>
-            /// <param name="trapezoid">the trapezoid</param>
-            private static void UpdateEdges(Trapezoid trapezoid)
-            {
-                trapezoid.lowerEdge.Trapezoid = trapezoid;
-                trapezoid.upperEdge.Trapezoid = trapezoid;
             }
         }
     }

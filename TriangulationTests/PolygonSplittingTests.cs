@@ -3,11 +3,11 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    
-    using Vertex = System.Numerics.Vector2;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
+
+    using Vertex = System.Numerics.Vector2;
 
     /// <summary>
     /// Test the splitting of polygons via trapezoidation.
@@ -207,7 +207,7 @@
                 new Vertex(0.84721410f, 1.31866100f),
                 new Vertex(0.86589320f, 0.96906510f),
                 new Vertex(1.59814200f, 1.49911500f),
-                new Vertex(1.66974300f, 1.51632200f)
+                new Vertex(1.66974300f, 1.51632200f),
             };
 
             var polygon = Polygon.Build(sortedVertices)
@@ -239,7 +239,7 @@
                 new Vertex(0.34376790f, 1.29828100f),
                 new Vertex(0.64483490f, 1.69104800f),
                 new Vertex(1.09183400f, 0.78795030f),
-                new Vertex(1.30210200f, 0.83847910f)
+                new Vertex(1.30210200f, 0.83847910f),
             };
 
             var polygon = Polygon.Build(sortedVertices)
@@ -252,7 +252,7 @@
             Assert.AreEqual((sortedVertices.Length - 2) * 3, triangles.Length);
             Assert.AreEqual("1-2 5-6 7-8", splits);
         }
-        
+
         /// <summary>
         /// Polygonize a simple triangle.
         /// </summary>

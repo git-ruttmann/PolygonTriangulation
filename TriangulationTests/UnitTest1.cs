@@ -3,11 +3,14 @@
     using System;
     using System.Linq;
 
-    using Vertex = System.Numerics.Vector2;
-
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
 
+    using Vertex = System.Numerics.Vector2;
+
+    /// <summary>
+    /// More unittests that do not match a specific group.
+    /// </summary>
     [TestClass]
     public class UnitTest1
     {

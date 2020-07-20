@@ -2,11 +2,11 @@
 {
     using System.Linq;
 
-    using Vertex = System.Numerics.Vector2;
-    using Vector3 = System.Numerics.Vector3;
-
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
+
+    using Vector3 = System.Numerics.Vector3;
+    using Vertex = System.Numerics.Vector2;
 
     /// <summary>
     /// Test point fusion of polygons (an inner polygon touches the outer polygon in one point)
@@ -14,6 +14,45 @@
     [TestClass]
     public class PolygonFusionTests
     {
+        /// <summary>
+        /// Test if the sub polygon exits
+        /// </summary>
+        /// <param name="polygon">the polygon</param>
+        /// <param name="vertices">the vertex sequence with the sub vertices</param>
+        /// <returns>true if any subpolygon matches the expected vertices in the expected sequence</returns>
+        public static bool SubPolygonExists(Polygon polygon, params int[] vertices)
+        {
+            foreach (var subPolygonId in polygon.SubPolygonIds)
+            {
+                var subPolygon = polygon.SubPolygonVertices(subPolygonId).ToList();
+                if (subPolygon.Count != vertices.Length)
+                {
+                    continue;
+                }
+
+                for (int offset = 0; offset >= 0; offset = subPolygon.IndexOf(vertices[0], offset + 1))
+                {
+                    bool good = true;
+                    for (int i = 0; i < vertices.Length; i++)
+                    {
+                        var peer = (i + offset) % vertices.Length;
+                        if (vertices[i] != subPolygon[peer])
+                        {
+                            good = false;
+                            break;
+                        }
+                    }
+
+                    if (good)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Conected in on the left of the inner polygon. The fusioned musst be the same, regardles of the start point of the inner polygon
         /// </summary>
@@ -86,7 +125,7 @@
             Assert.IsTrue(SubPolygonExists(polygon, 3, 0, 1), "Multiple non-overlapping but fusioned polygons must stay separate");
             Assert.IsTrue(SubPolygonExists(polygon, 3, 4, 6), "Multiple non-overlapping but fusioned polygons must stay separate");
             Assert.IsTrue(SubPolygonExists(polygon, 3, 2, 5), "Multiple non-overlapping but fusioned polygons must stay separate");
-            
+
             polygon = Polygon.Build(sortedVertices)
                 .AddVertices(3, 0, 1)
                 .ClosePartialPolygon()
@@ -530,45 +569,6 @@
 
             Assert.IsTrue(SubPolygonExists(polygon, 2, 4, 3), "Polygon must be splitted and have the correct direction");
             Assert.IsTrue(SubPolygonExists(polygon, 2, 0, 1), "Polygon must be splitted and have the correct direction");
-        }
-
-        /// <summary>
-        /// Test if the sub polygon exits
-        /// </summary>
-        /// <param name="polygon">the polygon</param>
-        /// <param name="vertices">the vertex sequence with the sub vertices</param>
-        /// <returns>true if any subpolygon matches the expected vertices in the expected sequence</returns>
-        public static bool SubPolygonExists(Polygon polygon, params int[] vertices)
-        {
-            foreach (var subPolygonId in polygon.SubPolygonIds)
-            {
-                var subPolygon = polygon.SubPolygonVertices(subPolygonId).ToList();
-                if (subPolygon.Count != vertices.Length)
-                {
-                    continue;
-                }
-
-                for (int offset = 0; offset >= 0; offset = subPolygon.IndexOf(vertices[0], offset + 1))
-                {
-                    bool good = true;
-                    for (int i = 0; i < vertices.Length; i++)
-                    {
-                        var peer = (i + offset) % vertices.Length;
-                        if (vertices[i] != subPolygon[peer])
-                        {
-                            good = false;
-                            break;
-                        }
-                    }
-
-                    if (good)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
         }
     }
 }

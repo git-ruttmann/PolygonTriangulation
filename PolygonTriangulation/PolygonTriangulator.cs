@@ -42,9 +42,9 @@
         private readonly Polygon polygon;
 
         /// <summary>
-        /// Creates a new instances
+        /// Initializes a new instance of the <see cref="PolygonTriangulator"/> class.
         /// </summary>
-        /// <param name="polygon">the polygon to triangulize</param>
+        /// <param name="polygon">the polygon to triangulate</param>
         public PolygonTriangulator(Polygon polygon)
         {
             this.polygon = polygon;
@@ -97,6 +97,7 @@
         /// <summary>
         /// Iterates over the first n vertices and reports the active edges and the sort order after that step.
         /// </summary>
+        /// <param name="depth">The execution depth.</param>
         /// <returns>sorted active edges</returns>
         internal IEnumerable<string> GetEdgesAfterPartialTrapezoidation(int depth)
         {
@@ -133,19 +134,6 @@
             }
 
             /// <summary>
-            /// Run n steps and return the edges after that step
-            /// </summary>
-            /// <param name="polygon">the polygon</param>
-            /// <param name="depth">the number of steps to run</param>
-            /// <returns>The edges sorted from High to Low</returns>
-            internal static IEnumerable<string> GetEdgesAfterPartialTrapezoidation(Polygon polygon, int depth)
-            {
-                var splitter = new ScanSplitByTrapezoidation(polygon);
-                splitter.BuildSplits(depth);
-                return splitter.activeEdges.Edges.Reverse().Select(x => x.ToString());
-            }
-
-            /// <summary>
             /// Traverse the polygon and build all splits
             /// </summary>
             /// <param name="stepCount">number of steps during debugging. Use -1 for all</param>
@@ -154,7 +142,7 @@
                 foreach (var group in this.polygon.OrderedVertices.GroupBy(x => x.Id))
                 {
                     var actions = group.ToArray();
-                    if (actions.Count() > 1)
+                    if (actions.Length > 1)
                     {
                         actions = actions.OrderBy(x => x.Action).ToArray();
                     }
@@ -192,6 +180,19 @@
             void IPolygonSplitSink.SplitPolygon(int leftVertex, int rightVertex)
             {
                 this.splits.Add(Tuple.Create(leftVertex, rightVertex));
+            }
+
+            /// <summary>
+            /// Run n steps and return the edges after that step
+            /// </summary>
+            /// <param name="polygon">the polygon</param>
+            /// <param name="depth">the number of steps to run</param>
+            /// <returns>The edges sorted from High to Low</returns>
+            internal static IEnumerable<string> GetEdgesAfterPartialTrapezoidation(Polygon polygon, int depth)
+            {
+                var splitter = new ScanSplitByTrapezoidation(polygon);
+                splitter.BuildSplits(depth);
+                return splitter.activeEdges.Edges.Reverse().Select(x => x.ToString());
             }
         }
 
@@ -260,7 +261,6 @@
             /// <summary>
             /// Create triangles for a monotone polygon
             /// </summary>
-            /// <param name="polygon">the monotone polygon</param>
             /// <param name="startPoint">the first point (clockwise) of the long edge.</param>
             /// <param name="result">the collector for resulting triangles</param>
             private void TriangulateMonotonePolygon(int startPoint, ITriangleCollector result)
@@ -286,7 +286,7 @@
             /// <summary>
             /// Gets the first three points from the triangle
             /// </summary>
-            /// <param name="startPoint"></param>
+            /// <param name="startPoint">the start vertex, aka the target vertex of the long edge</param>
             private void PullFirstTriangle(int startPoint)
             {
                 this.iterator = this.polygon.IndicesStartingAt(startPoint, this.subPolygonId).GetEnumerator();
@@ -348,9 +348,9 @@
                 var v1 = this.vertices[this.second];
                 var v2 = this.vertices[this.third];
 #if UNITY_EDITOR || UNITY_STANDALONE
-                var cross = (v2.x - v0.x) * (v1.y - v0.y) - ((v2.y - v0.y) * (v1.x - v0.x));
+                var cross = ((v2.x - v0.x) * (v1.y - v0.y)) - ((v2.y - v0.y) * (v1.x - v0.x));
 #else
-                var cross = (v2.X - v0.X) * (v1.Y - v0.Y) - ((v2.Y - v0.Y) * (v1.X - v0.X));
+                var cross = ((v2.X - v0.X) * (v1.Y - v0.Y)) - ((v2.Y - v0.Y) * (v1.X - v0.X));
 #endif
                 return cross < 0;
             }
@@ -358,7 +358,6 @@
             /// <summary>
             /// Find the point in the polygon that starts at the monotone side
             /// </summary>
-            /// <param name="polygon">the polygon</param>
             /// <returns>highest/lowest point in the polygon, depending if itss left hand or right hand. -1 if its a triangle.</returns>
             private int FindStartOfMonotonePolygon()
             {

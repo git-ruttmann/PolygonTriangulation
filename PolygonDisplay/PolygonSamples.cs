@@ -3,14 +3,16 @@
     using System;
     using System.Linq;
 
-    using Vertex = System.Numerics.Vector2;
-    using Vector3 = System.Numerics.Vector3;
-
     using PolygonTriangulation;
 
+    using Vector3 = System.Numerics.Vector3;
+    using Vertex = System.Numerics.Vector2;
+
+#pragma warning disable CS1591 // Fehledes XML-Kommentar für öffentlich sichtbaren Typ oder Element
     /// <summary>
     /// Create sample polygons
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "For now")]
     public static class PolygonSamples
     {
         /// <summary>
@@ -248,22 +250,33 @@
             {
                 // upper left
                 1 => builder.AddVertices(4, 1, 3),
+
                 // upper center
                 2 => builder.AddVertices(4, 3, 5),
+
                 // upper right
                 3 => builder.AddVertices(4, 5, 6),
+
                 // lower left
                 4 => builder.AddVertices(4, 3, 1),
+
                 // lower center
                 5 => builder.AddVertices(4, 5, 3),
+
                 // lower right
                 6 => builder.AddVertices(4, 6, 5),
+
                 _ => throw new ArgumentOutOfRangeException(nameof(id), "no polygon"),
             };
 
             return builder.Close(4);
         }
 
+        /// <summary>
+        /// Get constructed polygons
+        /// </summary>
+        /// <param name="id">The buffer id.</param>
+        /// <returns>A polygon</returns>
         public static Polygon Constructed(int id)
         {
             switch (id)
@@ -283,6 +296,11 @@
             }
         }
 
+        /// <summary>
+        /// Gets polygons with multiple fusion points
+        /// </summary>
+        /// <param name="id">The identifier.</param>
+        /// <returns>a polygon</returns>
         public static Polygon MultiTouch(int id)
         {
             switch (id)
@@ -304,6 +322,11 @@
             }
         }
 
+        /// <summary>
+        /// More the fusion test polygons.
+        /// </summary>
+        /// <param name="id">The identifier.</param>
+        /// <returns>a polygon</returns>
         public static Polygon MoreFusionTests(int id)
         {
             switch (id)
@@ -325,6 +348,11 @@
             }
         }
 
+        /// <summary>
+        /// Gets polygons that produced error situations
+        /// </summary>
+        /// <param name="id">The identifier.</param>
+        /// <returns>a polygon</returns>
         public static Polygon MoreErrorTests(int id)
         {
             switch (id)
@@ -380,7 +408,7 @@
         /// <summary>
         /// A polygon with exactly one split
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A polygon</returns>
         public static Polygon SimpleHole()
         {
             var vertices = new[]
@@ -408,7 +436,7 @@
         /// <summary>
         /// A polygon with exactly one split
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A polygon</returns>
         public static Polygon SingleSplit()
         {
             var vertices = new[]
@@ -747,7 +775,7 @@
                 .AddVertices(2, 3, 0)
                 .Close(2);
         }
-        
+
         public static Polygon TripleFusionLeftAndRight()
         {
             var sortedVertices = new[]
@@ -821,7 +849,7 @@
                 new Vertex(1.00626600f, 0.38492710f),
                 new Vertex(1.01292600f, 2.12137300f),
                 new Vertex(1.34609000f, 0.32682190f),
-                new Vertex(1.86973800f, 1.00996500f)
+                new Vertex(1.86973800f, 1.00996500f),
             };
 
             return Polygon.Build(vertices)
@@ -926,7 +954,7 @@
                 new Vertex(0.98930650f, 2.13947800f),
                 new Vertex(1.01064200f, 0.36671840f),
                 new Vertex(1.36328900f, 0.32534240f),
-                new Vertex(1.87411300f, 0.99175620f)
+                new Vertex(1.87411300f, 0.99175620f),
             };
 
             return Polygon.Build(vertices)
@@ -947,7 +975,7 @@
                 new Vertex(0.34376790f, 1.29828100f),
                 new Vertex(0.64483490f, 1.69104800f),
                 new Vertex(1.09183400f, 0.78795030f),
-                new Vertex(1.30210200f, 0.83847910f)
+                new Vertex(1.30210200f, 0.83847910f),
             };
 
             return Polygon.Build(vertices)
@@ -968,7 +996,7 @@
                 new Vertex(0.34376790f, 1.29828100f),
                 new Vertex(0.64483490f, 1.69104800f),
                 new Vertex(1.09183400f, 0.78795030f),
-                new Vertex(1.30210200f, 0.83847910f)
+                new Vertex(1.30210200f, 0.83847910f),
             };
 
             return Polygon.Build(vertices)
@@ -989,7 +1017,7 @@
                 new Vertex(0.34373700f, 1.29828400f),
                 new Vertex(0.64482710f, 1.69108100f),
                 new Vertex(1.09186000f, 0.78791400f),
-                new Vertex(1.30214400f, 0.83844660f)
+                new Vertex(1.30214400f, 0.83844660f),
             };
 
             return Polygon.Build(vertices)
@@ -1010,7 +1038,7 @@
                 new Vertex(0.34370640f, 1.29828600f),
                 new Vertex(0.64481930f, 1.69111300f),
                 new Vertex(1.09188600f, 0.78787790f),
-                new Vertex(1.30218600f, 0.83841430f)
+                new Vertex(1.30218600f, 0.83841430f),
             };
 
             return Polygon.Build(vertices)
@@ -1031,7 +1059,7 @@
                 new Vertex(0.34367570f, 1.29828900f),
                 new Vertex(0.64481150f, 1.69114600f),
                 new Vertex(1.09191300f, 0.78784160f),
-                new Vertex(1.30222800f, 0.83838190f)
+                new Vertex(1.30222800f, 0.83838190f),
             };
 
             return Polygon.Build(vertices)

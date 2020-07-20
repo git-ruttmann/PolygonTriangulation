@@ -2,3 +2,24 @@
 
 # IDE0065: Die using-Anweisung wurde falsch platziert.
 csharp_using_directive_placement = inside_namespace:silent
+
+# SA1629: Documentation text should end with a period
+dotnet_diagnostic.SA1629.severity = none
+
+# CA1303: Literale nicht als lokalisierte Parameter übergeben
+dotnet_diagnostic.CA1303.severity = none
+
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+
+# CA1062: Check public parameters for null
+dotnet_diagnostic.CA1062.severity = none
+
+# SA1649: The first type should match the type name
+dotnet_diagnostic.SA1649.severity = none
+
+# CA1819: Properties may not return arrays
+dotnet_diagnostic.CA1819.severity = none
+
+# SA1300: object names
+dotnet_diagnostic.SA1300.severity = none

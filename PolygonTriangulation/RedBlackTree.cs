@@ -20,19 +20,20 @@
         /// <summary>
         /// Gets the next node
         /// </summary>
-        IOrderedNode<T> Next { get; }
+        IOrderedNode<T> NextNode { get; }
 
         /// <summary>
         /// Gets the previous node
         /// </summary>
-        IOrderedNode<T> Prev { get; }
-    };
+        IOrderedNode<T> PrevNode { get; }
+    }
 
     /// <summary>
     /// A binary search tree with O(n) autobalancing
     /// </summary>
     /// <typeparam name="T">type of the stored data</typeparam>
-    public class RedBlackTree<T> : ICollection<T>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1710:Bezeichner müssen ein korrektes Suffix aufweisen", Justification = "The name is fine")]
+    public sealed class RedBlackTree<T> : ICollection<T>
     {
         /// <summary>
         /// The comparer to use during insert / find operations
@@ -45,7 +46,7 @@
         private Node root;
 
         /// <summary>
-        /// Initializes a <see cref="RedBlackTree{T}"/>
+        /// Initializes a new instance of the <see cref="RedBlackTree{T}"/> class.
         /// </summary>
         public RedBlackTree()
             : this(Comparer<T>.Default)
@@ -53,21 +54,23 @@
         }
 
         /// <summary>
-        /// Initializes a <see cref="RedBlackTree{T}"/> with a custom comparer.
+        /// Initializes a new instance of the <see cref="RedBlackTree{T}"/> class.
         /// </summary>
-        /// <param name="comparer">The comparer</param>
+        /// <param name="comparer">The comparer.</param>
         public RedBlackTree(IComparer<T> comparer)
         {
             this.comparer = comparer;
         }
 
-        ///<inheritdoc>/>
+        /// <summary>
+        /// Gets the items.
+        /// </summary>
         public IEnumerable<T> Items => EnumerateSubItems(this.root);
 
-        ///<inheritdoc>/>
+        /// <inheritdoc/>
         public int Count { get; private set; }
 
-        ///<inheritdoc>/>
+        /// <inheritdoc/>
         bool ICollection<T>.IsReadOnly => false;
 
         /// <inheritdoc/>
@@ -112,51 +115,6 @@
 
         /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<T>)this).GetEnumerator();
-
-        /// <summary>
-        /// Dump the tree, one line per level
-        /// </summary>
-        /// <param name="maxDepth">the maximum tree level to report</param>
-        /// <returns>one line per level</returns>
-        internal IEnumerable<string> Dump(int maxDepth = -1)
-        {
-            return new DumpEnumerator(this, maxDepth);
-        }
-
-        /// <summary>
-        /// For unittesting: mark certain levels as black, run on fully balanced tree only
-        /// </summary>
-        /// <param name="blackLevels">the levels that should be black, all others are marked red</param>
-        internal void MarkBlack(params int[] blackLevels)
-        {
-            var levelSet = new HashSet<int>(blackLevels);
-            MarkLevelRecursive(this.root, 0, levelSet);
-        }
-
-        /// <summary>
-        /// Iterate over all items
-        /// </summary>
-        /// <param name="node">the start node</param>
-        /// <returns>the data of the current item and all subitems</returns>
-        private static IEnumerable<T> EnumerateSubItems(Node node)
-        {
-            if (node == null)
-            {
-                yield break;
-            }
-
-            foreach (var item in EnumerateSubItems(node.Left))
-            {
-                yield return item;
-            }
-
-            yield return node.Data;
-
-            foreach (var item in EnumerateSubItems(node.Right))
-            {
-                yield return item;
-            }
-        }
 
         /// <summary>
         /// Add a new node
@@ -218,7 +176,7 @@
         /// <returns>true if the value was found</returns>
         public bool TryLocateNode(T value, out IOrderedNode<T> node)
         {
-            var found = TryLocateInternalNode(value, out var internalNode);
+            var found = this.TryLocateInternalNode(value, out var internalNode);
             node = internalNode;
             return found;
         }
@@ -262,6 +220,71 @@
         }
 
         /// <summary>
+        /// Remove a value. Throws KeyNotFoundException.
+        /// </summary>
+        /// <param name="value">the value</param>
+        public void Remove(T value)
+        {
+            if (!this.TryLocateInternalNode(value, out var node))
+            {
+                throw new KeyNotFoundException();
+            }
+
+            this.RemoveNode(node);
+        }
+
+        /// <summary>
+        /// Dump the tree, one line per level
+        /// </summary>
+        /// <param name="maxDepth">the maximum tree level to report</param>
+        /// <returns>one line per level</returns>
+        internal IEnumerable<string> Dump(int maxDepth = -1)
+        {
+            return new DumpEnumerator(this, maxDepth);
+        }
+
+        /// <summary>
+        /// For unittesting: mark certain levels as black, run on fully balanced tree only
+        /// </summary>
+        /// <param name="blackLevels">the levels that should be black, all others are marked red</param>
+        internal void MarkBlack(params int[] blackLevels)
+        {
+            var levelSet = new HashSet<int>(blackLevels);
+            MarkLevelRecursive(this.root, 0, levelSet);
+        }
+
+        /// <summary>
+        /// Unittest only: Validate the tree structure
+        /// </summary>
+        /// <returns>true if the tree is valid</returns>
+        internal bool Validate() => Validator.ValidateRoot(this.root);
+
+        /// <summary>
+        /// Iterate over all items
+        /// </summary>
+        /// <param name="node">the start node</param>
+        /// <returns>the data of the current item and all subitems</returns>
+        private static IEnumerable<T> EnumerateSubItems(Node node)
+        {
+            if (node == null)
+            {
+                yield break;
+            }
+
+            foreach (var item in EnumerateSubItems(node.Left))
+            {
+                yield return item;
+            }
+
+            yield return node.Data;
+
+            foreach (var item in EnumerateSubItems(node.Right))
+            {
+                yield return item;
+            }
+        }
+
+        /// <summary>
         /// Unittesting only: mark the level as black
         /// </summary>
         /// <param name="node">the node</param>
@@ -279,12 +302,6 @@
             MarkLevelRecursive(node.Left, level + 1, blackLevelSet);
             MarkLevelRecursive(node.Right, level + 1, blackLevelSet);
         }
-
-        /// <summary>
-        /// Unittest only: Validate the tree structure
-        /// </summary>
-        /// <returns>true if the tree is valid</returns>
-        internal bool Validate() => Validator.ValidateRoot(this.root);
 
         /// <summary>
         /// Try to find the node with the value
@@ -336,7 +353,7 @@
                 grandParent.IsRed = true;
                 this.FixTreeAfterInsertion(grandParent);
             }
-            else if (uncle == null || parent.IsRed && !uncle.IsRed)
+            else if (uncle == null || (parent.IsRed && !uncle.IsRed))
             {
                 // use the non-red or empty uncle position by rotating
                 var nodeIsLeft = node.IsLeft;
@@ -390,20 +407,6 @@
         }
 
         /// <summary>
-        /// Remove a value. Throws KeyNotFoundException.
-        /// </summary>
-        /// <param name="value">the value</param>
-        public void Remove(T value)
-        {
-            if (!this.TryLocateInternalNode(value, out var node))
-            {
-                throw new KeyNotFoundException();
-            }
-
-            this.RemoveNode(node);
-        }
-
-        /// <summary>
         /// Removes the node by deleting it and then rebalancing the tree
         /// </summary>
         /// <param name="deleteNode">the node to delete</param>
@@ -434,12 +437,12 @@
         /// </summary>
         /// <param name="doubleBlackNode">the double black node</param>
         /// <remarks>
-        /// Sibling must exist, otherwise node wouldn't have double-black. 
+        /// Sibling must exist, otherwise node wouldn't have double-black.
         /// If the sibling is red, it must have 2 black children because we had a black node below us.
-        /// 
+        ///
         /// If there is any red in the sibling or it's children, rotate that to the common top and flip it to black.
-        /// 
-        /// If neither sibling nor it's children has any red, then make the sibling red 
+        ///
+        /// If neither sibling nor it's children has any red, then make the sibling red
         /// => the sibling tree has the same black count. Instead the parent is now DoubleBlack.
         /// </remarks>
         private void ResolveSiblingOfDoubleBlack(Node doubleBlackNode)
@@ -453,7 +456,7 @@
                 sibling.IsRed = false;
                 this.Rotate(isLeft, sibling.Parent);
 
-                // After rotation, the node and it's NEW sibling will both be black. 
+                // After rotation, the node and it's NEW sibling will both be black.
                 sibling = doubleBlackNode.GetSibling();
             }
 
@@ -560,7 +563,6 @@
         /// </summary>
         /// <param name="leftRotate">rotate to left</param>
         /// <param name="node">the node to rotate</param>
-        /// <returns>the new parent node</returns>
         private void Rotate(bool leftRotate, Node node)
         {
             var parent = node.Parent;
@@ -591,11 +593,104 @@
         }
 
         /// <summary>
+        /// Validation support
+        /// </summary>
+        private static class Validator
+        {
+            /// <summary>
+            /// Validate the root node and all sibliings
+            /// </summary>
+            /// <param name="root">the root node</param>
+            /// <returns>true if the tree is valid</returns>
+            public static bool ValidateRoot(Node root)
+            {
+                if (root == null)
+                {
+                    return true;
+                }
+
+                if (!root.IsTop || root.IsRed)
+                {
+                    return false;
+                }
+
+                var blackHeight = 0;
+                for (var node = root; node != null; node = node.Left)
+                {
+                    blackHeight += node.IsRed ? 0 : 1;
+                }
+
+                var isValid = ValidateRecursive(root.Left, 1, blackHeight, root) && ValidateRecursive(root.Right, 1, blackHeight, root);
+                if (!isValid)
+                {
+                    throw new InvalidOperationException("tree validation failed");
+                }
+
+                return isValid;
+            }
+
+            /// <summary>
+            /// Recursive helper for <see cref="Validate"/>
+            /// </summary>
+            /// <param name="node">the current node</param>
+            /// <param name="blackLevel">the black level of the current node</param>
+            /// <param name="blackHeight">the black height of the tree</param>
+            /// <param name="parent">the parent of the node</param>
+            /// <returns>true if the tree below node</returns>
+            private static bool ValidateRecursive(Node node, int blackLevel, int blackHeight, Node parent)
+            {
+                if (node == null)
+                {
+                    if (blackLevel != blackHeight)
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                if (node.IsRed && parent.IsRed)
+                {
+                    return false;
+                }
+
+                if (node.IsDoubleBlack)
+                {
+                    return false;
+                }
+
+                blackLevel += node.IsRed ? 0 : 1;
+                if (node.Parent != parent)
+                {
+                    return false;
+                }
+
+                return ValidateRecursive(node.Left, blackLevel, blackHeight, node)
+                    && ValidateRecursive(node.Right, blackLevel, blackHeight, node);
+            }
+        }
+
+        /// <summary>
         /// Tree node
         /// </summary>
         [DebuggerDisplay("{Data}{ColorText}")]
         private class Node : IOrderedNode<T>
         {
+            private Color color;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="Node"/> class.
+            /// </summary>
+            /// <param name="data">The data associated with the node.</param>
+            public Node(T data)
+            {
+                this.Data = data;
+                this.color = Color.Red;
+            }
+
+            /// <summary>
+            /// The color of the node.
+            /// </summary>
             private enum Color
             {
                 /// <summary>
@@ -617,55 +712,33 @@
                 /// A black leaf was deleted, rebalance the parent tree and remove this node afterwards.
                 /// </summary>
                 DoubleBlackNull,
-            };
-
-            private Color color;
-
-            public Node(T data)
-            {
-                this.Data = data;
-                this.color = Color.Red;
             }
 
             /// <summary>
-            /// Gets a flag whether is is the root node
+            /// Gets a value indicating whether is is the root node
             /// </summary>
             public bool IsTop => this.Parent == null;
 
             /// <summary>
-            /// Gets a flag whether this.parent.left == this
+            /// Gets a value indicating whether this.parent.left == this
             /// </summary>
             public bool IsLeft => this.Parent?.Left == this;
 
             /// <summary>
-            /// Gets a flag whether this.parent.right == this
+            /// Gets a value indicating whether this.parent.right == this
             /// </summary>
             public bool IsRight => this.Parent?.Right == this;
-
-            /// <summary>
-            /// Get's the other node with the same parent
-            /// </summary>
-            /// <returns>the sibling of the item</returns>
-            public Node GetSibling()
-            {
-                if (this.Parent == null)
-                {
-                    return null;
-                }
-
-                return this.IsLeft ? this.Parent.Right : this.Parent.Left;
-            }
 
             /// <inheritdoc/>
             public T Data { get; }
 
             /// <summary>
-            /// Gets or sets the red flag. false sets color to black
+            /// Gets or sets a value indicating whether the node is red (true) or black (false)
             /// </summary>
-            public bool IsRed 
-            { 
+            public bool IsRed
+            {
                 get => this.color == Color.Red;
-                set 
+                set
                 {
                     if (this.color == Color.DoubleBlackNull)
                     {
@@ -677,42 +750,27 @@
             }
 
             /// <summary>
-            /// For debug - get color as text
-            /// </summary>
-            internal string ColorText
-            {
-                get
-                {
-                    switch (this.color)
-                    {
-                        case Color.Red:
-                            return "R";
-                        case Color.Black:
-                            return "B";
-                        case Color.DoubleBlackNode:
-                            return "b";
-                        case Color.DoubleBlackNull:
-                            return "x";
-                        default:
-                            return "_";
-                    }
-
-                }
-            }
-
-            /// <summary>
-            /// Gets a value indicating a double black state.
+            /// Gets a value indicating whether the state is double black.
             /// </summary>
             public bool IsDoubleBlack => this.color == Color.DoubleBlackNode || this.color == Color.DoubleBlackNull;
 
+            /// <summary>
+            /// Gets the parent node.
+            /// </summary>
             public Node Parent { get; private set; }
 
+            /// <summary>
+            /// Gets the left node.
+            /// </summary>
             public Node Left { get; private set; }
 
+            /// <summary>
+            /// Gets the right node.
+            /// </summary>
             public Node Right { get; private set; }
 
             /// <inheritdoc/>
-            public IOrderedNode<T> Next
+            public IOrderedNode<T> NextNode
             {
                 get
                 {
@@ -739,7 +797,7 @@
             }
 
             /// <inheritdoc/>
-            public IOrderedNode<T> Prev
+            public IOrderedNode<T> PrevNode
             {
                 get
                 {
@@ -763,6 +821,43 @@
 
                     return node;
                 }
+            }
+
+            /// <summary>
+            /// Gets the color as text - debug only.
+            /// </summary>
+            internal string ColorText
+            {
+                get
+                {
+                    switch (this.color)
+                    {
+                        case Color.Red:
+                            return "R";
+                        case Color.Black:
+                            return "B";
+                        case Color.DoubleBlackNode:
+                            return "b";
+                        case Color.DoubleBlackNull:
+                            return "x";
+                        default:
+                            return "_";
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Get's the other node with the same parent
+            /// </summary>
+            /// <returns>the sibling of the item</returns>
+            public Node GetSibling()
+            {
+                if (this.Parent == null)
+                {
+                    return null;
+                }
+
+                return this.IsLeft ? this.Parent.Right : this.Parent.Left;
             }
 
             /// <summary>
@@ -862,7 +957,7 @@
                     {
                         replacement = new Node(default)
                         {
-                            color = Color.DoubleBlackNull
+                            color = Color.DoubleBlackNull,
                         };
                     }
                     else if (replacement.IsRed)
@@ -929,84 +1024,6 @@
         }
 
         /// <summary>
-        /// Validation support
-        /// </summary>
-        private static class Validator
-        {
-            /// <summary>
-            /// Validate the root node and all sibliings
-            /// </summary>
-            /// <param name="root">the root node</param>
-            /// <returns>true if the tree is valid</returns>
-            public static bool ValidateRoot(Node root)
-            {
-                if (root == null)
-                {
-                    return true;
-                }
-
-                if (!root.IsTop || root.IsRed)
-                {
-                    return false;
-                }
-
-                var blackHeight = 0;
-                for (var node = root; node != null; node = node.Left)
-                {
-                    blackHeight += node.IsRed ? 0 : 1;
-                }
-
-                var isValid = ValidateRecursive(root.Left, 1, blackHeight, root) && ValidateRecursive(root.Right, 1, blackHeight, root);
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("tree validation failed");
-                }
-
-                return isValid;
-            }
-
-            /// <summary>
-            /// Recursive helper for <see cref="Validate"/>
-            /// </summary>
-            /// <param name="node">the current node</param>
-            /// <param name="blackLevel">the black level of the current node</param>
-            /// <param name="blackHeight">the black height of the tree</param>
-            /// <param name="parent">the parent of the node</param>
-            /// <returns>true if the tree below node</returns>
-            private static bool ValidateRecursive(Node node, int blackLevel, int blackHeight, Node parent)
-            {
-                if (node == null)
-                {
-                    if (blackLevel != blackHeight)
-                    {
-                        return false;
-                    }
-
-                    return true;
-                }
-
-                if (node.IsRed && parent.IsRed)
-                {
-                    return false;
-                }
-
-                if (node.IsDoubleBlack)
-                {
-                    return false;
-                }
-
-                blackLevel += node.IsRed ? 0 : 1;
-                if (node.Parent != parent)
-                {
-                    return false;
-                }
-
-                return ValidateRecursive(node.Left, blackLevel, blackHeight, node)
-                    && ValidateRecursive(node.Right, blackLevel, blackHeight, node);
-            }
-        }
-
-        /// <summary>
         /// Dump enumeration support. Prints one line per tree level with proper spacing.
         /// </summary>
         private class DumpEnumerator : IEnumerable<string>
@@ -1031,43 +1048,6 @@
 
             /// <inheritdoc/>
             IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
-
-            /// <summary>
-            /// Create one line for each level and space the items suitable for 2 digit numbers
-            /// </summary>
-            /// <param name="maxDepth">the maximum depth</param>
-            /// <returns>array of strings, one line per level</returns>
-            private IEnumerable<string> Dump()
-            {
-                var maxDepth = this.configuredDept;
-                if (maxDepth < 0)
-                {
-                    if (((ICollection<T>)this.tree).Count == 0)
-                    {
-                        return Enumerable.Empty<string>();
-                    }
-
-                    maxDepth = EnumerateLevels(this.tree.root, 0, -1).Select(x => x.level).Max();
-                }
-
-                var groups = EnumerateLevels(this.tree.root, 0, maxDepth)
-                    .GroupBy(x => x.level)
-                    .OrderBy(x => x.Key)
-                    .ToArray();
-
-                var height = groups.Length;
-                var total = 1 << height;
-                var itemLenght = 4 + 1;
-
-                return groups.Select(g =>
-                {
-                    var spacingFactor = total / (1 << g.Key) / 2;
-                    var spacing = new string(' ', (itemLenght + 1) * (spacingFactor - 1) + 1);
-                    var left = new string(' ', (spacing.Length - 1) / 2);
-                    var rest = string.Join(spacing, g.Select(x => ((Equals(x.data, default(T)) && !char.IsLower(x.color[0])) ? "- " : $"{x.data}{x.color}").PadLeft(itemLenght)));
-                    return left + rest;
-                });
-            }
 
             /// <summary>
             /// Enumerate values, their red/black state and their depth. Used only to dump the tree.
@@ -1107,6 +1087,42 @@
                 {
                     yield return item;
                 }
+            }
+
+            /// <summary>
+            /// Create one line for each level and space the items suitable for 2 digit numbers
+            /// </summary>
+            /// <returns>array of strings, one line per level</returns>
+            private IEnumerable<string> Dump()
+            {
+                var maxDepth = this.configuredDept;
+                if (maxDepth < 0)
+                {
+                    if (((ICollection<T>)this.tree).Count == 0)
+                    {
+                        return Enumerable.Empty<string>();
+                    }
+
+                    maxDepth = EnumerateLevels(this.tree.root, 0, -1).Select(x => x.level).Max();
+                }
+
+                var groups = EnumerateLevels(this.tree.root, 0, maxDepth)
+                    .GroupBy(x => x.level)
+                    .OrderBy(x => x.Key)
+                    .ToArray();
+
+                var height = groups.Length;
+                var total = 1 << height;
+                var itemLenght = 4 + 1;
+
+                return groups.Select(g =>
+                {
+                    var spacingFactor = total / (1 << g.Key) / 2;
+                    var spacing = new string(' ', ((itemLenght + 1) * (spacingFactor - 1)) + 1);
+                    var left = new string(' ', (spacing.Length - 1) / 2);
+                    var rest = string.Join(spacing, g.Select(x => ((Equals(x.data, default(T)) && !char.IsLower(x.color[0])) ? "- " : $"{x.data}{x.color}").PadLeft(itemLenght)));
+                    return left + rest;
+                });
             }
         }
     }

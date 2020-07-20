@@ -7,35 +7,16 @@
     using System.Text;
 
 #if UNITY_EDITOR || UNITY_STANDALONE
-    using Vertex = UnityEngine.Vector2;
-    using Vector3 = UnityEngine.Vector3;
-    using Quaternion = UnityEngine.Quaternion;
     using Plane = UnityEngine.Plane;
+    using Quaternion = UnityEngine.Quaternion;
+    using Vector3 = UnityEngine.Vector3;
+    using Vertex = UnityEngine.Vector2;
 #else
-    using Vertex = System.Numerics.Vector2;
-    using Vector3 = System.Numerics.Vector3;
-    using Quaternion = System.Numerics.Quaternion;
     using Plane = System.Numerics.Plane;
+    using Quaternion = System.Numerics.Quaternion;
+    using Vector3 = System.Numerics.Vector3;
+    using Vertex = System.Numerics.Vector2;
 #endif
-
-    /// <summary>
-    /// Test interface for the polygon builder
-    /// </summary>
-    internal interface IEdgesToPolygonBuilder
-    {
-        /// <summary>
-        /// Add an edge between the two points
-        /// </summary>
-        /// <param name="p0">start point</param>
-        /// <param name="p1">end point</param>
-        void AddEdge(Vector3 p0, Vector3 p1);
-
-        /// <summary>
-        /// build the resulting polygon
-        /// </summary>
-        /// <returns></returns>
-        IPlanePolygon BuildPolygon();
-    }
 
     /// <summary>
     /// Test interface for the polygon line detector (join edges to polygon lines)
@@ -43,12 +24,12 @@
     public interface IPolygonLineDetector
     {
         /// <summary>
-        /// Get the closed polygons
+        /// Gets the closed polygons
         /// </summary>
         IEnumerable<IReadOnlyCollection<int>> ClosedPolygons { get; }
 
         /// <summary>
-        /// Get the unclosed polygons
+        /// Gets the unclosed polygons
         /// </summary>
         IEnumerable<IReadOnlyCollection<int>> UnclosedPolygons { get; }
 
@@ -123,20 +104,47 @@
     }
 
     /// <summary>
+    /// Test interface for the polygon builder
+    /// </summary>
+    internal interface IEdgesToPolygonBuilder
+    {
+        /// <summary>
+        /// Add an edge between the two points
+        /// </summary>
+        /// <param name="p0">start point</param>
+        /// <param name="p1">end point</param>
+        void AddEdge(Vector3 p0, Vector3 p1);
+
+        /// <summary>
+        /// build the resulting polygon
+        /// </summary>
+        /// <returns>A polygon and the 3D vertices</returns>
+        IPlanePolygon BuildPolygon();
+    }
+
+    /// <summary>
     /// Build a list of triangles from polygon edges
     /// </summary>
     public class PlanePolygonBuilder : IPlanePolygonEdgeCollector
     {
-        const float epsilon = 1.1E-5f;
+        private const float Epsilon = 1.1E-5f;
 
         private readonly EdgesToPolygonBuilder edgesToPolygon;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PlanePolygonBuilder"/> class.
+        /// </summary>
+        /// <param name="plane">The plane to rotate the 3D point into 2D.</param>
         public PlanePolygonBuilder(Plane plane)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE
             var rotation = Quaternion.FromToRotation(plane.normal, new Vector3(0, 0, -1));
 #else
             var rotation = IdendityQuaternion;
+            if (plane.Normal != Vector3.UnitZ)
+            {
+                throw new NotImplementedException("rotation setup is not implemented");
+            }
 #endif
             this.edgesToPolygon = new EdgesToPolygonBuilder(rotation);
         }
@@ -151,18 +159,6 @@
 #else
         private static Quaternion IdendityQuaternion => Quaternion.Identity;
 #endif
-
-        /// <summary>
-        /// Create a edges to polygon builder for unit testing
-        /// </summary>
-        /// <returns>the polygon builder</returns>
-        internal static IEdgesToPolygonBuilder CreatePolygonBuilder() => new EdgesToPolygonBuilder(IdendityQuaternion);
-
-        /// <summary>
-        /// Create a polygon from edges detector. The edge is defined by the vertex ids
-        /// </summary>
-        /// <returns>the detector</returns>
-        internal static IPolygonLineDetector CreatePolygonLineDetector(params int[] fusionVertices) => new PolygonLineDetector(fusionVertices);
 
         /// <inheritdoc/>
         public void AddEdge(Vector3 p0, Vector3 p1)
@@ -179,6 +175,7 @@
         /// <summary>
         /// Build the plane triangles
         /// </summary>
+        /// <returns>The triangles, the 2D vertices and the 3D vertices</returns>
         public ITriangulatedPlanePolygon Build()
         {
             IPlanePolygon polygonResult = null;
@@ -194,6 +191,19 @@
                 throw new TriangulationException(polygonResult?.Polygon, this.edgesToPolygon.Dump(), e);
             }
         }
+
+        /// <summary>
+        /// Create a edges to polygon builder for unit testing
+        /// </summary>
+        /// <returns>the polygon builder</returns>
+        internal static IEdgesToPolygonBuilder CreatePolygonBuilder() => new EdgesToPolygonBuilder(IdendityQuaternion);
+
+        /// <summary>
+        /// Create a polygon from edges detector. The edge is defined by the vertex ids
+        /// </summary>
+        /// <param name="fusionVertices">The fusion vertices.</param>
+        /// <returns>the detector</returns>
+        internal static IPolygonLineDetector CreatePolygonLineDetector(params int[] fusionVertices) => new PolygonLineDetector(fusionVertices);
 
         /// <summary>
         /// Result for the plane mesh
@@ -234,7 +244,6 @@
             /// <inheritdoc/>
             public Polygon Polygon { get; }
         }
-
 
         /// <summary>
         /// Compare two vertices, very close vertices are considered equal.
@@ -279,10 +288,10 @@
                 }
 #else
                 var xdist = Math.Abs(x.X - y.X);
-                if (xdist < epsilon)
+                if (xdist < Epsilon)
                 {
                     var ydist = Math.Abs(x.Y - y.Y);
-                    if (ydist < epsilon)
+                    if (ydist < Epsilon)
                     {
                         return 0;
                     }
@@ -345,18 +354,10 @@
             private readonly List<(int, int)> fusionDelayedSegments;
 
             /// <summary>
-            /// Constructor
-            /// </summary>
-            public PolygonLineDetector()
-            {
-            }
-
-            /// <summary>
-            /// Constructor with fusion vertices
+            /// Initializes a new instance of the <see cref="PolygonLineDetector"/> class.
             /// </summary>
             /// <param name="fusionVertices">Vertices that are used by more than two edges</param>
             public PolygonLineDetector(ICollection<int> fusionVertices)
-                : this()
             {
                 this.openPolygones = new Dictionary<int, PolygonLine>();
                 this.closedPolygones = new List<PolygonLine>();
@@ -366,7 +367,7 @@
             }
 
             /// <summary>
-            /// Get the closed polygones.
+            /// Gets the closed polygones.
             /// </summary>
             public IReadOnlyList<PolygonLine> Lines => this.closedPolygones;
 
@@ -380,7 +381,6 @@
             /// find continous combination of edges
             /// </summary>
             /// <param name="edges">triangle data, the relevant edges are from vertex0 to vertex1. vertex2 is ignored</param>
-            /// <returns>the list of closed polygones and the unclosed polygones </returns>
             public void JoinEdgesToPolygones(IEnumerable<int> edges)
             {
                 var iterator = edges.GetEnumerator();
@@ -400,7 +400,7 @@
 
                 if (this.fusionDelayedSegments?.Count > 0)
                 {
-                    foreach (var (start, end) in fusionDelayedSegments)
+                    foreach (var (start, end) in this.fusionDelayedSegments)
                     {
                         this.AddEdge(start, end);
                     }
@@ -441,6 +441,22 @@
             }
 
             /// <summary>
+            /// Calculate the distance between two points
+            /// </summary>
+            /// <param name="vertices">the vertices</param>
+            /// <param name="vertexId">the first point</param>
+            /// <param name="peer">the second point</param>
+            /// <returns>the sum of the x and y distance</returns>
+            private static float Distance(Vertex[] vertices, int vertexId, int peer)
+            {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                return Math.Abs(vertices[vertexId].x - vertices[peer].x) + Math.Abs(vertices[vertexId].y - vertices[peer].y);
+#else
+                return Math.Abs(vertices[vertexId].X - vertices[peer].X) + Math.Abs(vertices[vertexId].Y - vertices[peer].Y);
+#endif
+            }
+
+            /// <summary>
             /// Join two vertices as they are close together.
             /// </summary>
             /// <param name="vertexId">the vertex id to drop</param>
@@ -468,26 +484,10 @@
             }
 
             /// <summary>
-            /// Calculate the distance between two points
-            /// </summary>
-            /// <param name="vertices">the vertices</param>
-            /// <param name="vertexId">the first point</param>
-            /// <param name="peer">the second point</param>
-            /// <returns>the sum of the x and y distance</returns>
-            private static float Distance(Vertex[] vertices, int vertexId, int peer)
-            {
-#if UNITY_EDITOR || UNITY_STANDALONE
-                return Math.Abs(vertices[vertexId].x - vertices[peer].x) + Math.Abs(vertices[vertexId].y - vertices[peer].y);
-#else
-                return Math.Abs(vertices[vertexId].X - vertices[peer].X) + Math.Abs(vertices[vertexId].Y - vertices[peer].Y);
-#endif
-            }
-
-            /// <summary>
             /// Add a new edge to the polygon line. Either join two polygon lines, creates a new or adds the edge to the neighboring line
             /// </summary>
-            /// <param name="start"></param>
-            /// <param name="end"></param>
+            /// <param name="start">the vertex id of the edge start</param>
+            /// <param name="end">the vertex id of the edge end</param>
             private void AddEdge(int start, int end)
             {
                 var startFits = this.openPolygones.TryGetValue(start, out var firstSegment);
@@ -558,7 +558,7 @@
             private readonly List<int> vertexIds;
 
             /// <summary>
-            /// Create a new polygon consisting of 2 vertices
+            /// Initializes a new instance of the <see cref="PolygonLine" /> class. The line starts with two vertices.
             /// </summary>
             /// <param name="start">the first vertex</param>
             /// <param name="end">the second vertex</param>
@@ -580,14 +580,19 @@
             public int EndKey { get; private set; }
 
             /// <summary>
-            /// Gets a flag indicating whether the edge direction was inconsistend at any time
+            /// Gets a value indicating whether the edge direction was inconsistend at any time
             /// </summary>
             public bool Dirty { get; private set; }
 
             /// <summary>
-            /// Gets a flag indicating whether the polygon is closed
+            /// Gets a value indicating whether the polygon is closed
             /// </summary>
             public bool Closed { get; private set; }
+
+            /// <summary>
+            /// Gets a debug string
+            /// </summary>
+            public string Debug => $"{(this.Closed ? "*" : string.Empty)}, {(this.Dirty ? "#" : string.Empty)}, {string.Join(" ", this.vertexIds)}";
 
             /// <summary>
             /// Gets the vertex ids in order
@@ -597,8 +602,6 @@
             {
                 return this.vertexIds;
             }
-
-            public string Debug => $"{(this.Closed ? "*" : string.Empty)}, {(this.Dirty ? "#" : string.Empty)}, {string.Join(" ", this.vertexIds)}";
 
             /// <summary>
             /// The start value of the added edge matches either the end or start of this polygon
@@ -641,7 +644,7 @@
             /// </summary>
             /// <param name="other">the other polygone</param>
             /// <param name="edgeStart">the start of the edge that joines</param>
-            /// <param name="edgeStart">the end of the edge that joines</param>
+            /// <param name="edgeEnd">the end of the edge that joines</param>
             /// <returns>-1: the polygone is closed. Otherwise the start/end key that was changed</returns>
             public int Join(PolygonLine other, int edgeStart, int edgeEnd)
             {
@@ -675,6 +678,32 @@
                 {
                     throw new InvalidOperationException("Can't remove a vertex in the middle of the polygon line");
                 }
+            }
+
+            /// <summary>
+            /// Compare the edge points to two corresponding keys.
+            /// </summary>
+            /// <param name="edgeStart">the edge start</param>
+            /// <param name="edgeEnd">the edge end</param>
+            /// <param name="keyStart">the key that's compared to edgeStart</param>
+            /// <param name="keyEnd">the key that's compared to edgeEnd</param>
+            /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
+            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int keyStart, int keyEnd)
+            {
+                return (edgeStart == keyStart) && (edgeEnd == keyEnd);
+            }
+
+            /// <summary>
+            /// Compare the edge points to two corresponding keys or the the swapped keys
+            /// </summary>
+            /// <param name="edgeStart">the edge start</param>
+            /// <param name="edgeEnd">the edge end</param>
+            /// <param name="key1">the key for edgeStart</param>
+            /// <param name="key2">the key for edgeEnd</param>
+            /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
+            private static bool CompareEdgeToKeysOrSwappedKeys(int edgeStart, int edgeEnd, int key1, int key2)
+            {
+                return CompareEdgeToKeys(edgeStart, edgeEnd, key1, key2) || CompareEdgeToKeys(edgeStart, edgeEnd, key2, key1);
             }
 
             /// <summary>
@@ -736,32 +765,6 @@
                 }
 
                 return null;
-            }
-
-            /// <summary>
-            /// Compare the edge points to two corresponding keys.
-            /// </summary>
-            /// <param name="edgeStart">the edge start</param>
-            /// <param name="edgeEnd">the edge end</param>
-            /// <param name="keyStart">the key that's compared to edgeStart</param>
-            /// <param name="keyEnd">the key that's compared to edgeEnd</param>
-            /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
-            private static bool CompareEdgeToKeys(int edgeStart, int edgeEnd, int keyStart, int keyEnd)
-            {
-                return (edgeStart == keyStart) && (edgeEnd == keyEnd);
-            }
-
-            /// <summary>
-            /// Compare the edge points to two corresponding keys or the the swapped keys
-            /// </summary>
-            /// <param name="edgeStart">the edge start</param>
-            /// <param name="edgeEnd">the edge end</param>
-            /// <param name="key1">the key for edgeStart</param>
-            /// <param name="key2">the key for edgeEnd</param>
-            /// <returns>true if edgeStart matches key1 and EdgeEnd matches key2</returns>
-            private static bool CompareEdgeToKeysOrSwappedKeys(int edgeStart, int edgeEnd, int key1, int key2)
-            {
-                return CompareEdgeToKeys(edgeStart, edgeEnd, key1, key2) || CompareEdgeToKeys(edgeStart, edgeEnd, key2, key1);
             }
 
             /// <summary>
@@ -846,7 +849,7 @@
             /// <summary>
             /// An empty hash set
             /// </summary>
-            private static readonly ICollection<int> emptyHashSet = new HashSet<int>();
+            private static readonly ICollection<int> EmptyHashSet = new HashSet<int>();
 
             /// <summary>
             /// current edges in pairs
@@ -864,9 +867,9 @@
             private readonly List<Vertex> vertices2D;
 
             /// <summary>
-            /// Constructor
+            /// Initializes a new instance of the <see cref="EdgesToPolygonBuilder" /> class.
             /// </summary>
-            /// <param name="rotation">the rotation to map a vertex on a 2D plane</param>
+            /// <param name="rotation">the rotation to map a vertex to a 2D plane</param>
             public EdgesToPolygonBuilder(Quaternion rotation)
             {
                 this.edges = new List<int>();
@@ -877,7 +880,7 @@
             }
 
             /// <summary>
-            /// 3D to 2D rotation
+            /// Gets the 3D to 2D rotation
             /// </summary>
             public Quaternion Rotation { get; }
 
@@ -888,7 +891,7 @@
             {
 #if DEBUG
                 var sb = new StringBuilder();
-                
+
                 sb.AppendLine("var builder = PlanePolygonBuilder.CreatePolygonBuilder();");
                 for (int i = 0; i < this.vertices2D.Count - 1; i += 2)
                 {
@@ -903,7 +906,7 @@
 
                 return sb.ToString();
 #else
-                return string.Empty;
+                return this.ToString();
 #endif
             }
 
@@ -978,12 +981,12 @@
                     compressed3D[translation[i]] = this.vertices3D[i];
                 }
 
-                var lineDetector = new PolygonLineDetector(fusionedVertices ?? emptyHashSet);
+                var lineDetector = new PolygonLineDetector(fusionedVertices ?? EmptyHashSet);
                 lineDetector.JoinEdgesToPolygones(this.edges.Select(x => translation[x]));
 
                 if (lineDetector.UnclosedPolygons.Any())
                 {
-                    lineDetector.TryClusteringUnclosedEnds(sorted2D, epsilon * 100);
+                    lineDetector.TryClusteringUnclosedEnds(sorted2D, Epsilon * 100);
                 }
 
                 var polygon = Polygon.FromPolygonLines(sorted2D, lineDetector.Lines.Select(x => x.ToIndexes()).ToArray(), fusionedVertices);

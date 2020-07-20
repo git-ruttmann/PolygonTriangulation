@@ -15,18 +15,6 @@
     /// </summary>
     public partial class PolygonDrawControl : UserControl
     {
-        private enum VertexTextPosition
-        {
-            Left,
-            TopLeft,
-            BottomLeft,
-            Right,
-            TopRight,
-            BottomRight,
-            Top,
-            Bottom,
-        }
-
         /// <summary>
         /// The drawn vertex id's
         /// </summary>
@@ -83,7 +71,7 @@
         private PointF dragCenter;
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="PolygonDrawControl"/> class.
         /// </summary>
         public PolygonDrawControl()
         {
@@ -100,8 +88,20 @@
             this.AutoScale(true);
         }
 
+        private enum VertexTextPosition
+        {
+            Left,
+            TopLeft,
+            BottomLeft,
+            Right,
+            TopRight,
+            BottomRight,
+            Top,
+            Bottom,
+        }
+
         /// <summary>
-        /// Get or set the current polygon
+        /// Gets or sets the current polygon
         /// </summary>
         public Polygon Polygon
         {
@@ -116,8 +116,8 @@
         /// <summary>
         /// Gets or sets the id of the vertex to highlight
         /// </summary>
-        public int HighlightIndex 
-        { 
+        public int HighlightIndex
+        {
             get => this.highlightIndex;
             set
             {
@@ -127,7 +127,7 @@
         }
 
         /// <summary>
-        /// Get's or sets a zoom identifier
+        /// Gets or sets a zoom identifier
         /// </summary>
         public int Zoom
         {
@@ -141,12 +141,12 @@
         }
 
         /// <summary>
-        /// Gets or sets a value indicating that splits are drawn
+        /// Gets or sets a value indicating whether the splits are drawn
         /// </summary>
         public bool ShowSplits { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating that monotones are drawn in a different color.
+        /// Gets or sets a value indicating whether that monotones are drawn in a different color.
         /// </summary>
         public bool ShowMonotones { get; set; }
 
@@ -223,11 +223,11 @@
                 this.dragging = false;
 
                 var dragVector = e.Location - (Size)this.dragStart;
-                var scale = (this.fullScale * this.zoomFactor);
+                var scale = this.fullScale * this.zoomFactor;
 
                 this.polygonCenter = new Vertex(
-                    (float)(this.polygonCenter.X - dragVector.X / scale),
-                    (float)(this.polygonCenter.Y + dragVector.Y / scale));
+                    (float)(this.polygonCenter.X - (dragVector.X / scale)),
+                    (float)(this.polygonCenter.Y + (dragVector.Y / scale)));
 
                 this.centerPoint = this.dragCenter;
                 this.Invalidate();
@@ -239,14 +239,14 @@
         /// <inheritdoc/>
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            this.Zoom = this.zoomAsInt + e.Delta / SystemInformation.MouseWheelScrollDelta;
+            this.Zoom = this.zoomAsInt + (e.Delta / SystemInformation.MouseWheelScrollDelta);
             base.OnMouseWheel(e);
         }
 
         /// <summary>
         /// Draw the current content
         /// </summary>
-        /// <param name="e"></param>
+        /// <param name="e">the paint event</param>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -276,6 +276,34 @@
             {
                 this.DrawSplits(g, scaledVertices);
             }
+        }
+
+        /// <summary>
+        /// Build a sample polygon
+        /// </summary>
+        /// <returns>the polygon</returns>
+        private static Polygon SamplePolygon()
+        {
+            var sortedVertices = new[]
+            {
+                new Vertex(1, 1), // 0
+                new Vertex(1, 3),
+                new Vertex(1.5f, 3), // 2
+                new Vertex(2, 2),
+                new Vertex(2, 4), // 4
+                new Vertex(2.5f, 1),
+                new Vertex(2.5f, 2), // 6
+                new Vertex(2.5f, 3),
+                new Vertex(3.5f, 2.5f), // 8
+                new Vertex(3.5f, 1),
+                new Vertex(4, 1.5f), // 10
+                new Vertex(4, 3.5f),
+                new Vertex(4, 4), // 12
+            };
+
+            return Polygon.Build(sortedVertices)
+                .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
+                .Close();
         }
 
         /// <summary>
@@ -356,7 +384,7 @@
         /// <summary>
         /// Create a working arrow cap
         /// </summary>
-        /// <returns></returns>
+        /// <returns>a custom line cap</returns>
         private CustomLineCap CreateArrowCap()
         {
             var hPath = new GraphicsPath();
@@ -401,45 +429,17 @@
         }
 
         /// <summary>
-        /// Build a sampel polygon
-        /// </summary>
-        /// <returns>the polygon</returns>
-        private static Polygon SamplePolygon()
-        {
-            var sortedVertices = new[]
-            {
-                new Vertex(1, 1), // 0
-                new Vertex(1, 3),
-                new Vertex(1.5f, 3), // 2
-                new Vertex(2, 2),
-                new Vertex(2, 4), // 4
-                new Vertex(2.5f, 1),
-                new Vertex(2.5f, 2), // 6
-                new Vertex(2.5f, 3),
-                new Vertex(3.5f, 2.5f), // 8
-                new Vertex(3.5f, 1),
-                new Vertex(4, 1.5f), // 10
-                new Vertex(4, 3.5f),
-                new Vertex(4, 4), // 12
-            };
-
-            return Polygon.Build(sortedVertices)
-                .AddVertices(5, 0, 6, 3, 1, 4, 12, 2, 7, 11, 8, 10, 9)
-                .Close();
-        }
-
-        /// <summary>
         /// Convert the vertices to scaled points
         /// </summary>
         /// <returns>Array of scaled points</returns>
         private PointF[] ScaleVertices(IReadOnlyList<Vertex> vertices)
         {
-            var scale = (this.fullScale * this.zoomFactor);
+            var scale = this.fullScale * this.zoomFactor;
 
             var scaledPoints = vertices
                 .Select(x => new PointF(
-                    (float)((x.X - this.polygonCenter.X) * scale + this.centerPoint.X),
-                    this.Size.Height - (float)((x.Y - this.polygonCenter.Y) * scale + this.centerPoint.Y)))
+                    (float)(((x.X - this.polygonCenter.X) * scale) + this.centerPoint.X),
+                    this.Size.Height - (float)(((x.Y - this.polygonCenter.Y) * scale) + this.centerPoint.Y)))
                 .ToArray();
             return scaledPoints;
         }
@@ -487,7 +487,7 @@
                 case VertexTextPosition.Left:
                     stringFormat.LineAlignment = StringAlignment.Center;
                     stringFormat.Alignment = StringAlignment.Far;
-                    rect = new RectangleF(point.X - width, point.Y - height / 2, width - offset2, height);
+                    rect = new RectangleF(point.X - width, point.Y - (height / 2), width - offset2, height);
                     break;
                 case VertexTextPosition.TopLeft:
                     stringFormat.Alignment = StringAlignment.Far;
@@ -500,7 +500,7 @@
                 case VertexTextPosition.Right:
                     stringFormat.LineAlignment = StringAlignment.Center;
                     stringFormat.Alignment = StringAlignment.Near;
-                    rect = new RectangleF(point.X + offset2, point.Y - height / 2, width - offset2, height);
+                    rect = new RectangleF(point.X + offset2, point.Y - (height / 2), width - offset2, height);
                     break;
                 case VertexTextPosition.TopRight:
                     stringFormat.Alignment = StringAlignment.Near;
@@ -512,11 +512,11 @@
                     break;
                 case VertexTextPosition.Top:
                     stringFormat.Alignment = StringAlignment.Center;
-                    rect = new RectangleF(point.X - width / 2, point.Y - offset2 * 2 - fontHeight, width, height);
+                    rect = new RectangleF(point.X - (width / 2), point.Y - (offset2 * 2) - fontHeight, width, height);
                     break;
                 case VertexTextPosition.Bottom:
                     stringFormat.Alignment = StringAlignment.Center;
-                    rect = new RectangleF(point.X - width / 2, point.Y + offset2, width, height);
+                    rect = new RectangleF(point.X - (width / 2), point.Y + offset2, width, height);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(vertexTextPosition));
@@ -551,7 +551,7 @@
 
             if (updateCenter)
             {
-                this.polygonCenter = new Vertex(minX + (maxX - minX) / 2, minY + (maxY - minY) / 2);
+                this.polygonCenter = new Vertex(minX + ((maxX - minX) / 2), minY + ((maxY - minY) / 2));
             }
         }
 

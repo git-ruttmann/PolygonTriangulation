@@ -1,16 +1,15 @@
-﻿
-namespace TriangulationTests
+﻿namespace TriangulationTests
 {
     using System;
-    using System.Linq;
     using System.Collections.Generic;
-
-    using Vertex = System.Numerics.Vector2;
-    using Plane = System.Numerics.Plane;
-    using Vector3 = System.Numerics.Vector3;
+    using System.Linq;
 
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
+
+    using Plane = System.Numerics.Plane;
+    using Vector3 = System.Numerics.Vector3;
+    using Vertex = System.Numerics.Vector2;
 
     /// <summary>
     /// Tests using 3D edges as input
@@ -96,7 +95,7 @@ namespace TriangulationTests
         [ExpectedException(typeof(TriangulationException))]
         public void BadSelfCrossing()
         {
-            var builder = new PlanePolygonBuilder(new Plane());
+            var builder = new PlanePolygonBuilder(new Plane(Vector3.UnitZ, 0));
             builder.AddEdge(new Vector3(1, 0, 0), new Vector3(1, 3, 0));
             builder.AddEdge(new Vector3(1, 3, 0), new Vector3(3, 1, 0));
             builder.AddEdge(new Vector3(3, 1, 0), new Vector3(3, 3, 0));
@@ -106,6 +105,9 @@ namespace TriangulationTests
             Assert.Fail("May not reach this point");
         }
 
+        /// <summary>
+        /// Polygonizes the infamous form1.
+        /// </summary>
         [TestMethod]
         public void PolygonizeForm1()
         {
@@ -120,7 +122,7 @@ namespace TriangulationTests
                 new Vertex(1.5f, 3),
                 new Vertex(2.5f, 3),
                 new Vertex(4, 3.5f),
-//                new Vertex(2.25f, 2.5f),
+////                new Vertex(2.25f, 2.5f),
                 new Vertex(3, 2.5f),
                 new Vertex(4, 1.5f),
                 new Vertex(3.5f, 1),
@@ -135,7 +137,7 @@ namespace TriangulationTests
                 new Vertex(2.5f, 2.5f),
             };
 
-            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(new Vector3(0, 0, -1), 0));
+            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(Vector3.UnitZ, 0));
             var last = clockwise.Last();
             foreach (var vertex in clockwise)
             {
@@ -239,7 +241,7 @@ namespace TriangulationTests
                 new Vertex(4.5f, 0),
             };
 
-            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(new Vector3(0, 0, -1), 0));
+            var planeMeshBuilder = new PlanePolygonBuilder(new Plane(Vector3.UnitZ, 0));
             var last = clockwise.Last();
             foreach (var dot in clockwise)
             {
@@ -268,7 +270,7 @@ namespace TriangulationTests
                 new Vertex(1.5f, 3),
                 new Vertex(2.5f, 3),
                 new Vertex(4, 3.5f),
-//                new Vertex(2.25f, 2.5f),
+////                new Vertex(2.25f, 2.5f),
                 new Vertex(3, 2.5f),
                 new Vertex(4, 1.5f),
                 new Vertex(3.5f, 1),
@@ -295,42 +297,42 @@ namespace TriangulationTests
         {
             var edges = new List<int>
             {
-                // first - close 
+                //// first - close
                 00 + 1, 00 + 2,
                 00 + 3, 00 + 4,
                 00 + 2, 00 + 3, // join to 1 2 3 4 with [2 3]
                 00 + 4, 00 + 1, // close with [41]
-                // same
+                //// same
                 10 + 1, 10 + 2,
                 10 + 3, 10 + 4,
                 10 + 2, 10 + 3, // join to 1 2 3 4
                 10 + 1, 10 + 4, // close with [14]
-                // second
+                //// second
                 20 + 1, 20 + 2,
                 20 + 3, 20 + 4,
                 20 + 1, 20 + 3, // join to 2 1 3 4 with [1 3]
                 20 + 2, 20 + 4, // close
-                // same
+                //// same
                 30 + 1, 30 + 2,
                 30 + 3, 30 + 4,
                 30 + 3, 30 + 1, // join to 2 1 3 4 with [3 1]
                 30 + 2, 30 + 4, // close
-                // third
+                //// third
                 40 + 1, 40 + 2,
                 40 + 3, 40 + 4,
                 40 + 1, 40 + 4, // join to 3 4 1 2 with [1 4]
                 40 + 2, 40 + 3, // close
-                // same
+                //// same
                 50 + 1, 50 + 2,
                 50 + 3, 50 + 4,
                 50 + 1, 50 + 4, // join to 3 4 1 2 with [4 1]
                 50 + 2, 50 + 3, // close
-                // fourth
+                //// fourth
                 60 + 1, 60 + 2,
                 60 + 3, 60 + 4,
                 60 + 2, 60 + 4, // join to 1 2 4 3 with [2 4]
                 60 + 1, 60 + 3, // close
-                // same
+                //// same
                 70 + 1, 70 + 2,
                 70 + 3, 70 + 4,
                 70 + 2, 70 + 4, // join to 1 2 4 3 with [4 2]
@@ -343,14 +345,14 @@ namespace TriangulationTests
 
             Assert.AreEqual(0, builder.UnclosedPolygons.Count());
             Assert.AreEqual(8, result.Length);
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[0].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[0]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[1].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[1]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[2].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[2]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 3, 4, 2 }, result[3].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[3]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[4].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[4]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[5].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[5]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[6].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[6]) }");
-            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[7].Select(x => x % 10)), $"Unexpected { String.Join(" ", result[7]) }");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[0].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[0])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[1].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[1])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[2].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[2])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 3, 4, 2 }, result[3].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[3])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[4].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[4])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 3, 4 }, result[5].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[5])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[6].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[6])}");
+            Assert.IsTrue(ComparePolygon(new[] { 1, 2, 4, 3 }, result[7].Select(x => x % 10)), $"Unexpected {string.Join(" ", result[7])}");
         }
 
         /// <summary>

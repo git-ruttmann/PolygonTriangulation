@@ -2,5 +2,7 @@
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsNotAsErrors>S1172,S3881</WarningsNotAsErrors>
+    <OutputPath>..\Bin\$(Configuration)</OutputPath>
+    <DocumentationFile>..\Bin\$(Configuration)\$(ProjectName).xml</DocumentationFile>
   </PropertyGroup>
 </Project>

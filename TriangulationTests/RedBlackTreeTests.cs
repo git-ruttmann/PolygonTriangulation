@@ -8,6 +8,11 @@
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using PolygonTriangulation;
 
+#pragma warning disable SA1116 // Split parameters should start on line after declaration
+
+    /// <summary>
+    /// Tests for the red black tree
+    /// </summary>
     [TestClass]
     public class RedBlackTreeTests
     {
@@ -76,23 +81,23 @@
                 Assert.IsTrue(tree.TryLocateNode(items[i], out var node));
                 if (i == 0)
                 {
-                    Assert.IsNull(node.Prev);
+                    Assert.IsNull(node.PrevNode);
                 }
                 else
                 {
-                    Assert.AreEqual(items[i - 1], node.Prev.Data);
+                    Assert.AreEqual(items[i - 1], node.PrevNode.Data);
                 }
 
                 if (i == items.Length - 1)
                 {
-                    Assert.IsNull(node.Next);
+                    Assert.IsNull(node.NextNode);
                 }
                 else
                 {
                     Assert.AreEqual(
-                        items[i + 1], 
-                        node.Next.Data, 
-                        $"Next of {items[i]} is {node.Next.Data} instead of {items[i + 1]}");
+                        items[i + 1],
+                        node.NextNode.Data,
+                        $"Next of {items[i]} is {node.NextNode.Data} instead of {items[i + 1]}");
                 }
             }
         }
@@ -888,13 +893,13 @@
         private static RedBlackTree<int> CreateBalancedFiveLevel()
         {
             var tree = new RedBlackTree<int>();
-            var items = new[] 
-            { 
+            var items = new[]
+            {
                 20,
                 10, 30,
                 4, 15, 24, 35,
                 2, 7, 13, 18, 22, 27, 33, 38,
-                1, 3, 6, 8, 11, 14, 16, 19, 21, 23, 26, 28, 31, 34, 36, 39
+                1, 3, 6, 8, 11, 14, 16, 19, 21, 23, 26, 28, 31, 34, 36, 39,
             };
 
             foreach (var item in items)
@@ -917,8 +922,8 @@
         private static RedBlackTree<int> CreateBalancedFourLevel()
         {
             var tree = new RedBlackTree<int>();
-            var items = new[] 
-            { 
+            var items = new[]
+            {
                 20,
                 10, 30,
                 4, 15, 24, 35,
@@ -978,10 +983,10 @@
             public int Data { get; }
 
             /// <inheritdoc/>
-            IOrderedNode<int> IOrderedNode<int>.Next => throw new NotImplementedException();
+            IOrderedNode<int> IOrderedNode<int>.NextNode => throw new NotImplementedException();
 
             /// <inheritdoc/>
-            IOrderedNode<int> IOrderedNode<int>.Prev => throw new NotImplementedException();
+            IOrderedNode<int> IOrderedNode<int>.PrevNode => throw new NotImplementedException();
         }
     }
 }
