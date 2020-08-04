@@ -23,3 +23,6 @@ dotnet_diagnostic.CA1819.severity = none
 
 # SA1300: object names
 dotnet_diagnostic.SA1300.severity = none
+
+# SA1300: type parameters
+dotnet_diagnostic.SA1619.severity = none
