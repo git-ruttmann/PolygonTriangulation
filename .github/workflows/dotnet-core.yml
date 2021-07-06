@@ -30,10 +30,10 @@ jobs:
         CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
       run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r TriangulationTests/coverage.opencover.xml --commit-uuid $GITHUB_SHA 
 
-    - name: Setup .net core 2.2
+    - name: Setup .net core 5.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 2.1.806
+        dotnet-version: 5.0.7
     - name: Install Coverage Tool
       # run: dotnet tool install --tool-path . coveralls.net
       run: dotnet tool install -g coveralls.net
