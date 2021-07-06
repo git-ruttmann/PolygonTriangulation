@@ -33,7 +33,7 @@ jobs:
     - name: Setup .net core 5.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.7
+        dotnet-version: 5.0.301
     - name: Install Coverage Tool
       # run: dotnet tool install --tool-path . coveralls.net
       run: dotnet tool install -g coveralls.net
